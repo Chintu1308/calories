@@ -20,3 +20,10 @@ Store timestamps in UTC and convert for display/filtering using the user's timez
 
 ## D-005 — Brand
 Calories; “Your nutrition, made clearer.” Premium Editorial Health-Tech. Initial palette: #152238, #285B46, #BFD8C2, #FAF9F6, #FFFFFF, #EDE5D8, #6B7280, #C88932, #B84444. Verify accessibility and use original logo assets.
+
+## D-006 — Root Orchestration with Clean Package Isolation
+**Date:** 2026-10-23  
+**Decision:** Maintain distinct package boundaries for `client/` and `server/`, orchestrated via root workspace npm scripts (`npm run build`, `npm run lint`, `npm run typecheck`, `npm test`) using `--prefix`.  
+**Rationale:** Prevents runtime dependency collisions (such as DOM types interfering with Node.js backend types), eliminates hoist conflicts with Vite 8 / Oxlint / TypeScript, and keeps each tier independently buildable and deployable (Vercel for client, Render for server).  
+**Trade-off:** Dependencies must be installed in their respective directories (`client/` and `server/`).
+

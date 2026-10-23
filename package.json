@@ -1,0 +1,32 @@
+{
+  "name": "calories-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Calories — Personal Nutrition & Calorie Tracking Platform",
+  "scripts": {
+    "dev:client": "npm run dev --prefix client",
+    "dev:server": "npm run dev --prefix server",
+    "build:client": "npm run build --prefix client",
+    "build:server": "npm run build --prefix server",
+    "build": "npm run build:client && npm run build:server",
+    "lint:client": "npm run lint --prefix client",
+    "lint:server": "npm run lint --prefix server",
+    "lint": "npm run lint:client && npm run lint:server",
+    "typecheck:client": "npm run build --prefix client",
+    "typecheck:server": "npm run typecheck --prefix server",
+    "typecheck": "npm run typecheck:client && npm run typecheck:server",
+    "test:server": "npm run test --prefix server",
+    "test": "npm run test:server",
+    "start:server": "npm run start --prefix server"
+  },
+  "keywords": [
+    "nutrition",
+    "calorie-tracker",
+    "health-tech",
+    "react",
+    "express",
+    "typescript"
+  ],
+  "author": "Chintu1308",
+  "license": "UNLICENSED"
+}
