@@ -1,0 +1,49 @@
+/* Calories Design Tokens — v1
+   Premium Editorial Health-Tech
+   Use these tokens as the single source of truth for the UI.
+*/
+:root {
+  color-scheme: light;
+  --color-ink-navy: #152238;
+  --color-forest-green: #285B46;
+  --color-sage-green: #BFD8C2;
+  --color-warm-ivory: #FAF9F6;
+  --color-white: #FFFFFF;
+  --color-soft-sand: #EDE5D8;
+  --color-muted-slate: #6B7280;
+  --color-amber: #C88932;
+  --color-error-red: #B84444;
+
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --shadow-card: 0 8px 24px rgba(21, 34, 56, 0.06);
+
+  --text-primary: var(--color-ink-navy);
+  --text-secondary: var(--color-muted-slate);
+  --surface-page: var(--color-warm-ivory);
+  --surface-card: var(--color-white);
+  --action-primary: var(--color-forest-green);
+  --focus-ring: 0 0 0 3px rgba(40, 91, 70, 0.22);
+}
+
+* { box-sizing: border-box; }
+html { font-family: var(--font-sans); color: var(--text-primary); }
+body { margin: 0; background: var(--surface-page); }
+button, input, select, textarea { font: inherit; }
+:focus-visible { outline: none; box-shadow: var(--focus-ring); }

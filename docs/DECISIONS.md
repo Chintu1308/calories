@@ -1,0 +1,22 @@
+# Calories Architecture Decisions
+
+Record date, options, rationale, trade-offs and reconsideration trigger for each decision.
+
+## D-001 — Modular monolith for core API
+**Proposed decision:** Keep goals, meals, reports and auth in one Express backend; AI extraction is a separate service boundary.  
+**Rationale:** Deadline, simpler deployment/debugging, clear modules.  
+**Trade-off:** Core modules do not scale independently.
+
+## D-002 — MongoDB Atlas as primary database
+**Proposed decision:** Use one MongoDB database for meals, goals and related records.  
+**Rationale:** Flexible optional nutrition data.  
+**Trade-off:** Reports and relationships require careful schema/index design and aggregation tests.
+
+## D-003 — AI proposes; backend validates; user confirms
+AI returns structured suggestions only. Main API validates; the user confirms before a meal is saved.
+
+## D-004 — UTC timestamps
+Store timestamps in UTC and convert for display/filtering using the user's timezone.
+
+## D-005 — Brand
+Calories; “Your nutrition, made clearer.” Premium Editorial Health-Tech. Initial palette: #152238, #285B46, #BFD8C2, #FAF9F6, #FFFFFF, #EDE5D8, #6B7280, #C88932, #B84444. Verify accessibility and use original logo assets.
