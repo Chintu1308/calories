@@ -912,3 +912,155 @@ ok 12 - Cross-tenant user isolation: User A token cannot impersonate or read Use
 
 #### Practice modification
 In `server/src/models/User.ts`, add a `lastLoginAt: Date` timestamp field and update it inside `POST /api/v1/auth/login` whenever a user successfully authenticates.
+
+---
+
+### Stage 6 — Goal Setting & Personal Nutrition Targets
+**Status:** Verified  
+**Commit:** `Pending` (feat(goals): add personal nutrition targets)  
+**Date:** 2026-10-24
+
+#### What we built
+1. **Goal Domain Model (`server/src/models/Goal.ts`):**
+   - Implemented Mongoose Goal schema adhering strictly to `docs/DATA_MODEL.md`.
+   - Fields:
+     - `userId`: `Schema.Types.ObjectId`, ref `'User'`, required, indexed.
+     - `dailyCaloriesKcal`: number, required, integer ($500 \le \text{kcal} \le 10,000$).
+     - `proteinGrams`: number, required, float ($0 \le p \le 600\text{ g}$).
+     - `carbohydrateGrams`: number, required, float ($0 \le c \le 1,000\text{ g}$).
+     - `fatGrams`: number, required, float ($0 \le f \le 500\text{ g}$).
+     - `targetWeight`: number optional, float ($20 \le w \le 500$).
+     - `weightUnit`: enum `['kg', 'lbs']`, default `'kg'`.
+     - `title`: string optional, max 120 chars, trimmed.
+     - `targetWeeks`: number optional, integer ($1 \le wks \le 104$).
+     - `targetDate`: string optional.
+     - `isActive`: boolean, default `true`, indexed.
+   - Compound index: `{ userId: 1, isActive: 1 }` for high-performance single-record lookup of a tenant's active goal.
+   - Schema JSON transform strips `__v` from all API serializations.
+
+2. **Goal Input Validation (`server/src/validators/goalValidator.ts`):**
+   - Built with Zod to enforce strict physiologic constraints:
+     - Rejects negative macros ($< 0$) with explanatory errors.
+     - Rejects unsafe calorie limits ($< 500$ or $> 10,000\text{ kcal}$).
+     - Validates integer type on calories and weeks.
+     - Enforces bounds on optional target weight ($20 \le w \le 500$).
+
+3. **Goal Routing & History Management (`server/src/routes/goalRoutes.ts`):**
+   - Protected by `authenticate` middleware, ensuring all operations derive the user identity directly from verified JWT claims (`req.user.userId`).
+   - `GET /api/v1/goals`: Returns the tenant's current active nutrition goal. Returns HTTP 404 with standard code `NOT_FOUND` if no goal has been configured yet.
+   - `PUT /api/v1/goals`: Idempotent upsert of the active goal using `findOneAndUpdate` with `{ returnDocument: 'after', upsert: true, runValidators: true, setDefaultsOnInsert: true }`. Creates the initial goal if none exists, or updates the active goal in place without creating duplicate active records.
+   - `POST /api/v1/goals`: Creates a new active goal record while automatically archiving prior goals (`isActive: false`). This guarantees that users retain full chronological history of their nutritional target adjustments over time.
+   - `GET /api/v1/goals/history`: Returns all past and present goals ordered chronologically (`createdAt: -1`).
+
+4. **Client-Side Goal Persistence (`client/src/App.tsx`):**
+   - Configured `goal` state to initialize from `localStorage.getItem('calories_daily_goal')` with fallback to `SAMPLE_DAILY_GOAL`.
+   - Added a `useEffect` synchronization hook to persist goal modifications back to `localStorage` whenever `setGoal` is called, ensuring user targets persist and reload cleanly after browser refresh (fulfilling Acceptance Checklist item: `Goals create/edit/persist and load after refresh`).
+
+5. **Goal Integration & Multi-Tenant Isolation Tests (`server/src/routes/goal.test.ts`):**
+   - 8 comprehensive tests over in-memory MongoDB:
+     - Authentication verification: requests without Bearer token reject with 401 Unauthorized.
+     - Initial state: returns 404 when no goal exists.
+     - Validation bounds: rejects $< 500\text{ kcal}$, $> 10,000\text{ kcal}$, and negative macros with 400 Bad Request.
+     - Initial creation: `PUT /api/v1/goals` creates goal for User A.
+     - Retrieval: `GET /api/v1/goals` retrieves active goal with exact targets.
+     - Idempotent update: `PUT /api/v1/goals` updates goal in place without duplicates.
+     - **Tenant Isolation:** Proves User B cannot view User A's goal, receives 404 before configuring their own, and modifying User B's goal leaves User A's target intact.
+     - Historical archiving: `POST /api/v1/goals` deactivates prior goal and `GET /api/v1/goals/history` lists all versions chronologically.
+
+#### Files created and modified
+| File | Responsibility |
+|---|---|
+| `server/src/models/Goal.ts` | Mongoose Goal schema with macro bounds, compound indexing, and active flag. |
+| `server/src/validators/goalValidator.ts` | Zod schema validating calories (500–10,000), macros, and target weight. |
+| `server/src/routes/goalRoutes.ts` | Express router for `GET /`, `PUT /`, `POST /`, and `GET /history`. |
+| `server/src/routes/goal.test.ts` | Node 22 native tests covering validation, CRUD, history, and tenant isolation. |
+| `server/src/app.ts` | Mounted `goalRouter` at `/api/v1/goals`. |
+| `client/src/App.tsx` | Added `localStorage` initialization and persistence for `goal` state across page reloads. |
+
+#### Data flow
+1. User configures or adjusts nutrition targets in the UI (or client sends `PUT /api/v1/goals`).
+2. Request arrives at `server/src/routes/goalRoutes.ts` through the `authenticate` middleware.
+3. `authenticate` verifies the JWT signature and extracts `req.user.userId`.
+4. `asyncHandler` wraps the controller; `goalInputSchema.parse(req.body)` validates calories and macronutrient boundaries.
+5. In `PUT /api/v1/goals`, Mongoose runs `Goal.findOneAndUpdate({ userId: req.user.userId, isActive: true }, { ...validated, userId: req.user.userId, isActive: true }, { returnDocument: 'after', upsert: true, runValidators: true })`.
+6. MongoDB indexes on `{ userId: 1, isActive: 1 }` guarantee single-lookup speed and multi-tenant isolation.
+7. The updated goal document is returned to the client as `{ goal: ... }` with HTTP 200 OK.
+8. Client updates its goal state and persists to `localStorage`, immediately re-rendering target progress bars and calorie budgets.
+
+#### Validation and security
+- **Multi-Tenant Boundary:** `userId` is strictly populated from verified JWT claims (`req.user.userId`). The client cannot pass arbitrary `userId` parameters to mutate another user's goals.
+- **Biometric Sanity Bounds:** Caloric intake is restricted between $500\text{ kcal}$ and $10,000\text{ kcal}$ to prevent invalid or dangerous targets. Macronutrients cannot be negative.
+- **Idempotent Upsert vs Historical Archiving:** `PUT` updates the active goal in place, preventing unbounded document growth during frequent tweaks, while `POST` deactivates prior goals to retain explicit milestone changes.
+
+#### Tests and evidence
+```text
+> calories-workspace@0.1.0 test
+> npm run test:server
+
+> server@0.1.0 test
+> tsx --test src/**/*.test.ts
+
+TAP version 13
+# Subtest: GET /api/v1/health returns 200 OK with database connection status
+ok 1 - GET /api/v1/health returns 200 OK with database connection status
+# Subtest: GET /unknown-route returns 404 with standard error payload
+ok 2 - GET /unknown-route returns 404 with standard error payload
+# Subtest: Central errorHandler formats AppError into standard JSON envelope
+ok 3 - Central errorHandler formats AppError into standard JSON envelope
+# Subtest: Database connection status returns valid readyState
+ok 4 - Database connection status returns valid readyState
+# Subtest: Security utils: password hashing and verification
+ok 5 - Security utils: password hashing and verification
+# Subtest: Security utils: JWT token signing and payload verification
+ok 6 - Security utils: JWT token signing and payload verification
+# Subtest: POST /api/v1/auth/register registers a user and returns token + safe user object
+ok 7 - POST /api/v1/auth/register registers a user and returns token + safe user object
+# Subtest: POST /api/v1/auth/register rejects duplicate email with 409 Conflict
+ok 8 - POST /api/v1/auth/register rejects duplicate email with 409 Conflict
+# Subtest: POST /api/v1/auth/register validates schema and rejects short password with 400
+ok 9 - POST /api/v1/auth/register validates schema and rejects short password with 400
+# Subtest: POST /api/v1/auth/login authenticates registered user and rejects bad credentials
+ok 10 - POST /api/v1/auth/login authenticates registered user and rejects bad credentials
+# Subtest: GET /api/v1/auth/me requires valid Bearer token
+ok 11 - GET /api/v1/auth/me requires valid Bearer token
+# Subtest: Cross-tenant user isolation: User A token cannot impersonate or read User B
+ok 12 - Cross-tenant user isolation: User A token cannot impersonate or read User B
+# Subtest: GET /api/v1/goals requires valid Bearer authentication
+ok 13 - GET /api/v1/goals requires valid Bearer authentication
+# Subtest: GET /api/v1/goals returns 404 when no goal has been configured yet
+ok 14 - GET /api/v1/goals returns 404 when no goal has been configured yet
+# Subtest: PUT /api/v1/goals validates payload and rejects invalid inputs with 400
+ok 15 - PUT /api/v1/goals validates payload and rejects invalid inputs with 400
+# Subtest: PUT /api/v1/goals creates initial nutrition goal for User A
+ok 16 - PUT /api/v1/goals creates initial nutrition goal for User A
+# Subtest: GET /api/v1/goals retrieves persisted goal for User A
+ok 17 - GET /api/v1/goals retrieves persisted goal for User A
+# Subtest: PUT /api/v1/goals updates User A goal in place (upsert idempotency)
+ok 18 - PUT /api/v1/goals updates User A goal in place (upsert idempotency)
+# Subtest: Strict Tenant Isolation: User B cannot inspect or overwrite User A goal
+ok 19 - Strict Tenant Isolation: User B cannot inspect or overwrite User A goal
+# Subtest: POST /api/v1/goals archives prior goal and GET /api/v1/goals/history returns chronological list
+ok 20 - POST /api/v1/goals archives prior goal and GET /api/v1/goals/history returns chronological list
+1..20
+# tests 20, suites 0, pass 20, fail 0, cancelled 0, skipped 0, todo 0
+# duration_ms 8647.7725
+```
+
+#### Known limitations
+- The system currently enforces single-active-goal semantics per user; support for cyclical daily goals (e.g. workout-day vs rest-day caloric cycling) can be modeled as future sub-schedules.
+
+#### Interview explanation
+> "In Stage 6, I built the personal nutrition goal tracking subsystem. I created the Goal Mongoose schema with bounded validation rules for calories (500 to 10,000 kcal) and macronutrients, indexed on `{ userId: 1, isActive: 1 }`. I implemented an idempotent `PUT /api/v1/goals` endpoint using Mongoose's `findOneAndUpdate` with `upsert: true` and `returnDocument: 'after'`, which updates the active goal in place without creating redundant documents. I also provided a `POST /api/v1/goals` endpoint that deactivates previous goals before saving a new one, enabling complete historical auditing of nutritional targets over time. On the client, I connected local storage persistence so customized goals survive page refreshes. I authored automated integration tests using Node 22's native test runner and an in-memory MongoDB daemon to verify authorization, bounds validation, and multi-tenant isolation."
+
+#### Likely interview questions
+1. **Why use `findOneAndUpdate` with `upsert: true` for `PUT /api/v1/goals` instead of checking with `findOne` and then calling `save()` or `create()`?**  
+   *Answer:* Using `findOneAndUpdate({ userId, isActive: true }, update, { upsert: true })` executes an atomic operation directly inside MongoDB. If we used a separate `findOne()` followed by `create()`, concurrent requests could produce a race condition where two separate active goal documents are created simultaneously. The atomic upsert prevents race conditions and reduces network round-trips to a single database command.
+2. **How does your design address the question of goal history retention?**  
+   *Answer:* We support both operational paradigms: `PUT /api/v1/goals` performs an in-place idempotent upsert of the active goal (ideal for quick macro adjustments without inflating database storage), while `POST /api/v1/goals` deactivates the prior goal (`isActive: false`) and inserts a new document. The `/api/v1/goals/history` endpoint allows the client to retrieve past nutritional targets to chart how goals have evolved across different training phases.
+3. **Why index `{ userId: 1, isActive: 1 }` as a compound index instead of just `{ userId: 1 }`?**  
+   *Answer:* All core runtime queries filter for the user's active goal (`{ userId: req.user.userId, isActive: true }`). A compound index allows MongoDB's query planner to jump directly to the active document via an index scan (IXSCAN) without having to inspect all historical inactive goals for that user.
+4. **How do you prevent a malicious user from setting their daily target to negative calories or 50,000 kcal?**  
+   *Answer:* Defense in depth: we validate payloads on the client to provide instant user feedback, validate with Zod on the server (`goalInputSchema`) to ensure numbers fall within biological ranges ($500 \le \text{kcal} \le 10,000$, macros $\ge 0$), and enforce Mongoose schema validators (`min: 500, max: 10000`) before data can be written to MongoDB.
+
+#### Practice modification
+In `server/src/models/Goal.ts`, add an optional `waterTargetMl: number` field (defaulting to 2500 ml) with a minimum bound of 500 and maximum bound of 10,000 ml, update `goalValidator.ts`, and add an assertion in `goal.test.ts` to verify water targets are persisted and retrieved.

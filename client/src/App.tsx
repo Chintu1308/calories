@@ -26,7 +26,22 @@ export const App: React.FC = () => {
   const [viewState, setViewState] = useState<DashboardViewState>('normal');
   const [currentDateIndex, setCurrentDateIndex] = useState<number>(0);
   const [meals, setMeals] = useState<MealItem[]>(SAMPLE_MEALS);
-  const [goal, setGoal] = useState<DailyGoal>(SAMPLE_DAILY_GOAL);
+  const [goal, setGoal] = useState<DailyGoal>(() => {
+    try {
+      const saved = localStorage.getItem('calories_daily_goal');
+      return saved ? JSON.parse(saved) : SAMPLE_DAILY_GOAL;
+    } catch {
+      return SAMPLE_DAILY_GOAL;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('calories_daily_goal', JSON.stringify(goal));
+    } catch {
+      // Ignore localStorage write error
+    }
+  }, [goal]);
 
   // User Profile & Onboarding State (persisted to localStorage)
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
