@@ -51,6 +51,51 @@ export interface DailyGoal {
   fatGrams: number;
   targetWeight?: number;
   weightUnit?: 'kg' | 'lbs';
+  title?: string;
+  targetDate?: string;
+  targetWeeks?: number;
+}
+
+export interface SupplementItem {
+  id: string;
+  name: string;
+  dosage: string; // e.g. "5g", "1 scoop (30g)", "2000 IU"
+  timing: 'Morning' | 'Pre-Workout' | 'Post-Workout' | 'Evening' | 'With Meals';
+  notes?: string;
+}
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  heightCm: number;
+  currentWeightKg: number;
+  targetWeightKg: number;
+  targetWeeks: number;
+  targetDate: string; // ISO date string
+  allergies: string[];
+  supplements: SupplementItem[];
+  activityLevel: 'sedentary' | 'light' | 'moderate' | 'very_active';
+  primaryGoal: 'fat_loss' | 'muscle_gain' | 'maintenance' | 'athletic';
+}
+
+export interface GoalProjectionPoint {
+  week: number;
+  dateLabel: string;
+  projectedWeightKg: number;
+  calorieTarget: number;
+}
+
+export interface FoodRecommendation {
+  id: string;
+  foodName: string;
+  portion: string;
+  caloriesKcal: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  reason: string;
+  macroFocus: 'protein' | 'carbs' | 'balanced' | 'low_calorie';
 }
 
 export interface DayNutritionalSummary {

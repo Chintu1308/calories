@@ -613,3 +613,75 @@ A professional production application cannot rely solely on a single dashboard v
 
 #### Practice modification
 In `client/src/pages/ErrorsPage.tsx`, add a query parameter simulator (e.g. `?code=403`) or simulated network latency drop-down that allows interviewers to trigger custom error page transitions with simulated server delays.
+
+---
+
+### Stage 3c — User Onboarding, Dual-Log Flow, Goal Trajectory & Clinical PDF Export
+**Status:** Verified  
+**Commit:** `feat(ui): add onboarding profile, dual meal log, goal trajectory, and PDF export`  
+**Date:** 2026-10-24
+
+#### What we built
+1. **User Registration, Login & Health Onboarding Profile (`client/src/components/auth/AuthOnboardingModal.tsx`):**
+   - Implemented a unified modal supporting `register`, `login`, and `edit_profile` modes.
+   - Captures vital physical metrics during onboarding: Height ($cm$), Current Weight ($kg$), Target Weight ($kg$), Target Timeline ($weeks$), Primary Wellness Focus.
+   - **Allergy Shield:** Interactive chip selector for top food allergens (`Peanuts`, `Gluten`, `Dairy`, `Shellfish`, `Eggs`, `Soy`, `Fish`, `Sesame`, `Tree Nuts`) plus custom allergen adder.
+   - **Permanent Daily Stored Supplements:** Permanent manager allowing users to store recurring supplements (name, dosage, timing) once in their profile so they are tracked automatically every day without daily manual logging.
+   - Seamless editing from `SettingsPage` with state persistence to browser `localStorage`.
+2. **Dual-Option "+ Log Meal" Modal (`client/src/components/meals/AddMealModal.tsx`):**
+   - Replaced single-form dialog with a 2-choice decision interface:
+     - 📸 **Take or Upload a Photo:** Captures meal photo preview, validates image size (<5MB), asks for dish name, and provides auto-calibrated baseline nutrition.
+     - ✍️ **Add Manually:** Full granular nutrition form for portion amount, unit, exact calories, and macronutrients.
+3. **Goal Timeline Approximation & Smart Food Recommendations (`client/src/pages/GoalsPage.tsx`):**
+   - **Timeline Trajectory SVG Chart:** Visualizes weekly weight trajectory from current weight to target weight across the selected timeframe (weeks) with weekly milestone dots and calorie deficit line.
+   - **Remaining Details Strip:** Live calculation of remaining daily budget ($kcal$, protein, carbs, fat) needed to hit targets today.
+   - **"Things to Have" Recommendations:** High-protein, balanced food suggestions with portions, reasons, allergen clearance, and one-click "+ Quick Log to Journal" actions.
+   - **Add & Edit Goal Modals:** Create new goal programs with target timeline or edit current targets.
+4. **AI Plate & Label Extraction Analysis with Today's Fit (`client/src/pages/AIScanPage.tsx`):**
+   - **What This Dish Contains:** Extracted ingredients list detailing meal components.
+   - **Allergen Screening:** Cross-checks detected dish ingredients against user's registered allergies.
+   - **Today's Nutritional Fit Analysis:** Compares scanned dish calories & macros against remaining daily budget, presenting a 🟢/🔴 status verdict and explanation.
+   - **Human-in-the-Loop Guarantee:** Analysis results are displayed for review only; meal is not logged until user clicks "Confirm & Log This Meal to Diary".
+5. **Settings Page Profile Display & Separate Edit Option (`client/src/pages/SettingsPage.tsx`):**
+   - Read-only display of body metrics, calculated BMI, registered food allergies, and daily supplements.
+   - Dedicated "Edit Profile & Health Details" button to update metrics and supplements.
+6. **Executive Clinical PDF Report Export (`client/src/utils/exportPdf.ts`):**
+   - Formatted clinical nutrition report generating vector SVG adherence charts, macronutrient energy split tables, permanent supplements list, logged food items, and clinical guidance disclaimers.
+   - Triggers native high-resolution browser print / PDF download.
+
+#### Files created and modified
+| File | Responsibility |
+|---|---|
+| `client/src/types/nutrition.ts` | Added `UserProfile`, `SupplementItem`, `GoalProjectionPoint`, and `FoodRecommendation` domain types. |
+| `client/src/data/mockNutritionData.ts` | Added `SAMPLE_USER_PROFILE`, `SAMPLE_RECOMMENDATIONS`, and `generateWeightProjection` helper. |
+| `client/src/components/auth/AuthOnboardingModal.tsx` | Register/login onboarding wizard capturing height, weight, allergies, and permanent supplements. |
+| `client/src/components/meals/AddMealModal.tsx` | Dual-choice meal logger ("Take / Upload Photo" vs "Add Manually"). |
+| `client/src/utils/exportPdf.ts` | Formats and triggers printable executive clinical PDF report with charts and analysis. |
+| `client/src/pages/GoalsPage.tsx` | Goal timeline approximation graph, Add/Edit goal modals, and "Things to Have" recommendations. |
+| `client/src/pages/AIScanPage.tsx` | Ingredients breakdown, allergen scan, and "Today's Nutritional Fit Analysis" evaluation. |
+| `client/src/pages/SettingsPage.tsx` | Read-only profile view with separate "Edit Profile & Health Details" trigger and PDF export. |
+| `client/src/pages/ReportsPage.tsx` | Added "Export Report (PDF)" action button in header. |
+| `client/src/components/layout/Header.tsx` | Added user profile badge button triggering health profile modal. |
+| `client/src/components/layout/DashboardShell.tsx` | Passed user profile and auth modal handler to header. |
+| `client/src/App.tsx` | Integrated user profile state, dual-action meal logging, and global event coordination. |
+| `client/src/App.css` | Added styles for choice cards, header profile button, and print media rules. |
+
+#### Tests and evidence
+- **Oxlint:** 0 warnings, 0 errors across 32 client files and 3 server files.
+- **TypeScript:** Strict typecheck passed for both client (`tsc -b && vite build`) and server (`tsc --noEmit`).
+- **Production Build:** `npm run build` generated optimized production assets: `dist/assets/index-DiHRni3q.js` (364.05 kB) and `dist/assets/index-BUekslMi.css` (24.17 kB).
+- **Unit & Integration Tests:** Native Node 22 test runner: 2/2 tests passed (100%).
+
+#### Interview explanation
+> "In Stage 3c, I expanded Calories into a complete end-to-end user experience. Registration now captures essential health baselines—height, current and target weight, food allergies, and permanent daily supplements stored once to avoid tedious daily re-entry. When logging meals, users have a dual-choice modal to either snap a dish photo or enter exact macros manually. The Goals view features a timeline approximation SVG graph plotting the projected weight trajectory over weeks, alongside 'Things to Have' recommendations to satisfy remaining macros. In the AI vision scanner, meals are never logged automatically; instead, the AI breaks down ingredients, screens for registered allergens, and evaluates 'Is it good for today?' against the user's remaining calorie and macro budget. Finally, Reports feature a clinical PDF export providing patients and dietitians with an executive printout of adherence curves, macronutrients, and honest micronutrient audits."
+
+#### Likely interview questions
+1. **Why store daily supplements permanently in the user profile rather than requiring manual daily food entries?**  
+   *Answer:* Recurring supplements (such as multivitamins, omega-3, or creatine) are consumed routinely. Forcing users to search and log identical supplements every day creates tracking fatigue and reduces daily active retention. Storing them permanently in the user profile ensures consistent nutritional tracking while preserving the manual meal log for variable meals.
+2. **How does the AI Scan evaluate whether a proposed dish is 'good according to the current status of today'?**  
+   *Answer:* The evaluation compares the proposed dish's calories and macronutrients against the user's remaining daily budget ($Remaining = DailyTarget - ConsumedToday$). If the dish fits within remaining calories and covers a substantial portion of remaining protein without breaching allergen limits, the system provides an encouraging 🟢 confirmation. If it would cause a calorie overshoot, it highlights the delta and recommends a sensible half-portion adjustment.
+3. **How does the application ensure reliable PDF generation without heavy external server dependencies?**  
+   *Answer:* Rather than relying on heavyweight server-side headless browsers (like Puppeteer) that require high memory and introduce cold-start latency, the client generates a semantic, print-styled HTML document with embedded vector SVGs and triggers the browser's native print engine. This produces crisp vector PDFs instantly on any device with zero server overhead.
+
+#### Practice modification
+In `client/src/pages/GoalsPage.tsx`, add an interactive milestone slider to the timeline projection graph allowing users to adjust their projected weekly rate of weight change (e.g., from 0.5 kg/week to 0.75 kg/week) and watch the required daily calorie deficit line update in real time.

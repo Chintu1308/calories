@@ -8,24 +8,28 @@ import {
   CardFooter,
   Button,
   Badge,
-  Input,
   Select,
   FormField,
   Icon,
 } from '../components/ui/index.js';
-import type { MealItem, DailyGoal } from '../types/nutrition.js';
+import type { MealItem, DailyGoal, UserProfile } from '../types/nutrition.js';
+import { SAMPLE_USER_PROFILE } from '../data/mockNutritionData.js';
 
 export interface SettingsPageProps {
   meals: MealItem[];
   goal: DailyGoal;
+  userProfile?: UserProfile;
+  onEditProfile?: () => void;
+  onExportPdf?: () => void;
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
   meals,
   goal,
+  userProfile = SAMPLE_USER_PROFILE,
+  onEditProfile,
+  onExportPdf,
 }) => {
-  const [userName, setUserName] = useState('Alex Henderson');
-  const [userEmail, setUserEmail] = useState('alex.henderson@example.com');
   const [selectedTimezone, setSelectedTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata'
   );
@@ -37,7 +41,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     latencyMs: number;
   } | null>(null);
   const [isCheckingHealth, setIsCheckingHealth] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Compute BMI
+  const heightM = userProfile.heightCm / 100;
+  const bmi = heightM > 0 ? (userProfile.currentWeightKg / (heightM * heightM)).toFixed(1) : '23.4';
 
   const checkBackendHealth = async () => {
     setIsCheckingHealth(true);
@@ -100,9 +107,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const handleExportData = () => {
     const payload = {
       exportedAt: new Date().toISOString(),
-      user: { name: userName, email: userEmail, timezone: selectedTimezone },
+      user: userProfile,
       goal,
-      totalMealsTracked: meals.length,
+      totalMealsLogged: meals.length,
       meals,
     };
 
@@ -110,190 +117,282 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `calories-export-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `calories-health-export-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const handleSaveSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
-  };
-
   return (
     <div className="calories-page-container">
-      {/* Header */}
+      {/* Page Header */}
       <div className="calories-page-header">
         <div>
-          <div className="calories-greeting-tagline">Preferences &amp; Diagnostics</div>
-          <h1 className="calories-greeting-title">Platform Settings</h1>
+          <div className="calories-greeting-tagline">Account, Health Profile &amp; Preferences</div>
+          <h1 className="calories-greeting-title">User Settings &amp; Health Profile</h1>
           <p className="calories-greeting-subtext">
-            Configure timezones, unit conventions, inspect server connectivity, and export personal nutrition logs.
+            View your personal physical metrics, registered food allergies, permanent daily supplements, and telemetry status.
           </p>
         </div>
 
-        <Badge variant="neutral">Client Settings</Badge>
+        {onEditProfile && (
+          <Button
+            variant="primary"
+            size="md"
+            leftIcon={<Icon name="settings" size={16} />}
+            onClick={onEditProfile}
+          >
+            Edit Profile &amp; Health Details
+          </Button>
+        )}
       </div>
 
-      {saveSuccess && (
-        <div className="calories-success-banner" role="status">
-          <Icon name="check" size={18} />
-          <span>Profile preferences saved successfully!</span>
-        </div>
-      )}
-
       <div className="calories-grid-two">
-        {/* Profile & Timezone Card */}
+        {/* Profile & Physical Baseline Details */}
         <Card>
           <CardHeader>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Icon name="profile" size={24} />
-              <CardTitle>Profile &amp; Timezone</CardTitle>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Icon name="profile" size={22} />
+                <CardTitle>Physical Metrics &amp; Body Stats</CardTitle>
+              </div>
+              <Badge variant="forest">Active Profile</Badge>
             </div>
             <CardDescription>
-              Timezone determines how UTC meal timestamps map to your calendar days
+              Your biological and goal settings used for calorie calculations
             </CardDescription>
           </CardHeader>
 
           <CardContent>
-            <form id="settings-form" onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <FormField label="Full Name" htmlFor="profile-name">
-                <Input
-                  id="profile-name"
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                />
-              </FormField>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ background: 'var(--color-sand-soft)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Full Name</div>
+                  <strong style={{ fontSize: 'var(--text-base)', color: 'var(--text-primary)' }}>{userProfile.name}</strong>
+                </div>
 
-              <FormField label="Email Address" htmlFor="profile-email">
-                <Input
-                  id="profile-email"
-                  type="email"
-                  value={userEmail}
-                  onChange={(e) => setUserEmail(e.target.value)}
-                />
-              </FormField>
+                <div style={{ background: 'var(--color-sand-soft)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Email Address</div>
+                  <strong style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>{userProfile.email}</strong>
+                </div>
+              </div>
 
-              <FormField
-                label="Primary Timezone"
-                htmlFor="profile-tz"
-                hint="Dates are stored in UTC and converted dynamically to this timezone"
-              >
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                <div style={{ background: 'var(--color-sand-soft)', padding: '12px', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Height</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-lg)', fontWeight: 700 }}>
+                    {userProfile.heightCm} cm
+                  </div>
+                </div>
+
+                <div style={{ background: 'var(--color-sand-soft)', padding: '12px', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Current Weight</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-lg)', fontWeight: 700 }}>
+                    {userProfile.currentWeightKg} kg
+                  </div>
+                </div>
+
+                <div style={{ background: 'var(--color-sand-soft)', padding: '12px', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--color-forest-green)' }}>Target Weight</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-forest-green)' }}>
+                    {userProfile.targetWeightKg} kg
+                  </div>
+                </div>
+
+                <div style={{ background: 'var(--color-sand-soft)', padding: '12px', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>BMI</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-lg)', fontWeight: 700 }}>
+                    {bmi}
+                  </div>
+                </div>
+              </div>
+
+              {/* Food Allergies */}
+              <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '12px' }}>
+                <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  Registered Food Allergies:
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {userProfile.allergies.length === 0 ? (
+                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>None registered</span>
+                  ) : (
+                    userProfile.allergies.map((allergy) => (
+                      <Badge key={allergy} variant="destructive">
+                        ⚠️ {allergy}
+                      </Badge>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+
+          <CardFooter>
+            {onEditProfile && (
+              <Button variant="outline" size="sm" onClick={onEditProfile}>
+                Edit Physical Metrics &amp; Allergies
+              </Button>
+            )}
+          </CardFooter>
+        </Card>
+
+        {/* Permanent Daily Stored Supplements */}
+        <Card>
+          <CardHeader>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Icon name="supplements" size={22} />
+                <CardTitle>Permanent Stored Supplements</CardTitle>
+              </div>
+              <Badge variant="sage">Stored in Profile</Badge>
+            </div>
+            <CardDescription>
+              Supplements stored here are tracked automatically every day without manual re-entry.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            {userProfile.supplements.length === 0 ? (
+              <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)', background: 'var(--color-sand-soft)', borderRadius: 'var(--radius-md)' }}>
+                No permanent supplements configured. Click "Edit Profile" to add Whey, Creatine, Multivitamins, etc.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {userProfile.supplements.map((supp) => (
+                  <div
+                    key={supp.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '10px 14px',
+                      background: 'var(--color-sand-soft)',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-light)',
+                    }}
+                  >
+                    <div>
+                      <strong style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
+                        {supp.name}
+                      </strong>
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                        Dosage: <strong>{supp.dosage}</strong> • Timing: <span style={{ color: 'var(--color-forest-green)', fontWeight: 600 }}>{supp.timing}</span>
+                      </div>
+                      {supp.notes && (
+                        <div style={{ fontSize: '10px', color: 'var(--text-secondary)', fontStyle: 'italic', marginTop: '2px' }}>
+                          {supp.notes}
+                        </div>
+                      )}
+                    </div>
+                    <Badge variant="neutral">{supp.timing}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+
+          <CardFooter>
+            {onEditProfile && (
+              <Button variant="outline" size="sm" onClick={onEditProfile}>
+                Manage Daily Supplements
+              </Button>
+            )}
+          </CardFooter>
+        </Card>
+      </div>
+
+      {/* System Preferences & Data Management */}
+      <div className="calories-grid-two">
+        {/* App Preferences */}
+        <Card>
+          <CardHeader>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Icon name="settings" size={20} />
+              <CardTitle>Regional Preferences</CardTitle>
+            </div>
+            <CardDescription>Configure timezone and unit measurement system</CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <FormField label="Timezone" htmlFor="settings-tz">
                 <Select
-                  id="profile-tz"
+                  id="settings-tz"
                   value={selectedTimezone}
                   onChange={(e) => setSelectedTimezone(e.target.value)}
                   options={[
                     { value: 'Asia/Kolkata', label: 'Asia/Kolkata (IST, UTC+5:30)' },
                     { value: 'UTC', label: 'UTC (Coordinated Universal Time)' },
-                    { value: 'America/New_York', label: 'America/New_York (EDT, UTC-4)' },
-                    { value: 'America/Los_Angeles', label: 'America/Los_Angeles (PDT, UTC-7)' },
-                    { value: 'Europe/London', label: 'Europe/London (BST, UTC+1)' },
+                    { value: 'America/New_York', label: 'America/New_York (EST, UTC-5)' },
+                    { value: 'Europe/London', label: 'Europe/London (GMT, UTC+0)' },
                   ]}
                 />
               </FormField>
 
-              <FormField label="Measurement System" htmlFor="profile-units">
+              <FormField label="Unit Measurement" htmlFor="settings-units">
                 <Select
-                  id="profile-units"
+                  id="settings-units"
                   value={unitSystem}
                   onChange={(e) => setUnitSystem(e.target.value as 'metric' | 'imperial')}
                   options={[
-                    { value: 'metric', label: 'Metric System (grams, kilograms, milliliters)' },
-                    { value: 'imperial', label: 'Imperial System (ounces, pounds, cups)' },
+                    { value: 'metric', label: 'Metric (grams, milliliters, kilograms)' },
+                    { value: 'imperial', label: 'Imperial (ounces, cups, pounds)' },
                   ]}
                 />
               </FormField>
-            </form>
+            </div>
           </CardContent>
-
-          <CardFooter>
-            <Button variant="primary" size="md" type="submit" form="settings-form">
-              Save Preferences
-            </Button>
-          </CardFooter>
         </Card>
 
-        {/* System Diagnostics & Data Export Card */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* API Health Monitor */}
-          <Card>
-            <CardHeader>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Icon name="settings" size={24} />
-                  <CardTitle>Core API Health Monitor</CardTitle>
-                </div>
-                <Badge variant={healthStatus?.status === 'ok' ? 'forest' : 'amber'}>
-                  {healthStatus?.status === 'ok' ? 'Online' : 'Checking / Offline'}
-                </Badge>
-              </div>
-              <CardDescription>Pings <code>/api/v1/health</code> to verify server readiness</CardDescription>
-            </CardHeader>
+        {/* Data Portability & Health Ping */}
+        <Card>
+          <CardHeader>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Icon name="reports" size={20} />
+              <CardTitle>Data Export &amp; Telemetry</CardTitle>
+            </div>
+            <CardDescription>Export complete health reports or check backend service health</CardDescription>
+          </CardHeader>
 
-            <CardContent>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-sand-soft)', borderRadius: '8px' }}>
-                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>Service Name:</span>
-                  <strong style={{ fontSize: 'var(--text-xs)' }}>{healthStatus?.service || 'calories-server'}</strong>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-sand-soft)', borderRadius: '8px' }}>
-                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>API Version:</span>
-                  <strong style={{ fontSize: 'var(--text-xs)' }}>{healthStatus?.version || '0.1.0'}</strong>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-sand-soft)', borderRadius: '8px' }}>
-                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>Round-Trip Latency:</span>
-                  <strong style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)' }}>
-                    {healthStatus ? `${healthStatus.latencyMs} ms` : 'Testing...'}
+          <CardContent>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Telemetry Ping */}
+              <div style={{ background: 'var(--color-sand-soft)', padding: '12px', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Backend Service Status:</div>
+                  <strong style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: healthStatus?.status === 'ok' ? 'var(--color-forest-green)' : 'var(--color-amber)' }}>
+                    {healthStatus ? `${healthStatus.status.toUpperCase()} (${healthStatus.latencyMs}ms)` : 'Checking...'}
                   </strong>
                 </div>
+                <Button variant="ghost" size="sm" onClick={checkBackendHealth} isLoading={isCheckingHealth}>
+                  Ping Server
+                </Button>
               </div>
-            </CardContent>
 
-            <CardFooter>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={checkBackendHealth}
-                isLoading={isCheckingHealth}
-                leftIcon={<Icon name="check" size={14} />}
-              >
-                Ping API Health
-              </Button>
-            </CardFooter>
-          </Card>
-
-          {/* Privacy & Data Ownership */}
-          <Card>
-            <CardHeader>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Icon name="heart" size={24} />
-                <CardTitle>Data Portability</CardTitle>
+              {/* PDF & JSON Export Actions */}
+              <div style={{ display: 'flex', gap: '10px' }}>
+                {onExportPdf && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    style={{ flex: 1 }}
+                    leftIcon={<Icon name="reports" size={16} />}
+                    onClick={onExportPdf}
+                  >
+                    Export Report (PDF)
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  style={{ flex: 1 }}
+                  onClick={handleExportData}
+                >
+                  Download JSON
+                </Button>
               </div>
-              <CardDescription>Export your complete nutritional records in standard JSON</CardDescription>
-            </CardHeader>
-
-            <CardContent>
-              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                You own your nutrition data. Export all logged food items, macro breakdowns, and historical targets anytime for backup or third-party analysis.
-              </p>
-            </CardContent>
-
-            <CardFooter>
-              <Button
-                variant="secondary"
-                size="md"
-                leftIcon={<Icon name="reports" size={16} />}
-                onClick={handleExportData}
-              >
-                Download Nutritional Archive (.json)
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

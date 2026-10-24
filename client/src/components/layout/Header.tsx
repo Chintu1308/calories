@@ -15,6 +15,8 @@ export interface HeaderProps {
   onTabChange: (tab: NavTabId) => void;
   onOpenAddMeal: () => void;
   onOpenAIScan: () => void;
+  userName?: string;
+  onOpenAuthModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -22,6 +24,8 @@ export const Header: React.FC<HeaderProps> = ({
   onTabChange,
   onOpenAddMeal,
   onOpenAIScan,
+  userName = 'Alex Henderson',
+  onOpenAuthModal,
 }) => {
   const navItems: { id: NavTabId; label: string; icon: IconName }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
@@ -70,6 +74,31 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Global Quick Action Buttons */}
         <div className="calories-header-actions">
+          {onOpenAuthModal && (
+            <button
+              type="button"
+              className="calories-profile-header-btn"
+              onClick={onOpenAuthModal}
+              title="Profile & Onboarding Setup"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: 'var(--radius-full)',
+                border: '1px solid var(--border-medium)',
+                backgroundColor: 'var(--surface-card)',
+                color: 'var(--text-primary)',
+                fontSize: 'var(--text-xs)',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              <Icon name="profile" size={16} />
+              <span>{userName}</span>
+            </button>
+          )}
+
           <Button
             variant="outline"
             size="sm"

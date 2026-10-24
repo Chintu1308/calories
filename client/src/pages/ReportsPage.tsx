@@ -6,22 +6,26 @@ import {
   CardDescription,
   CardContent,
   CardFooter,
+  Button,
   Badge,
   Select,
   ProgressBar,
   Icon,
 } from '../components/ui/index.js';
-import type { MealItem, DailyGoal } from '../types/nutrition.js';
-import { SAMPLE_WEEKLY_TREND } from '../data/mockNutritionData.js';
+import type { MealItem, DailyGoal, UserProfile } from '../types/nutrition.js';
+import { SAMPLE_WEEKLY_TREND, SAMPLE_USER_PROFILE } from '../data/mockNutritionData.js';
+import { exportNutritionReportPdf } from '../utils/exportPdf.js';
 
 export interface ReportsPageProps {
   meals: MealItem[];
   goal: DailyGoal;
+  userProfile?: UserProfile;
 }
 
 export const ReportsPage: React.FC<ReportsPageProps> = ({
   meals,
   goal,
+  userProfile = SAMPLE_USER_PROFILE,
 }) => {
   const [groupBy, setGroupBy] = useState<'day' | 'week'>('day');
   const [dateRange, setDateRange] = useState<string>('7days');
@@ -65,7 +69,24 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <Button
+            variant="primary"
+            size="md"
+            leftIcon={<Icon name="reports" size={16} />}
+            onClick={() =>
+              exportNutritionReportPdf({
+                userProfile,
+                goal,
+                meals,
+                weeklyTrend: SAMPLE_WEEKLY_TREND,
+                dateRangeLabel: dateRange === '7days' ? 'Last 7 Days (Oct 18 – Oct 24, 2026)' : 'Last 30 Days',
+              })
+            }
+          >
+            Export Report (PDF)
+          </Button>
+
           <Select
             value={groupBy}
             onChange={(e) => setGroupBy(e.target.value as 'day' | 'week')}

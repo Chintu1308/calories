@@ -4,16 +4,135 @@
  * All records strictly conform to the Calories Data Model (docs/DATA_MODEL.md).
  */
 
-import type { DailyGoal, MealItem } from '../types/nutrition.js';
+import type { DailyGoal, MealItem, UserProfile, FoodRecommendation, GoalProjectionPoint } from '../types/nutrition.js';
 
 export const SAMPLE_DAILY_GOAL: DailyGoal = {
   dailyCaloriesKcal: 2200,
   proteinGrams: 150,
   carbohydrateGrams: 220,
   fatGrams: 70,
-  targetWeight: 72.0,
+  targetWeight: 70.0,
   weightUnit: 'kg',
+  title: 'Lean Definition & Fat Loss',
+  targetWeeks: 8,
+  targetDate: '2026-12-19',
 };
+
+export const SAMPLE_USER_PROFILE: UserProfile = {
+  id: 'user_alex_h',
+  name: 'Alex Henderson',
+  email: 'alex.henderson@example.com',
+  heightCm: 178,
+  currentWeightKg: 74.2,
+  targetWeightKg: 70.0,
+  targetWeeks: 8,
+  targetDate: '2026-12-19',
+  allergies: ['Peanuts', 'Shellfish'],
+  supplements: [
+    {
+      id: 'supp_1',
+      name: 'Whey Protein Isolate',
+      dosage: '1 scoop (30g)',
+      timing: 'Post-Workout',
+      notes: 'Contains 27g protein and 1g carbs per scoop',
+    },
+    {
+      id: 'supp_2',
+      name: 'Creatine Monohydrate',
+      dosage: '5g',
+      timing: 'Morning',
+      notes: 'Dissolved in water or morning shake for cellular energy',
+    },
+    {
+      id: 'supp_3',
+      name: 'Vitamin D3 + K2',
+      dosage: '2,000 IU',
+      timing: 'With Meals',
+      notes: 'Fat-soluble vitamin taken with breakfast fat intake',
+    },
+    {
+      id: 'supp_4',
+      name: 'Omega-3 Wild Fish Oil',
+      dosage: '1,000 mg',
+      timing: 'Evening',
+      notes: 'EPA 600mg / DHA 400mg for cardiovascular and joint health',
+    },
+  ],
+  activityLevel: 'moderate',
+  primaryGoal: 'fat_loss',
+};
+
+export const SAMPLE_RECOMMENDATIONS: FoodRecommendation[] = [
+  {
+    id: 'rec_1',
+    foodName: 'Grilled Chicken Breast with Steamed Broccoli',
+    portion: '160g chicken + 100g broccoli',
+    caloriesKcal: 260,
+    proteinG: 48,
+    carbsG: 7,
+    fatG: 4,
+    reason: 'Fulfills remaining protein target with lean, high-satiety volume',
+    macroFocus: 'protein',
+  },
+  {
+    id: 'rec_2',
+    foodName: '0% Fat Greek Yogurt with Chia & Raspberries',
+    portion: '200g yogurt + 40g raspberries',
+    caloriesKcal: 170,
+    proteinG: 21,
+    carbsG: 16,
+    fatG: 2,
+    reason: 'Slow-digesting casein protein plus gut-friendly dietary fiber',
+    macroFocus: 'protein',
+  },
+  {
+    id: 'rec_3',
+    foodName: 'Wild Atlantic Salmon Fillet with Asparagus',
+    portion: '180g salmon + 8 spears',
+    caloriesKcal: 380,
+    proteinG: 36,
+    carbsG: 4,
+    fatG: 22,
+    reason: 'Nutrient-dense dinner option rich in bioavailable Omega-3s',
+    macroFocus: 'balanced',
+  },
+  {
+    id: 'rec_4',
+    foodName: 'Tofu & Edamame Sauté with Brown Rice',
+    portion: '150g firm tofu + 50g edamame + 80g rice',
+    caloriesKcal: 320,
+    proteinG: 24,
+    carbsG: 38,
+    fatG: 8,
+    reason: 'Plant-powered complete amino acid profile with complex carbohydrates',
+    macroFocus: 'balanced',
+  },
+];
+
+export function generateWeightProjection(
+  currentWeightKg: number,
+  targetWeightKg: number,
+  weeks: number
+): GoalProjectionPoint[] {
+  const points: GoalProjectionPoint[] = [];
+  const safeWeeks = Math.max(weeks, 1);
+  const totalChange = targetWeightKg - currentWeightKg;
+
+  for (let w = 0; w <= safeWeeks; w++) {
+    // Gradual non-linear curve (weight loss slows down slightly as body adapts)
+    const progress = Math.pow(w / safeWeeks, 0.9);
+    const weightAtWeek = Number((currentWeightKg + totalChange * progress).toFixed(1));
+    const targetCal = totalChange < 0 ? 2100 : 2500;
+    points.push({
+      week: w,
+      dateLabel: w === 0 ? 'Start' : `Week ${w}`,
+      projectedWeightKg: weightAtWeek,
+      calorieTarget: targetCal,
+    });
+  }
+
+  return points;
+}
 
 export const SAMPLE_MEALS: MealItem[] = [
   // Breakfast

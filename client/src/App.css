@@ -847,3 +847,52 @@
   letter-spacing: -0.03em;
 }
 
+/* ==========================================================================
+   Choice Cards & Header Profile Button
+   ========================================================================== */
+
+.calories-choice-card {
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.calories-choice-card:hover {
+  border-color: var(--color-forest-green) !important;
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-card);
+}
+
+.calories-profile-header-btn {
+  transition: all var(--transition-fast);
+}
+
+.calories-profile-header-btn:hover {
+  background-color: var(--color-sand-soft) !important;
+  border-color: var(--color-forest-green) !important;
+}
+
+/* ==========================================================================
+   Print Media Styles for PDF Reports
+   ========================================================================== */
+
+@media print {
+  .calories-header,
+  .calories-footer,
+  .calories-modal-backdrop,
+  .calories-state-toolbar,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #152238 !important;
+    font-size: 12pt;
+  }
+
+  .calories-card {
+    box-shadow: none !important;
+    border: 1px solid #EDE5D8 !important;
+  }
+}
+
+
