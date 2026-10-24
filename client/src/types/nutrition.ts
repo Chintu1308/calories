@@ -64,6 +64,23 @@ export interface SupplementItem {
   notes?: string;
 }
 
+export interface WaterLogEntry {
+  id: string;
+  amountMl: number;
+  loggedAt: string; // ISO 8601 UTC string
+  note?: string;
+}
+
+export interface SupplementLogEntry {
+  id: string;
+  supplementId: string;
+  name: string;
+  dosage: string;
+  timing: SupplementItem['timing'];
+  loggedAt: string; // ISO 8601 UTC string
+  taken: boolean;
+}
+
 export interface UserProfile {
   id: string;
   name: string;

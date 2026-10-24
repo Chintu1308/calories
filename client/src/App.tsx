@@ -11,9 +11,14 @@ import { ErrorPage, type HttpErrorCode } from './components/errors/ErrorPage.js'
 import { AddMealModal } from './components/meals/AddMealModal.js';
 import { AuthOnboardingModal, type AuthModalMode } from './components/auth/AuthOnboardingModal.js';
 import { CaloriesLogo, CaloriesTagline } from './components/ui/index.js';
-import type { MealItem, MealType, DailyGoal, DayNutritionalSummary, UserProfile, SupplementItem } from './types/nutrition.js';
+import type { MealItem, MealType, DailyGoal, DayNutritionalSummary, UserProfile, SupplementItem, WaterLogEntry, SupplementLogEntry } from './types/nutrition.js';
 import { exportNutritionReportPdf } from './utils/exportPdf.js';
 import { computeWeeklyTrend } from './utils/trendCalculator.js';
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  checkAndSendMissedReminders,
+} from './utils/notificationService.js';
 import { apiClient, getStoredToken, setStoredToken } from './api/apiClient.js';
 import './App.css';
 
@@ -72,6 +77,12 @@ function computeDateBounds(offset: number): { selectedDateString: string; todayS
   const todayString = getLocalDateString(new Date());
   return { selectedDateString, todayString };
 }
+
+const DEFAULT_SUPPLEMENTS: SupplementItem[] = [
+  { id: 'supp_creatine', name: 'Creatine Monohydrate', dosage: '5g', timing: 'Morning', notes: 'Daily cellular hydration & power' },
+  { id: 'supp_vitd', name: 'Vitamin D3 & K2', dosage: '2000 IU', timing: 'Morning', notes: 'Bone density and immune regulation' },
+  { id: 'supp_omega3', name: 'Omega-3 Fish Oil', dosage: '1000mg', timing: 'Evening', notes: 'Cardiovascular and anti-inflammatory' },
+];
 
 export const App: React.FC = () => {
   // Authentication State
@@ -174,6 +185,60 @@ export const App: React.FC = () => {
     }
   };
 
+  // Water logging state persisted to localStorage
+  const [waterLogs, setWaterLogs] = useState<WaterLogEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem('calories_water_logs');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('calories_water_logs', JSON.stringify(waterLogs));
+    } catch {
+      // ignore
+    }
+  }, [waterLogs]);
+
+  // Supplement intake logging state persisted to localStorage
+  const [supplementLogs, setSupplementLogs] = useState<SupplementLogEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem('calories_supplement_logs');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('calories_supplement_logs', JSON.stringify(supplementLogs));
+    } catch {
+      // ignore
+    }
+  }, [supplementLogs]);
+
+  // Browser notification permission state
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>(() =>
+    getNotificationPermission()
+  );
+
+  const handleRequestNotificationPermission = async () => {
+    const granted = await requestNotificationPermission();
+    setNotificationPermission(granted ? 'granted' : 'denied');
+  };
+
   // Modal dialog states
   const [isAddMealOpen, setIsAddMealOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<MealType>('Breakfast');
@@ -199,6 +264,23 @@ export const App: React.FC = () => {
     (m) => getMealLocalDateString(m.eatenAt) === todayString
   );
 
+  // Selected day water logs & totals
+  const selectedDayWater = waterLogs.filter(
+    (w) => getMealLocalDateString(w.loggedAt) === selectedDateString
+  );
+  const totalWaterConsumedMl = selectedDayWater.reduce((acc, w) => acc + w.amountMl, 0);
+
+  // Selected day supplement logs
+  const selectedDaySupplementLogs = supplementLogs.filter(
+    (s) => getMealLocalDateString(s.loggedAt) === selectedDateString
+  );
+
+  // User supplements (with fallback defaults if user has none configured)
+  const activeUserSupplements =
+    userProfile?.supplements && userProfile.supplements.length > 0
+      ? userProfile.supplements
+      : DEFAULT_SUPPLEMENTS;
+
   const selectedDayCalories = selectedDayMeals.reduce((acc, m) => acc + (m.nutrition?.caloriesKcal || 0), 0);
   const selectedDayProtein = selectedDayMeals.reduce((acc, m) => acc + (m.nutrition?.proteinG || 0), 0);
   const selectedDayCarbs = selectedDayMeals.reduce((acc, m) => acc + (m.nutrition?.carbsG || 0), 0);
@@ -223,7 +305,7 @@ export const App: React.FC = () => {
     targetCarbs: goal.carbohydrateGrams,
     consumedFat: selectedDayFat,
     targetFat: goal.fatGrams,
-    waterIntakeMl: selectedDateOffset === 0 ? 2250 : 2500,
+    waterIntakeMl: totalWaterConsumedMl,
     targetWaterMl: 3000,
     currentWeightKg: userProfile?.currentWeightKg || 74.2,
     targetWeightKg: userProfile?.targetWeightKg || goal.targetWeight || 70.0,
@@ -245,6 +327,91 @@ export const App: React.FC = () => {
     setSelectedCategory(category);
     setIsAddMealOpen(true);
   };
+
+  // Water logging handlers
+  const handleLogWater = (amountMl: number, note?: string) => {
+    const now = new Date();
+    const parts = selectedDateString.split('-').map(Number);
+    const loggedAtDate = new Date(parts[0] || now.getFullYear(), (parts[1] || 1) - 1, parts[2] || now.getDate(), now.getHours(), now.getMinutes(), now.getSeconds());
+
+    const entry: WaterLogEntry = {
+      id: `water_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      amountMl,
+      loggedAt: loggedAtDate.toISOString(),
+      note,
+    };
+    setWaterLogs((prev) => [entry, ...prev]);
+  };
+
+  const handleDeleteWaterLog = (id: string) => {
+    setWaterLogs((prev) => prev.filter((w) => w.id !== id));
+  };
+
+  // Supplement toggle handler
+  const handleToggleSupplement = (supplement: SupplementItem) => {
+    const isAlreadyTaken = selectedDaySupplementLogs.some(
+      (log) => log.supplementId === supplement.id && log.taken
+    );
+
+    if (isAlreadyTaken) {
+      setSupplementLogs((prev) =>
+        prev.filter(
+          (log) =>
+            !(
+              log.supplementId === supplement.id &&
+              getMealLocalDateString(log.loggedAt) === selectedDateString
+            )
+        )
+      );
+    } else {
+      const now = new Date();
+      const parts = selectedDateString.split('-').map(Number);
+      const loggedAtDate = new Date(parts[0] || now.getFullYear(), (parts[1] || 1) - 1, parts[2] || now.getDate(), now.getHours(), now.getMinutes(), now.getSeconds());
+
+      const newLog: SupplementLogEntry = {
+        id: `supplog_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        supplementId: supplement.id,
+        name: supplement.name,
+        dosage: supplement.dosage,
+        timing: supplement.timing,
+        loggedAt: loggedAtDate.toISOString(),
+        taken: true,
+      };
+      setSupplementLogs((prev) => [newLog, ...prev]);
+    }
+  };
+
+  // Periodically evaluate reminders for missed meals, supplements, and water
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const runRemindersCheck = () => {
+      const todayWater = waterLogs.filter((w) => getMealLocalDateString(w.loggedAt) === todayString);
+      const todaySupps = supplementLogs.filter((s) => getMealLocalDateString(s.loggedAt) === todayString);
+
+      checkAndSendMissedReminders({
+        meals: todayMeals,
+        userSupplements: activeUserSupplements,
+        supplementLogs: todaySupps,
+        waterLogs: todayWater,
+      });
+    };
+
+    runRemindersCheck();
+    const intervalId = setInterval(runRemindersCheck, 5 * 60 * 1000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        runRemindersCheck();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [isAuthenticated, todayMeals, activeUserSupplements, supplementLogs, waterLogs, todayString]);
 
   // Synchronize with backend API on mount ONLY when authenticated
   useEffect(() => {
@@ -477,11 +644,18 @@ export const App: React.FC = () => {
         </main>
 
         <footer className="calories-footer">
+          <div className="calories-footer-tagline-wrap">
+            <div className="calories-footer-tagline-pill">
+              <CaloriesTagline height={26} />
+            </div>
+          </div>
           <div className="calories-footer-container">
-            <CaloriesLogo size="sm" variant="image" />
-            <span className="calories-footer-text">
-              Calories Platform - Complete Editorial Health-Tech Suite Verified.
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <CaloriesLogo size="sm" variant="image" />
+              <span className="calories-footer-text">
+                Calories Platform — Complete Editorial Health-Tech Suite Verified.
+              </span>
+            </div>
             <span className="calories-footer-domain">calories.bhhc.me</span>
           </div>
         </footer>
@@ -510,6 +684,15 @@ export const App: React.FC = () => {
           userName={userProfile?.name || 'User'}
           onOpenAuthModal={() => handleOpenAuthModal('edit_profile')}
           onLogout={handleLogout}
+          waterLogs={selectedDayWater}
+          onLogWater={handleLogWater}
+          onDeleteWaterLog={handleDeleteWaterLog}
+          userSupplements={activeUserSupplements}
+          supplementLogs={selectedDaySupplementLogs}
+          onToggleSupplement={handleToggleSupplement}
+          onAddSupplement={() => handleOpenAuthModal('edit_profile')}
+          notificationPermission={notificationPermission}
+          onRequestNotificationPermission={handleRequestNotificationPermission}
         />
       ) : (
         <div className="calories-showcase-layout">
@@ -600,12 +783,18 @@ export const App: React.FC = () => {
           </main>
 
           <footer className="calories-footer">
+            <div className="calories-footer-tagline-wrap">
+              <div className="calories-footer-tagline-pill">
+                <CaloriesTagline height={26} />
+              </div>
+            </div>
             <div className="calories-footer-container">
-              <CaloriesTagline />
-              <CaloriesLogo size="sm" variant="image" />
-              <span className="calories-footer-text">
-                Calories Platform - Complete Editorial Health-Tech Suite Verified.
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <CaloriesLogo size="sm" variant="image" />
+                <span className="calories-footer-text">
+                  Calories Platform — Complete Editorial Health-Tech Suite Verified.
+                </span>
+              </div>
               <span className="calories-footer-domain">calories.bhhc.me</span>
             </div>
           </footer>

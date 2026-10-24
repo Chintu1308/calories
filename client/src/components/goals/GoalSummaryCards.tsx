@@ -16,11 +16,13 @@ import type { DayNutritionalSummary } from '../../types/nutrition.js';
 export interface GoalSummaryCardsProps {
   summary: DayNutritionalSummary;
   isLoading?: boolean;
+  onQuickLogWater?: (amountMl: number) => void;
 }
 
 export const GoalSummaryCards: React.FC<GoalSummaryCardsProps> = ({
   summary,
   isLoading = false,
+  onQuickLogWater,
 }) => {
   if (isLoading) {
     return (
@@ -238,6 +240,27 @@ export const GoalSummaryCards: React.FC<GoalSummaryCardsProps> = ({
                 unit="ml"
                 variant="sage"
               />
+              {onQuickLogWater && (
+                <div style={{ display: 'flex', gap: '6px', marginTop: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Log:</span>
+                  <button
+                    type="button"
+                    onClick={() => onQuickLogWater(250)}
+                    style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid var(--border-medium)', background: 'var(--surface-card)', cursor: 'pointer', color: 'var(--text-primary)', fontWeight: 500 }}
+                    title="Quick log 250ml water glass"
+                  >
+                    +250ml
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onQuickLogWater(500)}
+                    style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid var(--border-medium)', background: 'var(--surface-card)', cursor: 'pointer', color: 'var(--text-primary)', fontWeight: 500 }}
+                    title="Quick log 500ml water bottle"
+                  >
+                    +500ml
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Target Weight */}

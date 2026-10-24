@@ -598,8 +598,34 @@
 .calories-footer {
   border-top: 1px solid var(--border-light);
   background-color: var(--surface-card);
-  padding: var(--space-6) 0;
+  padding: var(--space-6) 0 var(--space-5);
   margin-top: auto;
+}
+
+.calories-footer-tagline-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: var(--space-4);
+  padding: 0 var(--space-6);
+  width: 100%;
+}
+
+.calories-footer-tagline-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 24px;
+  background-color: var(--color-sand-soft);
+  border: 1px solid var(--border-medium);
+  border-radius: 9999px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  transition: all var(--transition-fast);
+}
+
+.calories-footer-tagline-pill:hover {
+  border-color: var(--color-forest-green);
+  box-shadow: 0 2px 8px rgba(40, 91, 70, 0.1);
 }
 
 .calories-footer-container {

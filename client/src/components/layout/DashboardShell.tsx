@@ -3,8 +3,8 @@ import { Header, type NavTabId } from './Header.js';
 import { GoalSummaryCards } from '../goals/GoalSummaryCards.js';
 import { MealTimeline } from '../meals/MealTimeline.js';
 import { WeeklyTrendPreview, type DayTrendPoint } from '../reports/WeeklyTrendPreview.js';
-import { Button, Card, CardContent, Icon, CaloriesLogo } from '../ui/index.js';
-import type { DayNutritionalSummary, MealItem, MealType } from '../../types/nutrition.js';
+import { Button, Card, CardContent, Icon, CaloriesLogo, CaloriesTagline } from '../ui/index.js';
+import type { DayNutritionalSummary, MealItem, MealType, WaterLogEntry, SupplementItem, SupplementLogEntry } from '../../types/nutrition.js';
 
 export type DashboardViewState = 'normal' | 'empty' | 'loading' | 'error';
 
@@ -25,6 +25,17 @@ export interface DashboardShellProps {
   userName?: string;
   onOpenAuthModal?: () => void;
   onLogout?: () => void;
+  // Water & Supplements Tracking
+  waterLogs?: WaterLogEntry[];
+  onLogWater?: (amountMl: number, note?: string) => void;
+  onDeleteWaterLog?: (id: string) => void;
+  userSupplements?: SupplementItem[];
+  supplementLogs?: SupplementLogEntry[];
+  onToggleSupplement?: (supplement: SupplementItem) => void;
+  onAddSupplement?: () => void;
+  // Browser Notifications
+  notificationPermission?: NotificationPermission | 'unsupported';
+  onRequestNotificationPermission?: () => void;
 }
 
 export const DashboardShell: React.FC<DashboardShellProps> = ({
@@ -44,6 +55,15 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
   userName = 'User',
   onOpenAuthModal,
   onLogout,
+  waterLogs = [],
+  onLogWater,
+  onDeleteWaterLog,
+  userSupplements = [],
+  supplementLogs = [],
+  onToggleSupplement,
+  onAddSupplement,
+  notificationPermission,
+  onRequestNotificationPermission,
 }) => {
   const isLoading = viewState === 'loading';
   const displayedMeals = viewState === 'empty' ? [] : meals;
@@ -111,6 +131,17 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
           </div>
 
           <div className="calories-date-controls">
+            {notificationPermission === 'default' && onRequestNotificationPermission && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onRequestNotificationPermission}
+                style={{ fontSize: '11px', padding: '4px 8px', color: 'var(--color-forest-green)' }}
+                title="Enable browser notifications for missed meals and supplements"
+              >
+                🔔 Enable Reminders
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={onPrevDay} aria-label="Previous day">
               ‹
             </Button>
@@ -129,7 +160,11 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
 
         {/* 3. Goal Summary Cards (Calorie Budget, Macros, Hydration & Weight) */}
         <section aria-label="Daily Nutrition Goals">
-          <GoalSummaryCards summary={displayedSummary} isLoading={isLoading} />
+          <GoalSummaryCards
+            summary={displayedSummary}
+            isLoading={isLoading}
+            onQuickLogWater={onLogWater}
+          />
         </section>
 
         {/* 4. Two-Column Layout: Meal Timeline (Left) & Weekly Reports / AI Action (Right) */}
@@ -142,6 +177,14 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
               dateLabel={currentDateLabel}
               onAddMeal={onAddMeal}
               onOpenAIScan={onOpenAIScan}
+              waterLogs={waterLogs}
+              targetWaterMl={summary.targetWaterMl}
+              onLogWater={onLogWater}
+              onDeleteWaterLog={onDeleteWaterLog}
+              userSupplements={userSupplements}
+              supplementLogs={supplementLogs}
+              onToggleSupplement={onToggleSupplement}
+              onAddSupplement={onAddSupplement}
             />
           </div>
 
@@ -179,13 +222,21 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
         </div>
       </main>
 
-      {/* 5. Editorial Footer */}
+      {/* 5. Editorial Footer with Centered Tagline Pill */}
       <footer className="calories-footer">
+        <div className="calories-footer-tagline-wrap">
+          <div className="calories-footer-tagline-pill">
+            <CaloriesTagline height={26} />
+          </div>
+        </div>
+
         <div className="calories-footer-container">
-          <CaloriesLogo size="sm" variant="image" />
-          <span className="calories-footer-text">
-            Calories Platform - Premium Editorial Health-Tech Dashboard Shell.
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <CaloriesLogo size="sm" variant="image" />
+            <span className="calories-footer-text">
+              Calories Platform — Premium Editorial Health-Tech Suite Verified.
+            </span>
+          </div>
           <span className="calories-footer-domain">calories.bhhc.me</span>
         </div>
       </footer>

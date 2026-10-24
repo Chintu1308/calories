@@ -13,6 +13,14 @@ import {
   Icon,
 } from '../components/ui/index.js';
 import type { MealItem, DailyGoal, UserProfile } from '../types/nutrition.js';
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  sendTestNotification,
+  getReminderPreferences,
+  setReminderPreferences,
+  type ReminderPreferences,
+} from '../utils/notificationService.js';
 
 const DEFAULT_SETTINGS_PROFILE: UserProfile = {
   id: '',
@@ -50,6 +58,36 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata'
   );
   const [unitSystem, setUnitSystem] = useState<'metric' | 'imperial'>('metric');
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>(() =>
+    getNotificationPermission()
+  );
+  const [reminderPrefs, setReminderPrefsState] = useState<ReminderPreferences>(() =>
+    getReminderPreferences()
+  );
+  const [testSuccessMessage, setTestSuccessMessage] = useState('');
+
+  const handleRequestPermission = async () => {
+    const granted = await requestNotificationPermission();
+    setNotificationPermission(granted ? 'granted' : 'denied');
+  };
+
+  const handleSendTest = () => {
+    const sent = sendTestNotification();
+    if (sent) {
+      setTestSuccessMessage('Test notification dispatched! Check your desktop/browser.');
+      setTimeout(() => setTestSuccessMessage(''), 4000);
+    }
+  };
+
+  const handleTogglePref = (key: keyof ReminderPreferences) => {
+    const updated = {
+      ...reminderPrefs,
+      [key]: !reminderPrefs[key],
+    };
+    setReminderPrefsState(updated);
+    setReminderPreferences(updated);
+  };
+
   const [healthStatus, setHealthStatus] = useState<{
     status: string;
     version: string;
@@ -355,6 +393,83 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   ]}
                 />
               </FormField>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Browser Reminders & Notifications */}
+        <Card>
+          <CardHeader>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '20px' }}>🔔</span>
+                <CardTitle>Browser Reminders &amp; Alerts</CardTitle>
+              </div>
+              <Badge variant={notificationPermission === 'granted' ? 'forest' : notificationPermission === 'denied' ? 'amber' : 'neutral'}>
+                {notificationPermission === 'granted' ? 'Alerts Active ✓' : notificationPermission === 'denied' ? 'Blocked by Browser' : 'Permission Required'}
+              </Badge>
+            </div>
+            <CardDescription>
+              Receive desktop browser notifications when you miss logging a meal, supplement, or daily hydration.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {testSuccessMessage && (
+                <div style={{ padding: '8px 12px', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--color-sage-soft)', color: 'var(--color-forest-green)', fontSize: 'var(--text-xs)', fontWeight: 600 }}>
+                  {testSuccessMessage}
+                </div>
+              )}
+
+              {notificationPermission !== 'granted' ? (
+                <div style={{ padding: '12px', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--color-sand-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
+                    Browser permissions are needed to pop alerts when meals or supplements are missed.
+                  </div>
+                  <Button variant="primary" size="sm" onClick={handleRequestPermission}>
+                    Enable Alerts
+                  </Button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
+                    <input
+                      type="checkbox"
+                      checked={reminderPrefs.meals}
+                      onChange={() => handleTogglePref('meals')}
+                      style={{ accentColor: 'var(--color-forest-green)', width: '16px', height: '16px' }}
+                    />
+                    <span>Missed Meal Reminders (Breakfast 10:30 AM, Lunch 2:00 PM, Dinner 8:30 PM)</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
+                    <input
+                      type="checkbox"
+                      checked={reminderPrefs.supplements}
+                      onChange={() => handleTogglePref('supplements')}
+                      style={{ accentColor: 'var(--color-forest-green)', width: '16px', height: '16px' }}
+                    />
+                    <span>Daily Supplement Reminders (Morning 11:00 AM, Evening 8:30 PM)</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
+                    <input
+                      type="checkbox"
+                      checked={reminderPrefs.water}
+                      onChange={() => handleTogglePref('water')}
+                      style={{ accentColor: 'var(--color-forest-green)', width: '16px', height: '16px' }}
+                    />
+                    <span>Afternoon Hydration Check (&lt; 1,500ml by 3:00 PM)</span>
+                  </label>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+                <Button variant="outline" size="sm" onClick={handleSendTest}>
+                  Send Test Notification
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

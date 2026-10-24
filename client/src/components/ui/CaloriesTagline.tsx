@@ -7,7 +7,7 @@ export interface CaloriesTaglineProps {
 
 export const CaloriesTagline: React.FC<CaloriesTaglineProps> = ({
   className = '',
-  height = 32,
+  height = 28,
 }) => (
   <img
     src="/branding/calories-tagline.png"
@@ -15,10 +15,10 @@ export const CaloriesTagline: React.FC<CaloriesTaglineProps> = ({
     className={className}
     style={{
       height: `${height}px`,
-      alignSelf: 'center',
-      borderRadius: 'rounded',
+      borderRadius: '8px',
       width: 'auto',
       objectFit: 'contain',
+      display: 'block',
     }}
   />
 );
