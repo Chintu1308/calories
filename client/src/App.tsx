@@ -519,6 +519,7 @@ export const App: React.FC = () => {
                     weeklyTrend,
                   })
                 }
+                onLogout={handleLogout}
               />
             )}
           </main>

@@ -125,7 +125,7 @@ export const AIScanPage: React.FC<AIScanPageProps> = ({
       const res = await apiClient.uploadDietPlanPdf(selectedPdfFile);
       setDietInstructions((prev) => [res.instruction, ...prev]);
       setPdfSuccessMessage(
-        `Diet plan "${res.instruction.fileName}" successfully fed into AI engine and saved to MongoDB!`
+        `Diet plan "${res.instruction.fileName}" successfully fed into AI engine and saved to active guidelines!`
       );
       setSelectedPdfFile(null);
     } catch (err: unknown) {
@@ -591,7 +591,7 @@ export const AIScanPage: React.FC<AIScanPageProps> = ({
               <div>
                 <CardTitle>Clinical Diet Plan PDF Feed &amp; AI Instructions</CardTitle>
                 <CardDescription>
-                  Upload your nutritionist chart, doctor's diet prescription, or gym meal sheet (PDF). The AI extracts instructions and stores them in MongoDB so all future photo scans adhere to your personal diet rules.
+                  Upload your nutritionist chart, doctor's diet prescription, or gym meal sheet (PDF). The AI extracts instructions so all future photo scans adhere to your personal diet rules.
                 </CardDescription>
               </div>
             </div>
@@ -665,17 +665,17 @@ export const AIScanPage: React.FC<AIScanPageProps> = ({
                     onClick={handleUploadDietPdf}
                     leftIcon={isPdfLoading ? undefined : <Icon name="ai-scan" size={16} />}
                   >
-                    {isPdfLoading ? 'Extracting & Saving to MongoDB...' : 'Feed to AI & Save to MongoDB'}
+                    {isPdfLoading ? 'Extracting Guidelines...' : 'Feed to AI & Save Guidelines'}
                   </Button>
                 </div>
               </div>
             </div>
 
-            {/* Active Clinical Instructions from MongoDB */}
+            {/* Active Clinical Instructions */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <h4 style={{ margin: 0, fontSize: 'var(--text-sm)', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.04em' }}>
-                  Active Guidelines in MongoDB ({dietInstructions.length})
+                  Active Clinical Guidelines ({dietInstructions.length})
                 </h4>
                 {dietInstructions.length > 0 && (
                   <Badge variant="forest">

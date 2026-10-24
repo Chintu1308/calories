@@ -163,10 +163,13 @@ Thoroughly extract and normalize the dietary instructions into strictly valid JS
   "clinicalObservations": "Key clinical notes, specific micronutrient or hydration rules noted in the PDF"
 }`;
 
-    const models = ['gemini-3.8-flash', 'gemini-3.8-flash-lite', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+    const models = ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-3.8-flash'];
     const base64Data = buffer.toString('base64');
 
     for (const model of models) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8500);
+
       try {
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
         const response = await fetch(geminiUrl, {
@@ -193,7 +196,10 @@ Thoroughly extract and normalize the dietary instructions into strictly valid JS
               responseMimeType: 'application/json',
             },
           }),
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (response.ok) {
           const data = (await response.json()) as {
@@ -229,6 +235,7 @@ Thoroughly extract and normalize the dietary instructions into strictly valid JS
           }
         }
       } catch (err) {
+        clearTimeout(timeoutId);
         console.warn(`[Calories Diet PDF] Gemini model ${model} extraction failed, trying next:`, err);
       }
     }

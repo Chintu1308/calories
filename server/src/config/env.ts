@@ -14,6 +14,7 @@ const envSchema = z.object({
     .min(16, 'JWT_SECRET must be at least 16 characters long')
     .default('dev_jwt_secret_calories_platform_key_32_chars_min'),
   AI_SERVICE_URL: z.string().optional(),
+  ML_SERVICE_URL: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),
   SUPABASE_URL: z.string().optional(),
   SUPABASE_ANON_KEY: z.string().optional(),

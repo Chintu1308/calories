@@ -35,6 +35,7 @@ export interface SettingsPageProps {
   userProfile?: UserProfile;
   onEditProfile?: () => void;
   onExportPdf?: () => void;
+  onLogout?: () => void;
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
@@ -43,6 +44,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   userProfile = DEFAULT_SETTINGS_PROFILE,
   onEditProfile,
   onExportPdf,
+  onLogout,
 }) => {
   const [selectedTimezone, setSelectedTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata'
@@ -404,6 +406,42 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   Download JSON
                 </Button>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ACCOUNT & SESSION (SIGN OUT) */}
+        <Card style={{ gridColumn: '1 / -1' }}>
+          <CardHeader>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Icon name="profile" size={20} />
+              <CardTitle>Account &amp; Active Session</CardTitle>
+            </div>
+            <CardDescription>
+              Manage your active login session and sign out of the Calories platform.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+              <div>
+                <strong style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
+                  Signed in as {userProfile.name || 'User'}
+                </strong>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  {userProfile.email || 'Current active session'}
+                </div>
+              </div>
+
+              {onLogout && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={onLogout}
+                  title="Sign Out of Calories"
+                >
+                  Sign Out of Calories
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

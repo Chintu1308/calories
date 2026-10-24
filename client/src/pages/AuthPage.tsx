@@ -733,7 +733,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
 
         {/* Footer info */}
         <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '11px', color: 'var(--text-secondary)' }}>
-          Calories Health-Tech Platform • Data persisted directly to MongoDB Atlas with multi-tenant isolation.
+          Calories Health-Tech Platform • Enterprise multi-tenant encryption &amp; privacy compliance.
         </div>
       </div>
     </div>

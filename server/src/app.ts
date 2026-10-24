@@ -39,14 +39,64 @@ app.use(
   })
 );
 
-// Standard API v1 health-check endpoint with database status
-app.get('/api/v1/health', (_req: Request, res: Response) => {
+// Standard API v1 health-check endpoint with database and ML service status
+app.get('/api/v1/health', async (_req: Request, res: Response) => {
   const dbStatus = getConnectionStatus();
+  const mlServiceUrl = process.env.ML_SERVICE_URL || env.ML_SERVICE_URL || process.env.AI_SERVICE_URL || env.AI_SERVICE_URL;
+
+  let mlStatus: {
+    configured: boolean;
+    url?: string;
+    status: string;
+    latencyMs?: number;
+    details?: any;
+  } = {
+    configured: false,
+    status: 'embedded_knapsack_engine_active',
+  };
+
+  if (mlServiceUrl && !mlServiceUrl.includes('localhost:5001')) {
+    const cleanUrl = mlServiceUrl.replace(/\/$/, '');
+    const startPing = Date.now();
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const pingRes = await fetch(`${cleanUrl}/health`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      const elapsed = Date.now() - startPing;
+      if (pingRes.ok) {
+        const pingData = await pingRes.json().catch(() => ({}));
+        mlStatus = {
+          configured: true,
+          url: cleanUrl,
+          status: 'connected_healthy',
+          latencyMs: elapsed,
+          details: pingData,
+        };
+      } else {
+        mlStatus = {
+          configured: true,
+          url: cleanUrl,
+          status: `http_${pingRes.status}`,
+          latencyMs: elapsed,
+        };
+      }
+    } catch (err: any) {
+      mlStatus = {
+        configured: true,
+        url: cleanUrl,
+        status: 'unreachable',
+        details: err.message,
+      };
+    }
+  }
+
   res.status(200).json({
     status: 'ok',
     service: 'calories-server',
     version: '0.1.0',
     database: dbStatus,
+    mlService: mlStatus,
     timestamp: new Date().toISOString(),
   });
 });

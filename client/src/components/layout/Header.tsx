@@ -13,7 +13,7 @@ export interface HeaderProps {
   activeTab: NavTabId;
   onTabChange: (tab: NavTabId) => void;
   onOpenAddMeal: () => void;
-  onOpenAIScan: () => void;
+  onOpenAIScan?: () => void;
   userName?: string;
   onOpenAuthModal?: () => void;
   onLogout?: () => void;
@@ -23,17 +23,16 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   onTabChange,
   onOpenAddMeal,
-  onOpenAIScan,
+  onOpenAIScan: _onOpenAIScan,
   userName = 'User',
   onOpenAuthModal,
-  onLogout,
+  onLogout: _onLogout,
 }) => {
   const navItems: { id: NavTabId; label: string; icon: IconName }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
     { id: 'meals', label: 'Meal Journal', icon: 'meals' },
     { id: 'goals', label: 'Goals', icon: 'goals' },
     { id: 'reports', label: 'Reports', icon: 'reports' },
-    { id: 'ai-scan', label: 'AI Scan', icon: 'ai-scan' },
     { id: 'settings', label: 'Settings', icon: 'settings' },
   ];
 
@@ -100,15 +99,6 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           <Button
-            variant="secondary"
-            size="sm"
-            leftIcon={<Icon name="camera" size={14} />}
-            onClick={onOpenAIScan}
-          >
-            AI Scan
-          </Button>
-
-          <Button
             variant="primary"
             size="sm"
             leftIcon={<Icon name="plus" size={14} />}
@@ -116,18 +106,6 @@ export const Header: React.FC<HeaderProps> = ({
           >
             Log Meal
           </Button>
-
-          {onLogout && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onLogout}
-              title="Sign Out of Calories"
-              style={{ color: 'var(--text-secondary)', padding: '4px 8px', fontSize: '11px' }}
-            >
-              Sign Out
-            </Button>
-          )}
         </div>
       </div>
     </header>

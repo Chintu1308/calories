@@ -291,20 +291,64 @@ goalRouter.get(
     const forbiddenFoods = activeInstructions.flatMap((i) => i.forbiddenFoods);
     const recommendedFoods = activeInstructions.flatMap((i) => i.recommendedFoods);
 
-    // 4. Run trained ML recommendation model
-    const recommendations = generateSmartRecommendations({
-      primaryGoal: user?.primaryGoal,
-      userAllergies: user?.allergies || [],
-      remainingBudget,
-      activeGoalTargets: {
-        dailyCaloriesKcal: goal.dailyCaloriesKcal,
-        proteinGrams: goal.proteinGrams,
-        carbohydrateGrams: goal.carbohydrateGrams,
-        fatGrams: goal.fatGrams,
-      },
-      forbiddenFoods,
-      recommendedFoods,
-    });
+    // 4. Run ML recommendation model (delegates to external ML microservice if configured, else local engine)
+    const mlServiceUrl = process.env.ML_SERVICE_URL || process.env.AI_SERVICE_URL;
+    let recommendations: any[] = [];
+    let engineSource = 'embedded_knapsack_engine';
+
+    if (mlServiceUrl && !mlServiceUrl.includes('localhost:5001')) {
+      const cleanUrl = mlServiceUrl.replace(/\/$/, '');
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+        const externalRes = await fetch(`${cleanUrl}/recommend`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            primaryGoal: user?.primaryGoal || 'fat_loss',
+            userAllergies: user?.allergies || [],
+            remainingBudget,
+            activeGoalTargets: {
+              dailyCaloriesKcal: goal.dailyCaloriesKcal,
+              proteinGrams: goal.proteinGrams,
+              carbohydrateGrams: goal.carbohydrateGrams,
+              fatGrams: goal.fatGrams,
+            },
+            forbiddenFoods,
+            recommendedFoods,
+          }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (externalRes.ok) {
+          const externalData = (await externalRes.json()) as any;
+          if (Array.isArray(externalData.recommendations) && externalData.recommendations.length > 0) {
+            recommendations = externalData.recommendations;
+            engineSource = `external_service (${cleanUrl})`;
+          }
+        }
+      } catch (err) {
+        console.warn('[Calories Engine] External ML service call failed, using embedded engine:', err);
+      }
+    }
+
+    // Fallback to local embedded model
+    if (recommendations.length === 0) {
+      recommendations = generateSmartRecommendations({
+        primaryGoal: user?.primaryGoal,
+        userAllergies: user?.allergies || [],
+        remainingBudget,
+        activeGoalTargets: {
+          dailyCaloriesKcal: goal.dailyCaloriesKcal,
+          proteinGrams: goal.proteinGrams,
+          carbohydrateGrams: goal.carbohydrateGrams,
+          fatGrams: goal.fatGrams,
+        },
+        forbiddenFoods,
+        recommendedFoods,
+      });
+    }
 
     res.status(200).json({
       remainingBudget,
@@ -317,6 +361,7 @@ goalRouter.get(
       recommendations,
       modelInfo: {
         version: 'Calories-Knapsack-v1',
+        engineSource,
         primaryGoal: user?.primaryGoal || 'fat_loss',
         activePdfInstructionsCount: activeInstructions.length,
       },

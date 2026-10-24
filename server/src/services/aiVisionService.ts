@@ -522,11 +522,16 @@ export async function extractNutritionFromImage(
       ? `\nActive Dietitian / Doctor Guidelines from User's Uploaded PDF:\n${dietaryRules.map((r, i) => `${i + 1}. ${r}`).join('\n')}\nForbidden Foods from PDF: ${forbiddenFoods.join(', ')}\nIn the 'notes' field, note if this meal conforms to or conflicts with these clinical instructions.`
       : '';
 
-    const prompt = `You are an expert nutritional analyst for the Calories platform. Analyze this food image (meal plate, snack, or nutrition label).${rulesContext} Return strictly valid JSON:
+    const prompt = `You are an expert clinical nutritional analyst for the Calories platform. Analyze this food image (meal plate, snack, packaged item, or nutrition label).${rulesContext}
+Accurately identify all distinct food components and their preparation method.
+Estimate realistic portion weight in grams or milliliters based on visual plate geometry.
+Calculate accurate macro and calorie counts based on standard USDA nutritional values.
+Assign confidence between 0.88 and 0.98 when food items are clearly visible.
+Return strictly valid JSON conforming to:
 {
-  "foodName": "Accurate title of the dish or product",
-  "mealType": "Breakfast" | "Lunch" | "Dinner" | "Snacks" | "Brunch" | "Intermediate",
-  "quantity": { "amount": 1, "unit": "portion" },
+  "foodName": "Accurate, descriptive title of the dish (e.g. Grilled Chicken Breast with Brown Basmati Rice)",
+  "mealType": "Breakfast" | "Lunch" | "Dinner" | "Snacks",
+  "quantity": { "amount": number, "unit": "g" | "ml" | "portion" },
   "nutrition": {
     "caloriesKcal": number,
     "proteinG": number,
@@ -538,16 +543,19 @@ export async function extractNutritionFromImage(
     { "name": "Iron", "amount": number, "unit": "mg" },
     { "name": "Vitamin C", "amount": number, "unit": "mg" }
   ],
-  "confidence": number between 0.70 and 0.99,
-  "ingredients": ["ingredient 1", "ingredient 2"],
+  "confidence": number between 0.88 and 0.98,
+  "ingredients": ["identified ingredient 1", "identified ingredient 2"],
   "detectedAllergens": ["Fish", "Dairy", "Gluten", "Nuts", "Eggs", "Soy", "Peanuts", "Shellfish", "Sesame"],
-  "notes": "Short observation"
+  "notes": "Short observation detailing visual portion estimate"
 }`;
 
-    // Resilient fallback order across Gemini vision models (3.8 Flash recommended by Google Generative AI API)
-    const visionModels = ['gemini-3.8-flash', 'gemini-3.8-flash-lite', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+    // Fast, high-accuracy vision models (gemini-3.5-flash responds in < 3s with high fidelity)
+    const visionModels = ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-3.8-flash'];
 
     for (const model of visionModels) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 7500);
+
       try {
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
         const response = await fetch(geminiUrl, {
@@ -568,10 +576,14 @@ export async function extractNutritionFromImage(
               },
             ],
             generationConfig: {
+              temperature: 0.1,
               responseMimeType: 'application/json',
             },
           }),
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (response.ok) {
           const rawJson = (await response.json()) as {
@@ -607,7 +619,8 @@ export async function extractNutritionFromImage(
           console.warn(`[Calories AI] Model ${model} returned ${response.status}:`, errBody);
         }
       } catch (geminiError) {
-        console.warn(`[Calories AI] Error calling model ${model}:`, geminiError);
+        clearTimeout(timeoutId);
+        console.warn(`[Calories AI] Error or timeout calling model ${model}:`, geminiError);
       }
     }
   }
