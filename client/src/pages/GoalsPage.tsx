@@ -37,10 +37,10 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
   currentGoal,
   onSaveGoal,
   currentWeightKg = 74.2,
-  consumedCalories = 1695,
-  consumedProtein = 119,
-  consumedCarbs = 148,
-  consumedFat = 59,
+  consumedCalories = 0,
+  consumedProtein = 0,
+  consumedCarbs = 0,
+  consumedFat = 0,
   onQuickLogMeal,
 }) => {
   // Modal states for Add Goal & Edit Goal

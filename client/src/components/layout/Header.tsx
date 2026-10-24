@@ -7,8 +7,7 @@ export type NavTabId =
   | 'goals'
   | 'reports'
   | 'ai-scan'
-  | 'settings'
-  | 'errors';
+  | 'settings';
 
 export interface HeaderProps {
   activeTab: NavTabId;
@@ -34,7 +33,6 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'reports', label: 'Reports', icon: 'reports' },
     { id: 'ai-scan', label: 'AI Scan', icon: 'ai-scan' },
     { id: 'settings', label: 'Settings', icon: 'settings' },
-    { id: 'errors', label: 'Error Pages', icon: 'heart' },
   ];
 
   return (

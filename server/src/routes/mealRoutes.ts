@@ -18,6 +18,12 @@ mealRouter.use(authenticate);
 /**
  * POST /api/v1/meals
  * Creates a new meal entry scoped strictly to the authenticated user.
+ * Validates payload against `createMealSchema` enforcing non-negative macronutrients.
+ * Guarantees tenant isolation by attaching `req.user.userId`.
+ *
+ * @returns HTTP 201 with persisted meal JSON
+ * @throws 400 Bad Request on schema validation failure
+ * @throws 401 Unauthorized if JWT token is missing or expired
  */
 mealRouter.post(
   '/',
@@ -41,7 +47,16 @@ mealRouter.post(
 
 /**
  * GET /api/v1/meals
- * Paginated list of meals for the authenticated user, supporting category and date filters.
+ * Retrieves paginated meal history for the authenticated user.
+ * Supports meal category filter (`mealType`) and date range bounds (`startDate`, `endDate`).
+ * Uses stable tie-breaker sort `{ eatenAt: -1, _id: -1 }` aligned with compound index.
+ *
+ * @query page - Page number (defaults to 1, min 1)
+ * @query limit - Items per page (defaults to 20, max 100)
+ * @query mealType - Optional category filter (Breakfast, Lunch, Dinner, Snacks, Brunch, Intermediate)
+ * @query startDate - Optional ISO date lower bound
+ * @query endDate - Optional ISO date upper bound
+ * @returns HTTP 200 with `{ meals, pagination: { page, limit, total, totalPages } }`
  */
 mealRouter.get(
   '/',
@@ -93,6 +108,11 @@ mealRouter.get(
 /**
  * GET /api/v1/meals/:id
  * Retrieves a single meal entry, strictly enforcing multi-tenant ownership.
+ *
+ * @param id - MongoDB ObjectId of the target meal
+ * @returns HTTP 200 with meal JSON
+ * @throws 400 Bad Request if ID format is invalid
+ * @throws 404 Not Found if meal does not exist or belongs to another user
  */
 mealRouter.get(
   '/:id',
@@ -123,7 +143,12 @@ mealRouter.get(
 
 /**
  * PATCH /api/v1/meals/:id
- * Updates an existing meal entry, verifying tenant ownership.
+ * Partially updates an existing meal entry, ensuring tenant boundary validation.
+ *
+ * @param id - MongoDB ObjectId of the target meal
+ * @returns HTTP 200 with updated meal JSON
+ * @throws 400 Bad Request on invalid ID or schema validation failure
+ * @throws 404 Not Found if meal does not exist or belongs to another user
  */
 mealRouter.patch(
   '/:id',
@@ -157,7 +182,12 @@ mealRouter.patch(
 
 /**
  * DELETE /api/v1/meals/:id
- * Deletes a meal entry, ensuring only the resource owner can delete it.
+ * Permanently deletes a meal entry, ensuring only the resource owner can delete it.
+ *
+ * @param id - MongoDB ObjectId of the target meal
+ * @returns HTTP 200 with confirmation message and deleted ID
+ * @throws 400 Bad Request on invalid ID
+ * @throws 404 Not Found if meal does not exist or belongs to another user
  */
 mealRouter.delete(
   '/:id',

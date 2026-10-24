@@ -8,6 +8,13 @@ export interface ExportPdfOptions {
   dateRangeLabel?: string;
 }
 
+/**
+ * Generates and prints an executive clinical nutritional report in printable PDF format.
+ * Embeds high-contrast vector charts, macronutrient energy distributions, verified Atwater ratios,
+ * and tracked micronutrient disclosures into an isolated print-ready browser window.
+ *
+ * @param options - Configuration including user profile, active goal, meal history, and weekly trend.
+ */
 export function exportNutritionReportPdf(options: ExportPdfOptions): void {
   const { userProfile, goal, meals, weeklyTrend, dateRangeLabel = 'Last 7 Days (Oct 18 – Oct 24, 2026)' } = options;
 

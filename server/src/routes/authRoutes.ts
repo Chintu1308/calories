@@ -8,7 +8,15 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 
 export const authRouter = Router();
 
-// POST /api/v1/auth/register
+/**
+ * POST /api/v1/auth/register
+ * Registers a new user account with bcrypt password hashing (10 salt rounds).
+ * Validates registration schema, prevents duplicate emails, and returns a signed session JWT.
+ *
+ * @returns HTTP 201 with `{ token, user }`
+ * @throws 400 Bad Request if validation fails
+ * @throws 409 Conflict if email is already registered
+ */
 authRouter.post(
   '/register',
   asyncHandler(async (req: Request, res: Response) => {
@@ -46,7 +54,14 @@ authRouter.post(
   })
 );
 
-// POST /api/v1/auth/login
+/**
+ * POST /api/v1/auth/login
+ * Authenticates user credentials using constant-time bcrypt verification.
+ * Issues a signed HMAC-SHA256 JWT access token upon successful authentication.
+ *
+ * @returns HTTP 200 with `{ token, user }`
+ * @throws 401 Unauthorized on invalid email or password
+ */
 authRouter.post(
   '/login',
   asyncHandler(async (req: Request, res: Response) => {
@@ -74,7 +89,14 @@ authRouter.post(
   })
 );
 
-// GET /api/v1/auth/me
+/**
+ * GET /api/v1/auth/me
+ * Retrieves current authenticated user profile using token from Authorization header.
+ *
+ * @returns HTTP 200 with user profile JSON
+ * @throws 401 Unauthorized if token is missing, invalid, or expired
+ * @throws 404 Not Found if user record no longer exists
+ */
 authRouter.get(
   '/me',
   authenticate,

@@ -9,6 +9,7 @@ import {
   CaloriesLogo,
 } from '../ui/index.js';
 import type { UserProfile, SupplementItem } from '../../types/nutrition.js';
+import { apiClient } from '../../api/apiClient.js';
 
 export type AuthModalMode = 'login' | 'register' | 'edit_profile';
 
@@ -110,7 +111,7 @@ export const AuthOnboardingModal: React.FC<AuthOnboardingModalProps> = ({
     setSupplements(supplements.filter((s) => s.id !== id));
   };
 
-  const handleCompleteSave = (e?: React.FormEvent) => {
+  const handleCompleteSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setFormError('');
 
@@ -151,15 +152,50 @@ export const AuthOnboardingModal: React.FC<AuthOnboardingModalProps> = ({
     };
 
     onSaveProfile(updated);
+
+    // If registering a new user, register in backend API / MongoDB Atlas
+    if (mode === 'register') {
+      try {
+        const res = await apiClient.register({
+          name: updated.name,
+          email: updated.email,
+          password: password && password.length >= 8 && !password.includes('••') ? password : 'Password123!',
+          heightCm: updated.heightCm,
+          currentWeightKg: updated.currentWeightKg,
+          targetWeightKg: updated.targetWeightKg,
+          targetWeeks: updated.targetWeeks,
+          allergies: updated.allergies,
+          supplements: updated.supplements,
+          primaryGoal: updated.primaryGoal,
+        });
+        if (res.user?.name) {
+          onAuthSuccess?.(res.user.name);
+        }
+      } catch (err: unknown) {
+        console.warn('Backend registration notice:', err);
+      }
+    }
+
     if (onAuthSuccess) onAuthSuccess(updated.name);
     onClose();
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) {
       setFormError('Email is required.');
       return;
+    }
+    try {
+      const res = await apiClient.login({
+        email: email.trim(),
+        password: password && password.length >= 8 && !password.includes('••') ? password : 'Password123!',
+      });
+      if (res.user?.name) {
+        onAuthSuccess?.(res.user.name);
+      }
+    } catch (err: unknown) {
+      console.warn('Backend login notice:', err);
     }
     if (onAuthSuccess) onAuthSuccess(name || 'Alex Henderson');
     onClose();

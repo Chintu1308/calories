@@ -17,6 +17,14 @@ const READY_STATE_MAP: Record<number, DatabaseConnectionStatus> = {
   3: 'disconnected',
 };
 
+/**
+ * Establishes a connection to MongoDB Atlas with connection pooling and timeout guards.
+ * If already connected, immediately returns the active mongoose instance.
+ * Gracefully captures connection errors to prevent web server startup crashes.
+ *
+ * @param uri - MongoDB Atlas SRV connection string with credentials
+ * @returns Connected mongoose instance or null on failure
+ */
 export async function connectDatabase(uri: string = env.MONGODB_URI): Promise<typeof mongoose | null> {
   // If already connected, return existing instance
   if (mongoose.connection.readyState === 1) {
@@ -39,6 +47,10 @@ export async function connectDatabase(uri: string = env.MONGODB_URI): Promise<ty
   }
 }
 
+/**
+ * Cleanly closes the active MongoDB database connection.
+ * Used during graceful shutdown signals (SIGINT, SIGTERM) and test suite teardown.
+ */
 export async function disconnectDatabase(): Promise<void> {
   if (mongoose.connection.readyState !== 0) {
     try {
@@ -50,6 +62,10 @@ export async function disconnectDatabase(): Promise<void> {
   }
 }
 
+/**
+ * Returns structured metadata on the current MongoDB connection state.
+ * Used by `/api/v1/health` for uptime monitoring and readiness probes.
+ */
 export function getConnectionStatus(): DatabaseStatusInfo {
   const readyState = mongoose.connection.readyState;
   const status = READY_STATE_MAP[readyState] || 'disconnected';

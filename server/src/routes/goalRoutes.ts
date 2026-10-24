@@ -13,6 +13,11 @@ goalRouter.use(authenticate);
 /**
  * GET /api/v1/goals
  * Retrieves the currently active nutrition goal for the authenticated user.
+ * Looks up the latest document matching `{ userId, isActive: true }`.
+ *
+ * @returns HTTP 200 with active goal JSON
+ * @throws 401 Unauthorized if request is unauthenticated
+ * @throws 404 Not Found if no active goal exists for the user
  */
 goalRouter.get(
   '/',
@@ -38,8 +43,13 @@ goalRouter.get(
 
 /**
  * PUT /api/v1/goals
- * Upserts the active nutrition goal for the authenticated user.
- * If a goal already exists, it updates it in place; otherwise it creates it.
+ * Atomic upsert for the user's active nutrition targets.
+ * If an active goal exists, updates it in place; otherwise inserts a new active goal.
+ * Validates daily calories, protein, carb, fat, and weight targets via `goalInputSchema`.
+ *
+ * @returns HTTP 200 with upserted goal JSON
+ * @throws 400 Bad Request on invalid macro or calorie values
+ * @throws 401 Unauthorized if request is unauthenticated
  */
 goalRouter.put(
   '/',
@@ -73,7 +83,12 @@ goalRouter.put(
 
 /**
  * POST /api/v1/goals
- * Creates a new active nutrition goal, automatically deactivating prior goals to preserve history.
+ * Creates a new active nutrition goal milestone, automatically deactivating prior goals.
+ * Preserves a full historical audit trail of past goals for longitudinal reporting.
+ *
+ * @returns HTTP 201 with newly created active goal JSON
+ * @throws 400 Bad Request on validation failure
+ * @throws 401 Unauthorized if request is unauthenticated
  */
 goalRouter.post(
   '/',

@@ -13,22 +13,29 @@ import {
   Icon,
 } from '../components/ui/index.js';
 import type { MealItem, DailyGoal, UserProfile } from '../types/nutrition.js';
-import { SAMPLE_WEEKLY_TREND, SAMPLE_USER_PROFILE } from '../data/mockNutritionData.js';
+import { SAMPLE_USER_PROFILE } from '../data/mockNutritionData.js';
 import { exportNutritionReportPdf } from '../utils/exportPdf.js';
+import { computeWeeklyTrend } from '../utils/trendCalculator.js';
+import type { DayTrendPoint } from '../components/reports/WeeklyTrendPreview.js';
 
 export interface ReportsPageProps {
   meals: MealItem[];
   goal: DailyGoal;
   userProfile?: UserProfile;
+  weeklyTrend?: DayTrendPoint[];
 }
 
 export const ReportsPage: React.FC<ReportsPageProps> = ({
   meals,
   goal,
   userProfile = SAMPLE_USER_PROFILE,
+  weeklyTrend,
 }) => {
   const [groupBy, setGroupBy] = useState<'day' | 'week'>('day');
   const [dateRange, setDateRange] = useState<string>('7days');
+
+  // Compute real dynamic weekly trend if not directly provided
+  const activeWeeklyTrend = weeklyTrend || computeWeeklyTrend(meals, goal.dailyCaloriesKcal);
 
   // Aggregated totals
   const totalCalories = meals.reduce((acc, m) => acc + m.nutrition.caloriesKcal, 0);
@@ -79,8 +86,8 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
                 userProfile,
                 goal,
                 meals,
-                weeklyTrend: SAMPLE_WEEKLY_TREND,
-                dateRangeLabel: dateRange === '7days' ? 'Last 7 Days (Oct 18 – Oct 24, 2026)' : 'Last 30 Days',
+                weeklyTrend: activeWeeklyTrend,
+                dateRangeLabel: dateRange === '7days' ? 'Last 7 Days Dynamic Report' : 'Last 30 Days',
               })
             }
           >
@@ -203,23 +210,23 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
               </div>
               <Badge variant="sage">7-Day Horizon</Badge>
             </div>
-            <CardDescription>Daily consumed calories vs 2,200 kcal budget line</CardDescription>
+            <CardDescription>Daily consumed calories vs {goal.dailyCaloriesKcal.toLocaleString()} kcal budget line</CardDescription>
           </CardHeader>
 
           <CardContent>
             <div className="calories-trend-chart-container" style={{ height: '180px' }}>
-              <div className="calories-chart-target-line" style={{ bottom: `${(2200 / 2600) * 100}%` }}>
-                <span className="calories-target-line-tag">Budget: 2,200 kcal</span>
+              <div className="calories-chart-target-line" style={{ bottom: `${Math.min((goal.dailyCaloriesKcal / 2600) * 100, 100)}%` }}>
+                <span className="calories-target-line-tag">Budget: {goal.dailyCaloriesKcal.toLocaleString()} kcal</span>
               </div>
               <div className="calories-trend-bars-row">
-                {SAMPLE_WEEKLY_TREND.map((point) => (
+                {activeWeeklyTrend.map((point) => (
                   <div key={point.date} className="calories-trend-col">
                     <div className="calories-trend-bar-track">
                       <div
                         className="calories-trend-bar-fill"
                         style={{
                           height: `${Math.min(Math.round((point.consumedKcal / 2600) * 100), 100)}%`,
-                          backgroundColor: point.consumedKcal > 2300 ? 'var(--color-amber)' : 'var(--color-forest-green)',
+                          backgroundColor: point.consumedKcal > goal.dailyCaloriesKcal + 100 ? 'var(--color-amber)' : 'var(--color-forest-green)',
                         }}
                       />
                     </div>

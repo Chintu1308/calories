@@ -28,6 +28,10 @@ const weeklyQuerySchema = z.object({
 /**
  * GET /api/v1/reports/weekly-calories
  * Returns 7-day chronological calorie totals with daily goal comparison.
+ * Builds a dense 7-day sequence ensuring days with zero logged meals are cleanly represented.
+ *
+ * @query weekStart - Optional starting ISO date for the 7-day horizon (defaults to 6 days ago)
+ * @returns HTTP 200 with `{ startDate, days: [{ date, caloriesKcal, targetCalories, mealCount }], targetCalories }`
  */
 reportRouter.get(
   '/weekly-calories',
@@ -97,7 +101,13 @@ reportRouter.get(
 
 /**
  * GET /api/v1/reports/macros
- * Returns macronutrient totals and percentage split grouped by day or week.
+ * Returns macronutrient totals and percentage energy split grouped by day or week.
+ * Calculates caloric distribution using standard Atwater factors (4 kcal/g protein, 4 kcal/g carbs, 9 kcal/g fat).
+ *
+ * @query start - Optional start date filter
+ * @query end - Optional end date filter
+ * @query groupBy - Grouping resolution ('day' | 'week', defaults to 'day')
+ * @returns HTTP 200 with `{ groupBy, data: [{ period, proteinG, carbsG, fatG, caloriesKcal, energySplit }] }`
  */
 reportRouter.get(
   '/macros',
@@ -168,7 +178,12 @@ reportRouter.get(
 
 /**
  * GET /api/v1/reports/micronutrients
- * Returns aggregated micronutrients using honest absence semantics (unwinding non-null items).
+ * Returns aggregated micronutrients using honest absence semantics.
+ * Unwinds only explicit micronutrients, avoiding false zeroes for unmeasured nutrients.
+ *
+ * @query start - Optional ISO start date
+ * @query end - Optional ISO end date
+ * @returns HTTP 200 with `{ nutrients: [{ name, unit, totalAmount, loggedCount }], totalDistinctNutrients }`
  */
 reportRouter.get(
   '/micronutrients',
@@ -223,7 +238,12 @@ reportRouter.get(
 
 /**
  * GET /api/v1/reports/goals
- * Compares average intake against the user's active goal.
+ * Compares average logged daily intake against the user's active goal.
+ * Computes adherence compliance rate percentage across the specified date range.
+ *
+ * @query start - Optional start date
+ * @query end - Optional end date
+ * @returns HTTP 200 with `{ actual, goal, complianceRatePct }`
  */
 reportRouter.get(
   '/goals',

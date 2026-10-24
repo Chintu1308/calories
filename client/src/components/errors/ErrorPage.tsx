@@ -21,7 +21,7 @@ interface ErrorDetails {
 
 const ERROR_CONFIG: Record<HttpErrorCode, ErrorDetails> = {
   400: {
-    title: '400 — Bad Request',
+    title: '400 - Bad Request',
     subtitle: 'Invalid Nutrition Request',
     description: 'The server could not process the request because the submitted payload or query parameters failed validation (e.g. non-numeric calories, invalid date format, or negative portion amounts).',
     technicalDetails: 'HTTP 400 Bad Request: Schema validation failed on incoming request parameters.',
@@ -29,7 +29,7 @@ const ERROR_CONFIG: Record<HttpErrorCode, ErrorDetails> = {
     icon: 'settings',
   },
   401: {
-    title: '401 — Unauthorized',
+    title: '401 - Unauthorized',
     subtitle: 'Authentication Required',
     description: 'You must be signed in with a valid JWT token to access this nutrition diary, update targets, or inspect meal aggregations.',
     technicalDetails: 'HTTP 401 Unauthorized: Missing, expired, or malformed Bearer authorization token.',
@@ -37,7 +37,7 @@ const ERROR_CONFIG: Record<HttpErrorCode, ErrorDetails> = {
     icon: 'heart',
   },
   402: {
-    title: '402 — Payment Required',
+    title: '402 - Payment Required',
     subtitle: 'AI Extraction Quota Reached',
     description: 'You have reached the free-tier daily quota for AI plate and nutrition label image scans. You can continue logging unlimited meals manually, or upgrade to Calories Pro for expanded AI processing.',
     technicalDetails: 'HTTP 402 Payment Required: Daily AI provider quota limit enforced.',
@@ -45,7 +45,7 @@ const ERROR_CONFIG: Record<HttpErrorCode, ErrorDetails> = {
     icon: 'ai-scan',
   },
   403: {
-    title: '403 — Forbidden',
+    title: '403 - Forbidden',
     subtitle: 'Access Restricted by Isolation Boundary',
     description: 'You do not have permission to access or modify this record. The Calories multi-tenant security boundary guarantees that User A can never inspect or alter User B’s dietary data.',
     technicalDetails: 'HTTP 403 Forbidden: Request user ID does not match target document ownership.',
@@ -53,7 +53,7 @@ const ERROR_CONFIG: Record<HttpErrorCode, ErrorDetails> = {
     icon: 'heart',
   },
   404: {
-    title: '404 — Not Found',
+    title: '404 - Not Found',
     subtitle: 'Nutritional Resource Missing',
     description: 'The page, meal log, or analytical report you are searching for does not exist, has been removed, or was never recorded.',
     technicalDetails: 'HTTP 404 Not Found: The requested URI did not match any active routing endpoint.',
@@ -61,7 +61,7 @@ const ERROR_CONFIG: Record<HttpErrorCode, ErrorDetails> = {
     icon: 'meals',
   },
   500: {
-    title: '500 — Internal Server Error',
+    title: '500 - Internal Server Error',
     subtitle: 'Calculation Service Failure',
     description: 'An unexpected exception occurred while processing nutritional aggregations or querying the database. Our telemetry has logged the incident.',
     technicalDetails: 'HTTP 500 Internal Server Error: Uncaught server-side exception captured by central error middleware.',
@@ -69,7 +69,7 @@ const ERROR_CONFIG: Record<HttpErrorCode, ErrorDetails> = {
     icon: 'settings',
   },
   503: {
-    title: '503 — Service Unavailable',
+    title: '503 - Service Unavailable',
     subtitle: 'Platform Sleeping or Maintenance',
     description: 'The backend service is temporarily offline or spinning up from sleep on free-tier hosting (e.g. Render 15-minute inactivity timeout). Please wait a few seconds and retry.',
     technicalDetails: 'HTTP 503 Service Unavailable: Upstream web process is inactive or completing cold start.',

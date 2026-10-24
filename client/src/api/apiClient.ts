@@ -98,6 +98,17 @@ export interface AiExtractionResponse {
   uncommittedNotice: string;
 }
 
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
 // Token management in localStorage
 export function getStoredToken(): string | null {
   try {
@@ -119,6 +130,10 @@ export function setStoredToken(token: string | null): void {
   }
 }
 
+/**
+ * Central HTTP fetch wrapper for typed API communication.
+ * Automatically injects Bearer JWT authentication and handles JSON serialization.
+ */
 async function request<T>(
   path: string,
   options: RequestInit = {}
@@ -147,14 +162,17 @@ async function request<T>(
       // Non-JSON response
     }
     const message = errorData.error?.message || `Request failed with HTTP ${response.status}`;
-    throw new Error(message);
+    throw new ApiError(message, response.status, errorData.error?.code);
   }
 
   return response.json() as Promise<T>;
 }
 
 export const apiClient = {
-  // Auth endpoints
+  /**
+   * Registers a new user account and stores the returned JWT token.
+   * @param data User registration fields including email, password, and biometric targets.
+   */
   async register(data: Record<string, unknown>): Promise<AuthResponse> {
     const res = await request<AuthResponse>('/auth/register', {
       method: 'POST',
@@ -164,6 +182,10 @@ export const apiClient = {
     return res;
   },
 
+  /**
+   * Authenticates an existing user and returns a signed session token.
+   * @param data Credentials (email, password)
+   */
   async login(data: { email: string; password: string }): Promise<AuthResponse> {
     const res = await request<AuthResponse>('/auth/login', {
       method: 'POST',
@@ -173,19 +195,31 @@ export const apiClient = {
     return res;
   },
 
+  /**
+   * Fetches the current authenticated user's profile and settings.
+   */
   async getMe(): Promise<{ user: AuthResponse['user'] }> {
     return request<{ user: AuthResponse['user'] }>('/auth/me');
   },
 
+  /**
+   * Clears the current user authentication session token.
+   */
   logout(): void {
     setStoredToken(null);
   },
 
-  // Goals endpoints
+  /**
+   * Retrieves the user's currently active nutrition and calorie goal.
+   */
   async getActiveGoal(): Promise<{ goal: DailyGoal }> {
     return request<{ goal: DailyGoal }>('/goals');
   },
 
+  /**
+   * Upserts the user's active nutrition targets (calories, protein, carbs, fat, target weight).
+   * @param goal The target nutritional specifications.
+   */
   async putActiveGoal(goal: DailyGoal): Promise<{ goal: DailyGoal }> {
     return request<{ goal: DailyGoal }>('/goals', {
       method: 'PUT',
@@ -193,7 +227,10 @@ export const apiClient = {
     });
   },
 
-  // Meals endpoints
+  /**
+   * Queries paginated meal entries with optional category and date window filters.
+   * @param params Pagination and filtering options.
+   */
   async getMeals(params: {
     page?: number;
     limit?: number;
@@ -212,6 +249,10 @@ export const apiClient = {
     return request<PaginatedMealsResponse>(`/meals${qs ? `?${qs}` : ''}`);
   },
 
+  /**
+   * Creates and persists a new meal entry scoped strictly to the current user.
+   * @param meal Meal data to record.
+   */
   async createMeal(meal: Omit<MealItem, 'id'>): Promise<{ meal: MealItem }> {
     return request<{ meal: MealItem }>('/meals', {
       method: 'POST',
@@ -219,6 +260,11 @@ export const apiClient = {
     });
   },
 
+  /**
+   * Modifies an existing meal entry, enforcing multi-tenant isolation.
+   * @param id The ObjectId of the meal.
+   * @param meal The fields to update.
+   */
   async updateMeal(id: string, meal: Partial<MealItem>): Promise<{ meal: MealItem }> {
     return request<{ meal: MealItem }>(`/meals/${id}`, {
       method: 'PATCH',
@@ -226,18 +272,29 @@ export const apiClient = {
     });
   },
 
+  /**
+   * Deletes a recorded meal entry belonging to the authenticated user.
+   * @param id The ObjectId of the meal.
+   */
   async deleteMeal(id: string): Promise<{ message: string; id: string }> {
     return request<{ message: string; id: string }>(`/meals/${id}`, {
       method: 'DELETE',
     });
   },
 
-  // Reports endpoints
+  /**
+   * Queries chronological 7-day calorie totals compared against the daily goal.
+   * @param weekStart Optional ISO date string for start of week window.
+   */
   async getWeeklyCalories(weekStart?: string): Promise<WeeklyCaloriesResponse> {
     const qs = weekStart ? `?weekStart=${encodeURIComponent(weekStart)}` : '';
     return request<WeeklyCaloriesResponse>(`/reports/weekly-calories${qs}`);
   },
 
+  /**
+   * Calculates macronutrient energy split percentages grouped by day or week.
+   * @param params Optional date range and grouping resolution.
+   */
   async getMacros(params: { start?: string; end?: string; groupBy?: 'day' | 'week' } = {}): Promise<MacroReportResponse> {
     const query = new URLSearchParams();
     if (params.start) query.set('start', params.start);
@@ -247,6 +304,10 @@ export const apiClient = {
     return request<MacroReportResponse>(`/reports/macros${qs ? `?${qs}` : ''}`);
   },
 
+  /**
+   * Aggregates tracked micronutrients across the selected time horizon.
+   * @param params Optional start and end date bounds.
+   */
   async getMicronutrients(params: { start?: string; end?: string } = {}): Promise<MicronutrientReportResponse> {
     const query = new URLSearchParams();
     if (params.start) query.set('start', params.start);
@@ -255,7 +316,10 @@ export const apiClient = {
     return request<MicronutrientReportResponse>(`/reports/micronutrients${qs ? `?${qs}` : ''}`);
   },
 
-  // AI Vision Extraction endpoint
+  /**
+   * Uploads a food photo or nutrition label image for AI analysis and uncommitted macro extraction.
+   * @param file The image file selected by the user.
+   */
   async extractFromImage(file: File): Promise<AiExtractionResponse> {
     const formData = new FormData();
     formData.append('image', file);

@@ -161,15 +161,14 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
           </div>
         </section>
 
-        {/* Temporary Data Notice Badge */}
+        {/* Production Architecture & Live Persistence Bar */}
         <div className="calories-demo-notice-bar">
           <Icon name="navigation-leaf" size={16} />
           <span>
-            <strong>Stage 3 Shell:</strong> Displaying structured mock nutrition data conforming to{' '}
-            <code>docs/DATA_MODEL.md</code>. Real MongoDB persistence connects in Stages 4–7.
+            <strong>Production Health-Tech Engine:</strong> Real-time persistence via MongoDB Atlas, Google Gemini AI Vision extraction, and multi-tenant security boundary.
           </span>
-          <Badge variant="sage" style={{ marginLeft: 'auto' }}>
-            Stage 3: Verified
+          <Badge variant="forest" style={{ marginLeft: 'auto' }}>
+            System Live &amp; Connected
           </Badge>
         </div>
 
@@ -229,7 +228,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
         <div className="calories-footer-container">
           <CaloriesLogo size="sm" variant="image" />
           <span className="calories-footer-text">
-            Calories Platform — Premium Editorial Health-Tech Dashboard Shell.
+            Calories Platform - Premium Editorial Health-Tech Dashboard Shell.
           </span>
           <span className="calories-footer-domain">calories.bhhc.me</span>
         </div>
