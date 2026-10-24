@@ -1181,3 +1181,80 @@ ok 28 - DELETE /api/v1/meals/:id allows owner to delete meal entry
 
 #### Practice modification
 In `server/src/models/Meal.ts`, add a pre-save Mongoose hook that trims whitespace from `foodName` and verifies that the sum of calories derived from macros ($\text{protein} \times 4 + \text{carbs} \times 4 + \text{fat} \times 9$) does not diverge wildly from the declared `caloriesKcal` (e.g. within $\pm 20\%$), logging an informational notice if an anomaly is detected.
+
+---
+
+### Stage 8 — Date Filters, Category Filtering & Server-Side Pagination
+**Status:** Verified  
+**Commit:** `Pending` (feat(meals): add date filters and pagination)  
+**Date:** 2026-10-24
+
+#### What we built
+1. **Deterministic Stable Sorting:**
+   - Updated the `GET /api/v1/meals` query in `server/src/routes/mealRoutes.ts` to sort by `{ eatenAt: -1, _id: -1 }`.
+   - Adding `_id: -1` as a secondary tie-breaker guarantees that when multiple food entries share the identical millisecond timestamp, the pagination cursor is completely deterministic and prevents items from hopping between pages.
+2. **Strict Page Size Capping:**
+   - Enforced maximum page size of 100 via `mealQuerySchema` in `server/src/validators/mealValidator.ts` (`min: 1, max: 100, default: 20`).
+   - Requests requesting excessive limits (e.g. `limit=150`) are rejected with HTTP 400 Bad Request (`VALIDATION_ERROR`).
+3. **Multi-Field Filtering Pipeline:**
+   - Category filtering: `mealType` (Breakfast, Lunch, Dinner, Snacks, Brunch, Intermediate).
+   - Date range boundaries: `startDate` ($gte) and `endDate` ($lte) supporting UTC ISO timestamps.
+   - Combined query support: Allows users to inspect "All Breakfasts between Oct 1 and Oct 7" with a single compound index scan.
+4. **Comprehensive Pagination & Filter Test Suite (`server/src/routes/pagination.test.ts`):**
+   - 7 automated tests over in-memory MongoDB:
+     - Chronological descending page ordering.
+     - Disjoint non-overlapping page traversal (page 1 vs page 2 with zero ID collisions).
+     - Page size cap boundary enforcement.
+     - Category filter isolation.
+     - UTC date window filtering.
+     - Combined category + date range execution.
+     - Multi-tenant isolation during filtered search.
+
+#### Files created and modified
+| File | Responsibility |
+|---|---|
+| `server/src/routes/mealRoutes.ts` | Added stable secondary sort (`_id: -1`) to prevent cursor drift in pagination. |
+| `server/src/routes/pagination.test.ts` | 7 automated tests for pagination, limit capping, category and date filters. |
+
+#### Tests and evidence
+```text
+> calories-workspace@0.1.0 test
+> npm run test:server
+
+> server@0.1.0 test
+> tsx --test src/**/*.test.ts
+
+TAP version 13
+# Subtests 1-28: Health, Auth, Goals, Meal CRUD tests pass (ok 1 - 28)
+# Subtest: Pagination: page=1&limit=5 returns first 5 items in descending chronological order
+ok 29 - Pagination: page=1&limit=5 returns first 5 items in descending chronological order
+# Subtest: Pagination: page=2&limit=5 returns disjoint second page with stable sorting
+ok 30 - Pagination: page=2&limit=5 returns disjoint second page with stable sorting
+# Subtest: Pagination: enforces max page size limit (rejects limit > 100 with 400)
+ok 31 - Pagination: enforces max page size limit (rejects limit > 100 with 400)
+# Subtest: Category filtering: mealType=Dinner returns only Dinner items with accurate total count
+ok 32 - Category filtering: mealType=Dinner returns only Dinner items with accurate total count
+# Subtest: Date filtering: filters meals within UTC range
+ok 33 - Date filtering: filters meals within UTC range
+# Subtest: Combined filtering: category + date range filters work together
+ok 34 - Combined filtering: category + date range filters work together
+# Subtest: Multi-tenant isolation during filtered search: User B sees 0 results
+ok 35 - Multi-tenant isolation during filtered search: User B sees 0 results
+1..35
+# tests 35, suites 0, pass 35, fail 0, cancelled 0, skipped 0, todo 0
+# duration_ms 3680.874
+```
+
+#### Interview explanation
+> "In Stage 8, I refined the meal querying engine to support deterministic server-side pagination and multidimensional filtering. To prevent cursor drift—where records shift between pages when multiple meals have identical timestamps—I configured stable secondary sorting on `_id: -1` alongside `eatenAt: -1`. I enforced maximum page bounds (`limit <= 100`) at the schema validation layer to guard against memory exhaustion and DoS vectors. Finally, I authored an automated test suite verifying that pagination produces disjoint subsets without duplicate records, that date and category filters work in combination, and that cross-tenant isolation remains strictly intact."
+
+#### Likely interview questions
+1. **What is cursor drift and how did you prevent it in your pagination implementation?**  
+   *Answer:* Cursor drift occurs when sorting by a non-unique field (like `eatenAt`). If multiple documents have the exact same timestamp, MongoDB's natural ordering is non-deterministic across subsequent queries, causing documents to either appear on both page 1 and page 2 or be skipped entirely. We prevent this by establishing a compound sort `{ eatenAt: -1, _id: -1 }`, guaranteeing stable, strictly deterministic pagination.
+2. **Why enforce a maximum page size of 100 instead of allowing clients to request whatever limit they want?**  
+   *Answer:* Allowing unbounded page sizes (e.g. `limit=100000`) creates a denial-of-service vector where a single malicious or misconfigured request can exhaust server heap memory and lock database CPU during serialization. Enforcing a hard cap of 100 ensures predictable query latency and constant-bound memory footprint.
+3. **How does MongoDB execute a combined query for `userId`, `mealType`, and `eatenAt` date range?**  
+   *Answer:* The collection maintains a compound index on `{ userId: 1, mealType: 1, eatenAt: -1 }`. MongoDB uses index prefix matching to satisfy the equality filters for `userId` and `mealType`, and then evaluates the range scan for `eatenAt` directly within the index b-tree without touching unmatching documents.
+
+#### Practice modification
+In `server/src/routes/mealRoutes.ts`, implement an optional `search` query parameter that performs a case-insensitive regex match on `foodName` (`{ $regex: search, $options: 'i' }`), and write an integration test in `pagination.test.ts` verifying that searching for "oats" returns only rolled oats meals.

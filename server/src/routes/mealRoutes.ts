@@ -74,7 +74,7 @@ mealRouter.get(
     const skip = (page - 1) * limit;
 
     const [meals, total] = await Promise.all([
-      Meal.find(filter).sort({ eatenAt: -1 }).skip(skip).limit(limit),
+      Meal.find(filter).sort({ eatenAt: -1, _id: -1 }).skip(skip).limit(limit),
       Meal.countDocuments(filter),
     ]);
 
