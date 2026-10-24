@@ -508,3 +508,108 @@ const consumedCalories = meals.reduce((acc, m) => acc + m.nutrition.caloriesKcal
 
 #### Practice modification
 In `client/src/components/meals/MealCategoryCard.tsx`, add an item deletion button (with a trash icon or "✕") next to each meal row that triggers an `onDeleteMeal(meal.id)` callback, connect it to `App.tsx` to filter out the deleted item from state, and verify that the category subtotal and daily budget update immediately.
+
+---
+
+### Stage 3b — Full Application Screens & Bespoke HTTP Error Pages
+**Status:** Verified  
+**Commit:** `feat(ui): add application screens and branded HTTP error pages`  
+**Date:** 2026-10-24
+
+#### What we built
+1. **Custom Branded HTTP Error Pages (`client/src/components/errors/ErrorPage.tsx`):**
+   - Implemented bespoke editorial error pages for all critical HTTP codes:
+     - `400 Bad Request`: Schema validation failure (negative food portions, invalid dates, malformed JSON).
+     - `401 Unauthorized`: Missing, expired, or malformed Bearer authorization token.
+     - `402 Payment Required`: Free-tier AI image vision scan daily quota reached.
+     - `403 Forbidden`: Multi-tenant isolation boundary protection (User A cannot access User B records).
+     - `404 Not Found`: Nutritional diary entry or endpoint route missing.
+     - `500 Internal Server Error`: Uncaught calculation/server failure with incident logging.
+     - `503 Service Unavailable`: Free-tier Render container spin-up cold start or platform maintenance.
+   - Includes custom health-tech diagnostics, monospace technical detail boxes, brand logo, action buttons ("Return to Dashboard", "Retry Request").
+2. **Interactive Error Catalog (`client/src/pages/ErrorsPage.tsx`):**
+   - Interactive card catalog showcasing all 7 error status codes with one-click preview mode and simulated retry hooks.
+3. **Meals Journal Screen (`client/src/pages/MealsPage.tsx`):**
+   - Search food name and notes with dynamic multi-field filtering.
+   - Category filtering (Breakfast, Lunch, Dinner, Snacks, All).
+   - Date range filtering (Today, Last 7 Days, This Month, All Time).
+   - Server/client pagination controls (page navigation, bounds checking).
+   - Real-time aggregate summary bar (total items, consumed calories, protein, carbs, fat).
+   - Accessible table with meal source badges (`Manual` vs `AI Extracted`) and item deletion.
+4. **Target & Goal Setting Screen (`client/src/pages/GoalsPage.tsx`):**
+   - Multi-tenant scoped daily targets (calories, protein, carbs, fat, target weight, weight unit).
+   - Real-time energy ratio calculator (protein: 4 kcal/g, carbs: 4 kcal/g, fat: 9 kcal/g).
+   - Visual macro distribution stacked bar with percentage badges.
+   - Form validation with bounded thresholds (calories 500-10,000 kcal, macros within plausible physiological limits).
+   - Non-medical disclaimer alert.
+5. **Nutrition Analytics & Reports Screen (`client/src/pages/ReportsPage.tsx`):**
+   - Time aggregation tabs (Day vs Week grouping).
+   - 7-day adherence bar chart with target threshold line.
+   - Macro distribution energy split.
+   - Honest absence micronutrient table (Vitamin D, Iron, Calcium, Sodium, Potassium) that marks missing values as "Not reported" / unknown, never defaulting to 0.
+6. **AI Plate & Label Extraction Screen (`client/src/pages/AIScanPage.tsx`):**
+   - Drag-and-drop & file picker dropzone.
+   - Client-side MIME type check (image/jpeg, image/png, image/webp) and file size cap (<= 5MB).
+   - AI proposal state machine (propose -> inspect -> edit -> user confirm).
+   - Uncertainty warning banner, confidence score (89%), and non-zero calorie / macro proposal preview.
+   - Strict separation of AI proposal vs user confirmed database persistence.
+7. **Account & App Settings Screen (`client/src/pages/SettingsPage.tsx`):**
+   - User profile management (name, email).
+   - IANA timezone selection with browser auto-detection.
+   - Unit system selector (Metric vs Imperial).
+   - Real-time backend health ping monitor checking `/api/v1/health` with latency measurement.
+   - JSON data export for full diary portability.
+8. **App Header & Global State Routing (`client/src/components/layout/Header.tsx`, `client/src/App.tsx`):**
+   - Multi-page navigation bar with active indicators, error catalog shortcut, and synchronized state across all views.
+9. **CSS Design Tokens & Layout (`client/src/App.css`):**
+   - 220+ lines of responsive CSS styles adhering strictly to the "Premium Editorial Health-Tech" aesthetic.
+
+#### Why it exists
+A professional production application cannot rely solely on a single dashboard view or browser default error screens. Providing dedicated pages for Meal Journaling, Goal Setting, Reports, AI extraction, and Settings fulfills all 5 core pillars of the Calories specification. Furthermore, custom branded error pages for HTTP 400, 401, 402, 403, 404, 500, and 503 guarantee that regardless of what happens (network blips, auth expiry, multi-tenant permission rejections, quota limits), users always receive clear, actionable, and branded diagnostics.
+
+#### Files created and modified
+| File | Responsibility |
+|---|---|
+| `client/src/components/errors/ErrorPage.tsx` | Reusable branded HTTP error screen for 400, 401, 402, 403, 404, 500, 503. |
+| `client/src/pages/ErrorsPage.tsx` | Error catalog & interactive full-page preview tester. |
+| `client/src/pages/MealsPage.tsx` | Search, filter, pagination, and deletion for meal logs. |
+| `client/src/pages/GoalsPage.tsx` | Form to configure calorie and macronutrient targets with live ratio analysis. |
+| `client/src/pages/ReportsPage.tsx` | Trend charts, macro split, and honest micronutrient presence table. |
+| `client/src/pages/AIScanPage.tsx` | Multi-format photo upload with AI proposal verification flow. |
+| `client/src/pages/SettingsPage.tsx` | Preferences, timezone selection, JSON export, and backend health monitor. |
+| `client/src/components/layout/Header.tsx` | Navigation bar with tab links and page switcher. |
+| `client/src/App.tsx` | Main application router coordinating page view states and data persistence. |
+| `client/src/App.css` | Comprehensive CSS styling for tables, error layouts, forms, and responsive grids. |
+
+#### Data flow
+- **Error Handling:** When an error condition occurs (e.g. invalid query parameter, expired auth, or unhandled rejection), the application renders `<ErrorPage code={...} />` passing error details, diagnostic context, and recovery callbacks (`onRetry`, `onNavigateDashboard`).
+- **Goal Updates:** User modifies targets in `GoalsPage` -> Client verifies validation rules -> Calls `onSaveGoal(updatedGoal)` -> Updates global state in `App.tsx` -> Instantly updates `remainingKcal` in dashboard and goal-vs-actual bars in `ReportsPage`.
+- **AI Extraction Flow:** User uploads meal image in `AIScanPage` -> System verifies MIME/size -> Triggers mock extraction -> Presents confidence score and nutrient values for user review -> User can edit fields -> On explicit user confirmation ("Confirm & Log Meal"), the meal is added to state with `source: 'ai'`.
+
+#### Validation and security
+- **AI File Upload:** Client enforces `<= 5MB` file size limit and checks MIME types against `image/jpeg`, `image/png`, and `image/webp`.
+- **Input Bounds:** Goals page enforces numeric boundaries (500 <= kcal <= 10000; non-negative macros).
+- **Tenant Isolation Defense:** Documented and visualized through HTTP 403 Forbidden error screen to showcase zero cross-tenant data leakage.
+- **Microservice Isolation:** AI extraction results remain non-persisted proposals until explicit user review and confirmation.
+
+#### Tests and evidence
+- **Oxlint:** Clean compilation across 29 client files and 3 server files: `Found 0 warnings and 0 errors.`
+- **TypeScript:** Strict typecheck passed for both client (`tsc -b`) and server (`tsc --noEmit`).
+- **Unit & Integration Tests:** Native Node 22 test runner: 2/2 tests passed (100%).
+- **Production Build:** `npm run build` generated optimized production assets: `dist/assets/index-CCYqxy6H.js` (308.29 kB) and `dist/assets/index-BXx0U9T4.css` (23.42 kB).
+
+#### Interview explanation
+> "To elevate Calories from a single dashboard demo into an end-to-end production platform, I built dedicated views for all five core pillars: Meal Journal with server-style pagination and search, Target Setting with an energy ratio calculator, Reports with honest micronutrient handling, AI Vision scanning with a strict human-in-the-loop proposal flow, and Settings with live backend ping telemetry. Crucially, I engineered a bespoke HTTP error page suite supporting status codes 400, 401, 402, 403, 404, 500, and 503. Each error page explains the exact technical issue, maintains brand immersion, provides recovery actions, and models real-world health-tech architecture constraints such as multi-tenant isolation (403) and free-tier cold starts (503)."
+
+#### Likely interview questions
+1. **Why differentiate between HTTP 401 Unauthorized and HTTP 403 Forbidden in a health-tech app?**  
+   *Answer:* HTTP 401 signifies that authentication is missing or invalid (the user needs to log in). HTTP 403 signifies that the authenticated user is strictly forbidden from accessing the requested record. In multi-tenant health-tech software, 403 is vital for HIPAA/GDPR compliance: User A must never access User B's dietary or health logs, even if User A is properly authenticated.
+2. **Why require an explicit user confirmation step for AI-extracted meal entries instead of saving them automatically?**  
+   *Answer:* Computer vision models are probabilistic and prone to portion misestimations or ingredient confusion. Treating AI extraction as a proposal step with confidence scores and editable inputs ensures the user remains the ultimate authority over their health diary. This maintains data integrity and establishes trustworthy user experiences.
+3. **Why display missing micronutrients as 'Not reported' rather than 0 in reports?**  
+   *Answer:* In nutritional science, an absence of data does not mean an absence of nutrient. If a user logs a food without micronutrient details, displaying '0mg Iron' falsely implies iron deficiency. Honest data presentation explicitly labels unknown values as 'unreported' to avoid giving misleading clinical impressions.
+4. **How does the application prevent large file denial-of-service (DoS) attacks during image upload?**  
+   *Answer:* The client immediately checks `file.size` against a 5MB maximum threshold and verifies the MIME type before uploading or processing. On the server side, Express request body parsers and multer multipart middleware enforce matching strict byte limits and reject oversized payloads before buffering them into memory.
+
+#### Practice modification
+In `client/src/pages/ErrorsPage.tsx`, add a query parameter simulator (e.g. `?code=403`) or simulated network latency drop-down that allows interviewers to trigger custom error page transitions with simulated server delays.

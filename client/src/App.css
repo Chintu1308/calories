@@ -624,3 +624,226 @@
   color: var(--action-primary);
   font-weight: var(--weight-medium);
 }
+
+/* ==========================================================================
+   Page Layout & Common Views
+   ========================================================================== */
+
+.calories-page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-6) var(--space-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.calories-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
+}
+
+/* ==========================================================================
+   Meals Journal & Filtering Table
+   ========================================================================== */
+
+.calories-meals-summary-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+
+.calories-summary-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.calories-filters-row {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.calories-journal-table-wrap {
+  overflow-x: auto;
+  width: 100%;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+}
+
+.calories-journal-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: var(--text-sm);
+}
+
+.calories-journal-table thead {
+  background-color: var(--color-sand-soft);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.calories-journal-table th {
+  padding: var(--space-3) var(--space-4);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.calories-journal-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.calories-journal-table tr:last-child td {
+  border-bottom: none;
+}
+
+.calories-journal-table tr:hover {
+  background-color: rgba(237, 229, 216, 0.25);
+}
+
+.calories-pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-light);
+  margin-top: var(--space-4);
+}
+
+/* ==========================================================================
+   Goals & Nutrition Ratio Form
+   ========================================================================== */
+
+.calories-macro-ratio-bar {
+  display: flex;
+  height: 14px;
+  width: 100%;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background-color: var(--color-sand-soft);
+  border: 1px solid var(--border-light);
+}
+
+.calories-macro-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-sand-soft);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+}
+
+.calories-form-error-box {
+  background-color: rgba(184, 68, 68, 0.08);
+  border: 1px solid var(--color-error-red);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-error-red);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.calories-success-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background-color: var(--color-sage-soft);
+  border: 1px solid rgba(40, 91, 70, 0.35);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-forest-green);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  animation: calories-fade-in 0.2s ease-in;
+}
+
+@keyframes calories-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   Custom Branded Error Pages
+   ========================================================================== */
+
+.calories-error-page-layout {
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+}
+
+.calories-error-card {
+  max-width: 620px;
+  width: 100%;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-elevated);
+  border: 1px solid var(--border-light);
+  background-color: var(--surface-card);
+}
+
+.calories-error-diagnostics {
+  background-color: var(--color-sand-soft);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.calories-error-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-5);
+  margin-top: var(--space-2);
+}
+
+.calories-error-catalog-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.calories-error-catalog-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+
+.calories-error-code-badge {
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-forest-green);
+  letter-spacing: -0.03em;
+}
+

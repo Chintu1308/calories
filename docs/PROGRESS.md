@@ -8,6 +8,7 @@ Update after every stage and commit.
 | 1. Scaffold/docs | Verified | `f59bb92` | Root scripts, strict TS, server health tests pass (2/2), lint & build green |
 | 2. Brand/design tokens | Verified | `d1f273b` | Original SVG identity, design tokens, accessible UI primitives (Button, Card, Badge, ProgressBar, FormField), lint & build clean |
 | 3. App shell/dashboard | Verified | `b359abf` | Branded dashboard shell, date/greeting hierarchy, meal timeline (Breakfast/Lunch/Dinner/Snacks), goal summary cards, weekly trend preview, empty/loading/error states |
+| 3b. App screens & custom error suite | Verified | Pending commit | Complete screen suite (MealsPage, GoalsPage, ReportsPage, AIScanPage, SettingsPage) & bespoke health-tech error pages (400, 401, 402, 403, 404, 500, 503) with live interactive preview catalog |
 | 4. Express/MongoDB | Not started | — | — |
 | 5. Auth/ownership | Not started | — | — |
 | 6. Goal setting | Not started | — | — |

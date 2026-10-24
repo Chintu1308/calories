@@ -1,19 +1,26 @@
 import React, { useState } from 'react';
+import { Header, type NavTabId } from './components/layout/Header.js';
 import { DashboardShell, type DashboardViewState } from './components/layout/DashboardShell.js';
-import type { NavTabId } from './components/layout/Header.js';
+import { MealsPage } from './pages/MealsPage.js';
+import { GoalsPage } from './pages/GoalsPage.js';
+import { ReportsPage } from './pages/ReportsPage.js';
+import { AIScanPage } from './pages/AIScanPage.js';
+import { SettingsPage } from './pages/SettingsPage.js';
+import { ErrorsPage } from './pages/ErrorsPage.js';
 import {
   Button,
   Input,
   Select,
   FormField,
   Icon,
+  CaloriesLogo,
 } from './components/ui/index.js';
 import {
   SAMPLE_DAILY_GOAL,
   SAMPLE_MEALS,
   SAMPLE_WEEKLY_TREND,
 } from './data/mockNutritionData.js';
-import type { MealItem, MealType, DayNutritionalSummary } from './types/nutrition.js';
+import type { MealItem, MealType, DailyGoal, DayNutritionalSummary } from './types/nutrition.js';
 import './App.css';
 
 export const App: React.FC = () => {
@@ -22,6 +29,7 @@ export const App: React.FC = () => {
   const [viewState, setViewState] = useState<DashboardViewState>('normal');
   const [currentDateIndex, setCurrentDateIndex] = useState<number>(0);
   const [meals, setMeals] = useState<MealItem[]>(SAMPLE_MEALS);
+  const [goal, setGoal] = useState<DailyGoal>(SAMPLE_DAILY_GOAL);
 
   // Modal dialog states
   const [isAddMealOpen, setIsAddMealOpen] = useState(false);
@@ -36,7 +44,7 @@ export const App: React.FC = () => {
   const [newUnit, setNewUnit] = useState('g');
   const [formError, setFormError] = useState('');
 
-  // AI Mock State
+  // AI Mock State inside modal
   const [aiScanLoading, setAiScanLoading] = useState(false);
   const [aiProposedItem, setAiProposedItem] = useState<{
     foodName: string;
@@ -47,7 +55,7 @@ export const App: React.FC = () => {
     confidence: number;
   } | null>(null);
 
-  // Dynamic calculation of day nutritional totals from meals
+  // Dynamic calculations from meals
   const consumedCalories = meals.reduce((acc, m) => acc + m.nutrition.caloriesKcal, 0);
   const consumedProtein = meals.reduce((acc, m) => acc + m.nutrition.proteinG, 0);
   const consumedCarbs = meals.reduce((acc, m) => acc + m.nutrition.carbsG, 0);
@@ -55,17 +63,17 @@ export const App: React.FC = () => {
 
   const daySummary: DayNutritionalSummary = {
     consumedCalories,
-    targetCalories: SAMPLE_DAILY_GOAL.dailyCaloriesKcal,
+    targetCalories: goal.dailyCaloriesKcal,
     consumedProtein,
-    targetProtein: SAMPLE_DAILY_GOAL.proteinGrams,
+    targetProtein: goal.proteinGrams,
     consumedCarbs,
-    targetCarbs: SAMPLE_DAILY_GOAL.carbohydrateGrams,
+    targetCarbs: goal.carbohydrateGrams,
     consumedFat,
-    targetFat: SAMPLE_DAILY_GOAL.fatGrams,
+    targetFat: goal.fatGrams,
     waterIntakeMl: 2250,
     targetWaterMl: 3000,
     currentWeightKg: 74.2,
-    targetWeightKg: SAMPLE_DAILY_GOAL.targetWeight || 72.0,
+    targetWeightKg: goal.targetWeight || 72.0,
   };
 
   // Date labels
@@ -104,6 +112,10 @@ export const App: React.FC = () => {
     setIsAddMealOpen(true);
   };
 
+  const handleDeleteMeal = (mealId: string) => {
+    setMeals((prev) => prev.filter((m) => m.id !== mealId));
+  };
+
   const handleSaveMeal = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFoodName.trim()) {
@@ -133,7 +145,7 @@ export const App: React.FC = () => {
         fatG: Number(newFat) || 0,
       },
       source: 'manual',
-      notes: 'Added from dashboard quick log',
+      notes: 'Added from manual food log',
     };
 
     setMeals((prev) => [newMeal, ...prev]);
@@ -159,7 +171,7 @@ export const App: React.FC = () => {
   const handleConfirmAIMeal = () => {
     if (!aiProposedItem) return;
     const newMeal: MealItem = {
-      id: `meal_${Date.now()}`,
+      id: `meal_ai_${Date.now()}`,
       userId: 'user_demo_student',
       foodName: aiProposedItem.foodName,
       mealType: 'Breakfast',
@@ -185,21 +197,88 @@ export const App: React.FC = () => {
 
   return (
     <>
-      <DashboardShell
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        viewState={viewState}
-        onViewStateChange={setViewState}
-        currentDateLabel={currentDateLabel}
-        onPrevDay={handlePrevDay}
-        onNextDay={handleNextDay}
-        onToday={handleToday}
-        summary={daySummary}
-        meals={meals}
-        weeklyTrend={SAMPLE_WEEKLY_TREND}
-        onAddMeal={handleOpenAddMeal}
-        onOpenAIScan={() => setIsAIScanOpen(true)}
-      />
+      {/* View Router */}
+      {activeTab === 'dashboard' ? (
+        <DashboardShell
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          viewState={viewState}
+          onViewStateChange={setViewState}
+          currentDateLabel={currentDateLabel}
+          onPrevDay={handlePrevDay}
+          onNextDay={handleNextDay}
+          onToday={handleToday}
+          summary={daySummary}
+          meals={meals}
+          weeklyTrend={SAMPLE_WEEKLY_TREND}
+          onAddMeal={handleOpenAddMeal}
+          onOpenAIScan={() => setIsAIScanOpen(true)}
+        />
+      ) : (
+        <div className="calories-showcase-layout">
+          <Header
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            onOpenAddMeal={() => handleOpenAddMeal('Breakfast')}
+            onOpenAIScan={() => setIsAIScanOpen(true)}
+          />
+
+          <main className="calories-main">
+            {activeTab === 'meals' && (
+              <MealsPage
+                meals={meals}
+                onOpenAddMeal={handleOpenAddMeal}
+                onDeleteMeal={handleDeleteMeal}
+                onOpenAIScan={() => setIsAIScanOpen(true)}
+              />
+            )}
+
+            {activeTab === 'goals' && (
+              <GoalsPage
+                currentGoal={goal}
+                onSaveGoal={setGoal}
+              />
+            )}
+
+            {activeTab === 'reports' && (
+              <ReportsPage
+                meals={meals}
+                goal={goal}
+              />
+            )}
+
+            {activeTab === 'ai-scan' && (
+              <AIScanPage
+                onCommitMeal={(newMeal) => setMeals((prev) => [newMeal, ...prev])}
+                onNavigateJournal={() => setActiveTab('meals')}
+              />
+            )}
+
+            {activeTab === 'settings' && (
+              <SettingsPage
+                meals={meals}
+                goal={goal}
+              />
+            )}
+
+            {activeTab === 'errors' && (
+              <ErrorsPage
+                onNavigateDashboard={() => setActiveTab('dashboard')}
+              />
+            )}
+          </main>
+
+          <footer className="calories-footer">
+            <div className="calories-footer-container">
+              <CaloriesLogo size="sm" variant="image" />
+              <span className="calories-footer-text">
+                Calories Platform — Complete Editorial Health-Tech Suite Verified.
+              </span>
+              <span className="calories-footer-domain">calories.bhhc.me</span>
+            </div>
+          </footer>
+        </div>
+      )}
 
       {/* Manual Add Meal Modal */}
       {isAddMealOpen && (
@@ -279,7 +358,7 @@ export const App: React.FC = () => {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
-                <FormField label="Calories (kcal)" htmlFor="modal-cal" required={true}>
+                <FormField label="Calories" htmlFor="modal-cal" required={true}>
                   <Input
                     id="modal-cal"
                     type="number"
@@ -330,7 +409,7 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* AI Calorie Extraction Modal */}
+      {/* AI Extraction Modal */}
       {isAIScanOpen && (
         <div className="calories-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-ai-title">
           <div className="calories-modal-card">
@@ -338,7 +417,7 @@ export const App: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Icon name="ai-scan" size={22} />
                 <h3 id="modal-ai-title" style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 600 }}>
-                  AI Nutrition Scanner Preview
+                  AI Nutrition Scanner
                 </h3>
               </div>
               <button

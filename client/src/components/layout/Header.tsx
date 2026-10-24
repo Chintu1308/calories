@@ -1,7 +1,14 @@
 import React from 'react';
 import { CaloriesLogo, Button, Icon, type IconName } from '../ui/index.js';
 
-export type NavTabId = 'dashboard' | 'meals' | 'goals' | 'reports' | 'ai-scan';
+export type NavTabId =
+  | 'dashboard'
+  | 'meals'
+  | 'goals'
+  | 'reports'
+  | 'ai-scan'
+  | 'settings'
+  | 'errors';
 
 export interface HeaderProps {
   activeTab: NavTabId;
@@ -19,16 +26,26 @@ export const Header: React.FC<HeaderProps> = ({
   const navItems: { id: NavTabId; label: string; icon: IconName }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
     { id: 'meals', label: 'Meal Journal', icon: 'meals' },
-    { id: 'goals', label: 'Nutrition Goals', icon: 'goals' },
-    { id: 'reports', label: 'Reports & Analytics', icon: 'reports' },
-    { id: 'ai-scan', label: 'AI Calorie Scan', icon: 'ai-scan' },
+    { id: 'goals', label: 'Goals', icon: 'goals' },
+    { id: 'reports', label: 'Reports', icon: 'reports' },
+    { id: 'ai-scan', label: 'AI Scan', icon: 'ai-scan' },
+    { id: 'settings', label: 'Settings', icon: 'settings' },
+    { id: 'errors', label: 'Error Pages', icon: 'heart' },
   ];
 
   return (
     <header className="calories-header">
       <div className="calories-header-container">
         {/* Brand Lockup */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }}
+          onClick={() => onTabChange('dashboard')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onTabChange('dashboard');
+          }}
+        >
           <CaloriesLogo size="md" variant="image" />
         </div>
 
@@ -44,7 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={() => onTabChange(item.id)}
                 aria-current={isActive ? 'page' : undefined}
               >
-                <Icon name={item.icon} size={18} />
+                <Icon name={item.icon} size={16} />
                 <span>{item.label}</span>
               </button>
             );
