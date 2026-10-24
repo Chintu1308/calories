@@ -1263,7 +1263,7 @@ In `server/src/routes/mealRoutes.ts`, implement an optional `search` query param
 
 ### Stage 9 — Nutrition Analytics, Charts & Real Aggregations
 **Status:** Verified  
-**Commit:** `Pending` (feat(reports): add nutrition charts and summaries)  
+**Commit:** `4e98f79 feat(reports): add nutrition charts and summaries`  
 **Date:** 2026-10-24
 
 #### What we built

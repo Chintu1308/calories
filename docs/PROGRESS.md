@@ -15,6 +15,6 @@ Update after every stage and commit.
 | 6. Goal setting | Verified | `6b219f5` | Goal Mongoose model with macro bounds & active flag, Zod validator (500–10000 kcal), idempotent PUT upsert, POST historical deactivation, client localStorage reload persistence, 8 integration & tenant isolation tests (20/20 passed) |
 | 7. Meal CRUD | Verified | `543d297` | Meal Mongoose model with compound indexes, Zod validation, full CRUD (POST, GET paginated, GET /:id, PATCH, DELETE) with strict tenant isolation, 8 automated tests (28/28 passed) |
 | 8. Filters/pagination | Verified | `91d96ad` | Deterministic stable pagination (`_id: -1` tie-breaker), max limit 100 capping, combined category & date range filters, 7 automated tests (35/35 passed) |
-| 9. Reports/charts | Verified | Pending | On-demand MongoDB aggregation pipelines for 7-day weekly calories with zero-fill, macro day/week grouping with Atwater energy ratios, honest micronutrient absence semantics, goal adherence, 7 automated tests (42/42 passed) |
+| 9. Reports/charts | Verified | `4e98f79` | On-demand MongoDB aggregation pipelines for 7-day weekly calories with zero-fill, macro day/week grouping with Atwater energy ratios, honest micronutrient absence semantics, goal adherence, 7 automated tests (42/42 passed) |
 | 10. AI extraction | Not started | — | — |
 | 11. Polish/docs/deploy | Not started | — | — |
