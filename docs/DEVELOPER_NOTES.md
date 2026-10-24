@@ -1186,7 +1186,7 @@ In `server/src/models/Meal.ts`, add a pre-save Mongoose hook that trims whitespa
 
 ### Stage 8 — Date Filters, Category Filtering & Server-Side Pagination
 **Status:** Verified  
-**Commit:** `Pending` (feat(meals): add date filters and pagination)  
+**Commit:** `91d96ad feat(meals): add date filters and pagination`  
 **Date:** 2026-10-24
 
 #### What we built
