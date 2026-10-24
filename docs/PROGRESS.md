@@ -11,7 +11,7 @@ Update after every stage and commit.
 | 3b. App screens & custom error suite | Verified | `9e5c1ea` | Complete screen suite (MealsPage, GoalsPage, ReportsPage, AIScanPage, SettingsPage) & bespoke health-tech error pages (400, 401, 402, 403, 404, 500, 503) with live interactive preview catalog |
 | 3c. Onboarding, Dual-Log & Clinical PDF | Verified | `979920b` | Registration/Onboarding with height, weight, allergies & permanent daily supplements; dual-option Log Meal modal; Goal timeline approximation SVG curve & "Things to Have" recommendations; AI daily fit evaluation; executive clinical PDF export |
 | 4. Express/MongoDB | Verified | `46c0b25` | Zod environment validation, Mongoose connection management with pooling & graceful fallback, central AppError middleware, database health in /api/v1/health, Node 22 native tests (4/4 passed) |
-| 5. Auth/ownership | Not started | — | — |
+| 5. Auth/ownership | Verified | Pending commit | User Mongoose model with passwordHash isolation, bcrypt password hashing, JWT token signing/verification, authenticate middleware, asyncHandler wrapper, cross-tenant isolation tests (12/12 passed) |
 | 6. Goal setting | Not started | — | — |
 | 7. Meal CRUD | Not started | — | — |
 | 8. Filters/pagination | Not started | — | — |

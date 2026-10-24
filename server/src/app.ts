@@ -2,6 +2,7 @@ import express, { type Request, type Response } from 'express';
 import cors from 'cors';
 import { env } from './config/env.js';
 import { getConnectionStatus } from './config/db.js';
+import { authRouter } from './routes/authRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 export const app = express();
@@ -38,6 +39,9 @@ app.get('/api/v1/health', (_req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// Authentication routes
+app.use('/api/v1/auth', authRouter);
 
 // 404 handler for unmatched routes
 app.use((req: Request, res: Response) => {

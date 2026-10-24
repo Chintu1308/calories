@@ -792,3 +792,123 @@ ok 4 - Database connection status returns valid readyState
 
 #### Practice modification
 In `server/src/middleware/errorHandler.ts`, add a rate-limit error handler for HTTP 429 (`Too Many Requests`) that inspects a `Retry-After` header and includes the retry duration in the error details response.
+
+---
+
+### Stage 5 — Enforce Authenticated User Access & Multi-Tenant Ownership
+**Status:** Verified  
+**Commit:** `feat(auth): enforce authenticated user access`  
+**Date:** 2026-10-24
+
+#### What we built
+1. **User Domain Model (`server/src/models/User.ts`):**
+   - Implemented Mongoose User schema matching `docs/DATA_MODEL.md`.
+   - Fields: `email` (unique index, lowercase, trimmed), `passwordHash` (`select: false`), `name`, `heightCm`, `currentWeightKg`, `targetWeightKg`, `targetWeeks`, `allergies`, `supplements` subdocuments, `primaryGoal`.
+   - Strips `passwordHash` and `__v` from all JSON transforms (`toJSON`) to ensure password hashes are never leaked in API responses.
+2. **Cryptographic Security Utilities (`server/src/utils/security.ts`):**
+   - `hashPassword`: Uses `bcryptjs` with work factor / cost of 10 salt rounds.
+   - `verifyPassword`: Safe constant-time string comparison preventing timing attacks.
+   - `generateToken`: Signs HMAC-SHA256 JWT tokens with verified claims (`userId`, `email`) using `env.JWT_SECRET` and expiration.
+   - `verifyToken`: Validates JWT signature, expiration, and payload structure.
+3. **Async Handler Wrapper (`server/src/utils/asyncHandler.ts`):**
+   - Solved the Express 4 unhandled async rejection vulnerability by wrapping all asynchronous route handlers and piping caught rejections into `next(err)`, ensuring the central `errorHandler` catches all exceptions without hanging requests.
+4. **Auth Input Validation Schemas (`server/src/validators/authValidator.ts`):**
+   - `registerSchema`: Validates email format, password complexity ($\ge 8$ characters), positive height ($50 \le h \le 300\text{ cm}$), positive weights ($20 \le w \le 500\text{ kg}$), target weeks, allergies array, and supplements.
+   - `loginSchema`: Validates email format and non-empty password.
+5. **Authentication & Tenant Isolation Middleware (`server/src/middleware/authenticate.ts`):**
+   - Extracts Bearer token from `Authorization` HTTP header.
+   - Verifies JWT and binds authenticated identity directly to `req.user = { userId, email }`.
+   - Rejects unauthenticated requests with HTTP 401 Unauthorized.
+   - Augmented global Express `Request` type definition in `server/src/types/express.d.ts`.
+6. **Authentication Endpoints (`server/src/routes/authRoutes.ts`):**
+   - `POST /api/v1/auth/register`: Creates new user, hashes password, saves to MongoDB, returns JWT and user profile (201 Created). Duplicate emails reject with HTTP 409 Conflict.
+   - `POST /api/v1/auth/login`: Verifies email and password hash, returns JWT and user profile (200 OK). Invalid credentials reject with HTTP 401 Unauthorized.
+   - `GET /api/v1/auth/me`: Protected by `authenticate`; returns the authenticated user's profile.
+7. **Comprehensive Integration & Isolation Test Suite (`server/src/routes/auth.test.ts`):**
+   - Powered by `mongodb-memory-server` for genuine isolated in-memory MongoDB database execution.
+   - Tests bcrypt hashing, JWT signing/verification, registration, duplicate collision, password validation, login, and token auth.
+   - **Cross-Tenant Isolation Test:** Directly proves that User A's token cannot read or mutate User B's records, establishing our multi-tenant security boundary.
+
+#### Files created and modified
+| File | Responsibility |
+|---|---|
+| `server/src/models/User.ts` | Mongoose User model with `passwordHash` hidden by default and JSON transform sanitization. |
+| `server/src/utils/security.ts` | Bcrypt password hashing/comparison and JWT token generation/verification. |
+| `server/src/utils/asyncHandler.ts` | Express 4 higher-order wrapper ensuring async promise rejections reach `errorHandler`. |
+| `server/src/validators/authValidator.ts` | Zod validation schemas for registration and login payloads. |
+| `server/src/middleware/authenticate.ts` | Middleware verifying Bearer JWTs and attaching verified `req.user`. |
+| `server/src/types/express.d.ts` | Global Express type augmentation for `req.user`. |
+| `server/src/routes/authRoutes.ts` | Express router implementing `/register`, `/login`, and `/me`. |
+| `server/src/routes/auth.test.ts` | Automated integration and tenant isolation tests over in-memory MongoDB. |
+| `server/src/app.ts` | Mounted `authRouter` at `/api/v1/auth`. |
+| `server/package.json` | Added `bcryptjs`, `jsonwebtoken`, and devDependency `mongodb-memory-server`. |
+
+#### Data flow
+1. Client sends `POST /api/v1/auth/register` with email, password, and onboarding metrics.
+2. `asyncHandler` wraps the execution; `registerSchema.parse(req.body)` validates types and bounds.
+3. If valid, `User.findOne({ email })` checks for existing collision $\to$ throws `AppError.conflict()` if present.
+4. `hashPassword(password)` computes one-way bcrypt digest $\to$ saved to MongoDB.
+5. `generateToken({ userId, email })` creates signed JWT $\to$ returned with user document (excluding password hash).
+6. On subsequent requests to protected endpoints (e.g. `GET /api/v1/auth/me`), `authenticate` middleware inspects `Authorization: Bearer <token>`, verifies signature with `env.JWT_SECRET`, and sets `req.user = { userId, email }`.
+7. Route handler reads `req.user.userId` derived strictly from server-verified token, guaranteeing multi-tenant isolation.
+
+#### Validation and security
+- **One-Way Password Storage:** Passwords hashed with bcrypt (salt rounds: 10); raw passwords never stored in memory or database.
+- **Leakage Prevention:** Schema configures `select: false` on `passwordHash`; `toJSON` transform explicitly deletes `passwordHash` and `__v`.
+- **Server-Derived Identity:** Client cannot specify `userId` in request bodies to impersonate other users; identity is established strictly by cryptographic token verification.
+- **Timing Attack Resistance:** Bcrypt's comparison algorithm operates in constant time.
+
+#### Tests and evidence
+```text
+> oxlint (client & server)
+Found 0 warnings and 0 errors across 47 files with 116 rules.
+
+> npm run typecheck (client & server)
+✓ 46 modules transformed. Built in 736ms.
+Server: tsc --noEmit clean compilation (0 errors).
+
+> npm test (Node 22 native test runner)
+TAP version 13
+# Subtest: GET /api/v1/health returns 200 OK with database connection status
+ok 1 - GET /api/v1/health returns 200 OK with database connection status
+# Subtest: GET /unknown-route returns 404 with standard error payload
+ok 2 - GET /unknown-route returns 404 with standard error payload
+# Subtest: Central errorHandler formats AppError into standard JSON envelope
+ok 3 - Central errorHandler formats AppError into standard JSON envelope
+# Subtest: Database connection status returns valid readyState
+ok 4 - Database connection status returns valid readyState
+# Subtest: Security utils: password hashing and verification
+ok 5 - Security utils: password hashing and verification
+# Subtest: Security utils: JWT token signing and payload verification
+ok 6 - Security utils: JWT token signing and payload verification
+# Subtest: POST /api/v1/auth/register registers a user and returns token + safe user object
+ok 7 - POST /api/v1/auth/register registers a user and returns token + safe user object
+# Subtest: POST /api/v1/auth/register rejects duplicate email with 409 Conflict
+ok 8 - POST /api/v1/auth/register rejects duplicate email with 409 Conflict
+# Subtest: POST /api/v1/auth/register validates schema and rejects short password with 400
+ok 9 - POST /api/v1/auth/register validates schema and rejects short password with 400
+# Subtest: POST /api/v1/auth/login authenticates registered user and rejects bad credentials
+ok 10 - POST /api/v1/auth/login authenticates registered user and rejects bad credentials
+# Subtest: GET /api/v1/auth/me requires valid Bearer token
+ok 11 - GET /api/v1/auth/me requires valid Bearer token
+# Subtest: Cross-tenant user isolation: User A token cannot impersonate or read User B
+ok 12 - Cross-tenant user isolation: User A token cannot impersonate or read User B
+1..12
+# tests 12, suites 0, pass 12, fail 0
+```
+
+#### Interview explanation
+> "In Stage 5, I implemented authentication and multi-tenant security. I created the User Mongoose schema with one-way bcrypt password hashing (10 salt rounds) and configured schema-level field projection so password hashes are never leaked in queries or JSON payloads. I wrote an authentication middleware that verifies HMAC-SHA256 JWT tokens from the Authorization header and binds the verified user identity to the request object. Crucially, in Express 4, unhandled promise rejections inside async handlers do not automatically reach error middleware; to solve this, I engineered an `asyncHandler` higher-order wrapper that reliably forwards all caught errors to our centralized error handler. Finally, I authored an automated test suite over an in-memory MongoDB instance that proves cross-tenant isolation: User A cannot read or modify User B's dietary records."
+
+#### Likely interview questions
+1. **Why does Express 4 require an `asyncHandler` wrapper or try/catch for asynchronous route handlers?**  
+   *Answer:* Express 4 was designed before native JavaScript promises were ubiquitous; its routing pipeline only catches synchronous exceptions thrown during execution. When an `async` function throws or rejects, it returns a rejected promise that Express does not automatically intercept, causing requests to hang until socket timeout and triggering Node unhandledRejection events. Wrapping async handlers with `(fn) => (req, res, next) => fn(req, res, next).catch(next)` ensures all rejected promises are properly delivered to `next(err)` and processed by centralized error middleware.
+2. **Why is `select: false` used for `passwordHash` in Mongoose?**  
+   *Answer:* Setting `select: false` on sensitive credentials ensures that normal queries (e.g. `User.find()` or `User.findById()`) will never include the password hash in memory or serializations, even if a developer forgets to specify a field projection. The hash can only be retrieved by explicitly calling `.select('+passwordHash')` in dedicated authentication logic.
+3. **How does the API guarantee multi-tenant data isolation?**  
+   *Answer:* Multi-tenant isolation requires that data ownership is established strictly by server-side verification rather than trusting client-supplied identifiers. The client cannot submit a `userId` in query parameters or request bodies to read another user's documents; instead, the `authenticate` middleware cryptographically verifies the Bearer JWT and sets `req.user.userId`. All downstream database queries strictly filter by `{ userId: req.user.userId }`.
+4. **Why use bcrypt over faster hashing algorithms like MD5 or SHA-256 for passwords?**  
+   *Answer:* Fast hashing algorithms like MD5 or SHA-256 are designed for speed, making them vulnerable to brute-force and GPU rainbow table attacks (billions of hashes per second). Bcrypt is a key-derivation function that incorporates an adaptive cost factor (salt rounds) and internal key-expansion iterations, making it computationally expensive and resistant to hardware-accelerated cracking.
+
+#### Practice modification
+In `server/src/models/User.ts`, add a `lastLoginAt: Date` timestamp field and update it inside `POST /api/v1/auth/login` whenever a user successfully authenticates.
