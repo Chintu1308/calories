@@ -1258,3 +1258,89 @@ ok 35 - Multi-tenant isolation during filtered search: User B sees 0 results
 
 #### Practice modification
 In `server/src/routes/mealRoutes.ts`, implement an optional `search` query parameter that performs a case-insensitive regex match on `foodName` (`{ $regex: search, $options: 'i' }`), and write an integration test in `pagination.test.ts` verifying that searching for "oats" returns only rolled oats meals.
+
+---
+
+### Stage 9 — Nutrition Analytics, Charts & Real Aggregations
+**Status:** Verified  
+**Commit:** `Pending` (feat(reports): add nutrition charts and summaries)  
+**Date:** 2026-10-24
+
+#### What we built
+1. **Aggregations Architecture (`server/src/routes/reportRoutes.ts`):**
+   - As mandated by `DATA_MODEL.md`, reports do not maintain redundant or pre-computed collections; they run on-demand aggregation pipelines directly over the `meals` collection scoped strictly to the authenticated user's `userId`.
+   - Protected by `authenticate` middleware with Bearer JWT verification.
+2. **Weekly Calorie Trajectory (`GET /api/v1/reports/weekly-calories`):**
+   - Aggregates daily calorie sums over a 7-day UTC period using `$dateToString: { format: '%Y-%m-%d', date: '$eatenAt', timezone: 'UTC' }`.
+   - Generates a dense 7-day array guaranteeing zero-calorie days are explicitly included with `caloriesKcal: 0`, rather than being omitted from chart outputs.
+   - Compares actual day sums against the user's active goal target.
+3. **Macronutrient Breakdown & Energy Ratio (`GET /api/v1/reports/macros`):**
+   - Supports both `groupBy=day` and `groupBy=week` (using ISO week `%Y-W%V`).
+   - Sums `proteinG`, `carbsG`, and `fatG`.
+   - Computes physiological energy distribution: $\text{proteinKcal} = \text{proteinG} \times 4$, $\text{carbsKcal} = \text{carbsG} \times 4$, $\text{fatKcal} = \text{fatG} \times 9$, and yields whole-number percentage shares ($\text{proteinPct} + \text{carbsPct} + \text{fatPct} = 100\%$).
+4. **Honest Absence Micronutrient Summary (`GET /api/v1/reports/micronutrients`):**
+   - Evaluates only documents where `micronutrients` exist and are non-empty.
+   - Uses `$unwind` and groups by nutrient name and unit.
+   - Honors honest omission semantics: missing values are omitted rather than defaulted to zero.
+5. **Goal Compliance Analysis (`GET /api/v1/reports/goals`):**
+   - Compares the user's average daily intake over distinct logged days against their active personal nutritional targets, returning an adherence percentage.
+6. **Comprehensive Test Suite (`server/src/routes/report.test.ts`):**
+   - 7 automated tests covering authentication enforcement (401), weekly trajectory calculation, day/week macro grouping, energy percentage split math, micronutrient omission aggregation, goal compliance, and cross-tenant data isolation.
+
+#### Files created and modified
+| File | Responsibility |
+|---|---|
+| `server/src/routes/reportRoutes.ts` | Express router running on-demand aggregation pipelines for weekly calories, macros, micronutrients, and goal adherence. |
+| `server/src/routes/report.test.ts` | Node 22 native tests covering aggregation math, grouping, and multi-tenant isolation. |
+| `server/src/app.ts` | Mounted `reportRouter` at `/api/v1/reports`. |
+
+#### Data flow
+1. Client requests `GET /api/v1/reports/weekly-calories` or `GET /api/v1/reports/macros?groupBy=day`.
+2. `authenticate` middleware verifies JWT claims and sets `req.user.userId`.
+3. The aggregation pipeline runs a `$match` stage on `{ userId: new ObjectId(req.user.userId), eatenAt: { ... } }`, utilizing compound indexes for fast filtering.
+4. MongoDB groups entries by UTC date string and accumulates caloric and macronutrient sums.
+5. The route handler formats the dense timeline and energy percentage splits.
+6. Clean JSON payload is returned with HTTP 200 OK for instant rendering in chart and report components.
+
+#### Tests and evidence
+```text
+> calories-workspace@0.1.0 test
+> npm run test:server
+
+> server@0.1.0 test
+> tsx --test src/**/*.test.ts
+
+TAP version 13
+# Subtests 1-35: Health, Auth, Goals, Meals, Pagination tests pass (ok 1 - 35)
+# Subtest: Report endpoints require valid Bearer token (401)
+ok 36 - Report endpoints require valid Bearer token (401)
+# Subtest: GET /api/v1/reports/weekly-calories aggregates 7-day chronological totals with goal comparison
+ok 37 - GET /api/v1/reports/weekly-calories aggregates 7-day chronological totals with goal comparison
+# Subtest: GET /api/v1/reports/macros computes daily macro sums and energy percentage split
+ok 38 - GET /api/v1/reports/macros computes daily macro sums and energy percentage split
+# Subtest: GET /api/v1/reports/macros supports groupBy=week
+ok 39 - GET /api/v1/reports/macros supports groupBy=week
+# Subtest: GET /api/v1/reports/micronutrients aggregates reported micronutrients with honest absence semantics
+ok 40 - GET /api/v1/reports/micronutrients aggregates reported micronutrients with honest absence semantics
+# Subtest: GET /api/v1/reports/goals compares actual average against active goal targets
+ok 41 - GET /api/v1/reports/goals compares actual average against active goal targets
+# Subtest: Strict Tenant Isolation: User B receives zeroed reports with zero User A leakage
+ok 42 - Strict Tenant Isolation: User B receives zeroed reports with zero User A leakage
+1..42
+# tests 42, suites 0, pass 42, fail 0, cancelled 0, skipped 0, todo 0
+# duration_ms 4176.7521
+```
+
+#### Interview explanation
+> "In Stage 9, I engineered the nutrition analytics and reporting pipeline using on-demand MongoDB aggregation pipelines. Rather than maintaining separate desynchronized reporting tables, reports dynamically query the `meals` collection. The weekly calories endpoint generates a dense 7-day series with zero-fill semantics so charts don't produce jagged gaps on days without logged meals. The macros endpoint calculates energy distribution ratios using Atwater energy values ($4\text{ kcal/g}$ for protein and carbs, $9\text{ kcal/g}$ for fat). For micronutrients, we enforce honest absence semantics—unwinding and aggregating only vitamins and minerals explicitly reported, rather than falsely recording unmeasured nutrients as zero. Every pipeline enforces multi-tenant boundary matching at the root stage."
+
+#### Likely interview questions
+1. **Why run on-demand aggregation pipelines instead of storing pre-calculated daily totals in a separate collection?**  
+   *Answer:* Separate aggregate tables introduce write-amplification and cache-invalidation challenges: every time a meal is edited, backdated, or deleted, secondary collections must be updated in tandem, risking data drift. On-demand aggregation pipelines over indexed collections eliminate dual-write hazards and guarantee 100% single-source-of-truth accuracy.
+2. **How does the weekly calories report handle days where the user logged no food?**  
+   *Answer:* A database `$group` stage only produces buckets for dates present in the collection; if a user logs no food on Tuesday, MongoDB omits Tuesday from the aggregate output. Our route handler transforms the sparse database results into a dense 7-day calendar array, filling empty days with `caloriesKcal: 0` so charts render a complete, continuous timeline.
+3. **How is the Atwater energy percentage split calculated?**  
+   *Answer:* Protein and carbohydrates provide approximately $4\text{ kcal}$ per gram, while dietary fats provide $9\text{ kcal}$ per gram. We multiply the grams by their respective energy factors, sum the total macro calories, and divide each macro's calorie yield by the total macro calories to produce the percentage distribution.
+
+#### Practice modification
+In `server/src/routes/reportRoutes.ts`, add a `GET /api/v1/reports/category-breakdown` endpoint that aggregates total calories and meal counts grouped by `mealType` (Breakfast, Lunch, Dinner, Snacks), and author an integration test in `report.test.ts`.
