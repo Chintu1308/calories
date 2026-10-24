@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Calories App Showcase Styles
+   Calories App Showcase Styles — Enhanced with Icons & Branding Suite
    ========================================================================== */
 
 .calories-showcase-layout {
@@ -22,16 +22,61 @@
 .calories-header-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: var(--space-4) var(--space-6);
+  padding: var(--space-3) var(--space-6);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-4);
+}
+
+/* Header Navigation Bar */
+.calories-header-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  background-color: var(--color-sand-soft);
+  padding: 4px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+}
+
+.calories-nav-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-3);
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.calories-nav-tab:hover {
+  color: var(--text-primary);
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
+.calories-nav-tab.active {
+  background-color: var(--surface-card);
+  color: var(--action-primary);
+  font-weight: var(--weight-semibold);
+  box-shadow: var(--shadow-sm);
 }
 
 .calories-header-actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+}
+
+@media (max-width: 860px) {
+  .calories-header-nav {
+    display: none;
+  }
 }
 
 /* Main */
@@ -51,7 +96,7 @@
   background-color: var(--surface-card);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-xl);
-  padding: var(--space-10);
+  padding: var(--space-8) var(--space-10);
   box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
@@ -70,6 +115,32 @@
   background-color: var(--color-sage-soft);
   padding: 4px var(--space-3);
   border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+}
+
+.calories-hero-content-split {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.calories-hero-banner-wrap {
+  flex-shrink: 0;
+}
+
+.calories-hero-app-icon {
+  border-radius: 24px;
+  box-shadow: var(--shadow-elevated);
+  border: 1px solid var(--border-light);
+}
+
+@media (max-width: 768px) {
+  .calories-hero-content-split {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+  }
 }
 
 .calories-hero-title {
@@ -83,7 +154,8 @@
   font-size: var(--text-lg);
   color: var(--text-secondary);
   line-height: var(--leading-relaxed);
-  max-width: 780px;
+  max-width: 720px;
+  margin-top: var(--space-2);
 }
 
 /* Section Containers */
@@ -117,6 +189,57 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+}
+
+/* 22-Icon Gallery Grid */
+.calories-icons-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: var(--space-3);
+}
+
+.calories-icon-gallery-card {
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-2);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.calories-icon-gallery-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+  border-color: rgba(40, 91, 70, 0.3);
+}
+
+.calories-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-sand-soft);
+  border-radius: var(--radius-md);
+}
+
+.calories-icon-title {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.calories-icon-code {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+  background-color: var(--surface-page);
+  padding: 2px 4px;
+  border-radius: 4px;
 }
 
 /* Swatches Grid */
@@ -235,16 +358,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-}
-
-.calories-editorial-note {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-  background-color: var(--color-sand-soft);
-  padding: var(--space-3);
-  border-radius: var(--radius-sm);
-  line-height: var(--leading-normal);
-  border-left: 3px solid var(--color-forest-green);
 }
 
 /* Footer */

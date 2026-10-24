@@ -13,6 +13,8 @@ import {
   Input,
   Select,
   FormField,
+  Icon,
+  type IconName,
 } from './components/ui/index.js';
 import './App.css';
 
@@ -26,6 +28,7 @@ export const App: React.FC = () => {
   const [selectedMealType, setSelectedMealType] = useState<string>('Breakfast');
   const [testFoodInput, setTestFoodInput] = useState<string>('Greek Yogurt Bowl with Honey');
   const [inputError, setInputError] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'meals' | 'goals' | 'reports' | 'ai-scan'>('dashboard');
 
   const targetCalories = 2200;
   const targetProtein = 150;
@@ -62,6 +65,31 @@ export const App: React.FC = () => {
     }
   };
 
+  const officialIcons: { name: IconName; label: string }[] = [
+    { name: 'dashboard', label: 'Dashboard' },
+    { name: 'meals', label: 'Meals' },
+    { name: 'goals', label: 'Goals' },
+    { name: 'reports', label: 'Reports' },
+    { name: 'ai-scan', label: 'AI Scan' },
+    { name: 'calories', label: 'Calories' },
+    { name: 'protein', label: 'Protein' },
+    { name: 'carbs', label: 'Carbs' },
+    { name: 'fat', label: 'Fat' },
+    { name: 'weight', label: 'Weight' },
+    { name: 'water', label: 'Water' },
+    { name: 'heart', label: 'Vitals' },
+    { name: 'calendar', label: 'Calendar' },
+    { name: 'camera', label: 'Camera' },
+    { name: 'plus', label: 'Add' },
+    { name: 'check', label: 'Success' },
+    { name: 'search', label: 'Search' },
+    { name: 'profile', label: 'Profile' },
+    { name: 'settings', label: 'Settings' },
+    { name: 'supplements', label: 'Supplements' },
+    { name: 'vitamins', label: 'Vitamins' },
+    { name: 'navigation-leaf', label: 'Editorial Leaf' },
+  ];
+
   const brandSwatches = [
     { name: 'Ink Navy', hex: '#152238', variable: '--color-ink-navy', role: 'Primary text & dark surfaces', darkText: false },
     { name: 'Forest Green', hex: '#285B46', variable: '--color-forest-green', role: 'Primary actions & brand anchor', darkText: false },
@@ -79,53 +107,124 @@ export const App: React.FC = () => {
       {/* Editorial Header */}
       <header className="calories-header">
         <div className="calories-header-container">
-          <CaloriesLogo size="lg" showTagline={true} />
+          <CaloriesLogo size="md" variant="image" />
+
+          {/* Navigation with official icons */}
+          <nav className="calories-header-nav" aria-label="Main Navigation">
+            <button
+              type="button"
+              className={`calories-nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
+              onClick={() => setActiveTab('dashboard')}
+            >
+              <Icon name="dashboard" size={18} />
+              <span>Dashboard</span>
+            </button>
+            <button
+              type="button"
+              className={`calories-nav-tab ${activeTab === 'meals' ? 'active' : ''}`}
+              onClick={() => setActiveTab('meals')}
+            >
+              <Icon name="meals" size={18} />
+              <span>Meals</span>
+            </button>
+            <button
+              type="button"
+              className={`calories-nav-tab ${activeTab === 'goals' ? 'active' : ''}`}
+              onClick={() => setActiveTab('goals')}
+            >
+              <Icon name="goals" size={18} />
+              <span>Goals</span>
+            </button>
+            <button
+              type="button"
+              className={`calories-nav-tab ${activeTab === 'reports' ? 'active' : ''}`}
+              onClick={() => setActiveTab('reports')}
+            >
+              <Icon name="reports" size={18} />
+              <span>Reports</span>
+            </button>
+            <button
+              type="button"
+              className={`calories-nav-tab ${activeTab === 'ai-scan' ? 'active' : ''}`}
+              onClick={() => setActiveTab('ai-scan')}
+            >
+              <Icon name="ai-scan" size={18} />
+              <span>AI Scan</span>
+            </button>
+          </nav>
+
           <div className="calories-header-actions">
-            <Badge variant="forest">Stage 2: Verified</Badge>
-            <Badge variant="neutral">Editorial Health-Tech</Badge>
+            <Badge variant="forest" icon={<Icon name="check" size={12} />}>
+              Branding Active
+            </Badge>
           </div>
         </div>
       </header>
 
       {/* Main Content Area */}
       <main className="calories-main">
-        {/* Hero Section */}
+        {/* Hero Section with Official Brand Banner */}
         <section className="calories-hero-card">
-          <div className="calories-hero-badge">Design System & Brand Foundation</div>
-          <h1 className="calories-hero-title">Your nutrition, made clearer.</h1>
-          <p className="calories-hero-subtitle">
-            Calories pairs editorial clarity with rigorous health metrics. Below is the verified Stage 2 design system foundation, featuring our custom SVG identity, WCAG AA compliant palette tokens, and reusable component primitives.
-          </p>
+          <div className="calories-hero-badge">
+            <Icon name="navigation-leaf" size={14} style={{ marginRight: '6px' }} />
+            Official Branding & Icons Integrated
+          </div>
+          <div className="calories-hero-content-split">
+            <div>
+              <h1 className="calories-hero-title">Your nutrition, made clearer.</h1>
+              <p className="calories-hero-subtitle">
+                The Calories brand assets and official 22-icon SVG suite are now loaded from <code>/icons/</code> and <code>/branding/</code>. Every icon is color-calibrated to our editorial palette and integrated into our reusable UI primitives.
+              </p>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                <Button
+                  variant="primary"
+                  leftIcon={<Icon name="plus" size={16} />}
+                  onClick={handleSimulateQuickAdd}
+                  isLoading={isLoading}
+                >
+                  Quick Log Meal
+                </Button>
+                <Button
+                  variant="outline"
+                  leftIcon={<Icon name="ai-scan" size={16} />}
+                  onClick={() => setActiveTab('ai-scan')}
+                >
+                  AI Nutrition Scan
+                </Button>
+              </div>
+            </div>
+            <div className="calories-hero-banner-wrap">
+              <img
+                src="/branding/calories-app-icon-light.png"
+                alt="Calories App Icon"
+                className="calories-hero-app-icon"
+                width={120}
+                height={120}
+              />
+            </div>
+          </div>
         </section>
 
-        {/* Brand Tokens Palette Section */}
+        {/* Official 22-Icon Suite Section */}
         <section className="calories-section">
           <div className="calories-section-header">
             <div>
-              <h2 className="calories-section-title">1. Master Color Palette Tokens</h2>
-              <p className="calories-section-subtitle">Single source of truth defined in CSS variables and tokens JSON.</p>
+              <h2 className="calories-section-title">1. Official 22-Icon SVG Suite</h2>
+              <p className="calories-section-subtitle">
+                Custom vector SVG icons loaded dynamically via <code>&lt;Icon name="..." /&gt;</code>.
+              </p>
             </div>
-            <Badge variant="sage">WCAG AA Contrast Compliant</Badge>
+            <Badge variant="sage">22 Custom SVGs</Badge>
           </div>
 
-          <div className="calories-swatches-grid">
-            {brandSwatches.map((swatch) => (
-              <div key={swatch.name} className="calories-swatch-card">
-                <div
-                  className="calories-swatch-preview"
-                  style={{
-                    backgroundColor: swatch.hex,
-                    border: swatch.border ? '1px solid rgba(21, 34, 56, 0.12)' : 'none',
-                    color: swatch.darkText ? '#152238' : '#FFFFFF',
-                  }}
-                >
-                  <span className="calories-swatch-hex">{swatch.hex}</span>
+          <div className="calories-icons-gallery-grid">
+            {officialIcons.map((ic) => (
+              <div key={ic.name} className="calories-icon-gallery-card">
+                <div className="calories-icon-wrapper">
+                  <Icon name={ic.name} size={32} />
                 </div>
-                <div className="calories-swatch-info">
-                  <div className="calories-swatch-name">{swatch.name}</div>
-                  <div className="calories-swatch-var">{swatch.variable}</div>
-                  <div className="calories-swatch-role">{swatch.role}</div>
-                </div>
+                <span className="calories-icon-title">{ic.label}</span>
+                <code className="calories-icon-code">{ic.name}</code>
               </div>
             ))}
           </div>
@@ -135,11 +234,19 @@ export const App: React.FC = () => {
         <section className="calories-section">
           <div className="calories-section-header">
             <div>
-              <h2 className="calories-section-title">2. Accessible Progress Bars & Metrics</h2>
-              <p className="calories-section-subtitle">ARIA-compliant progress tracking with clear numerical units and safe bounds.</p>
+              <h2 className="calories-section-title">2. Macro & Calorie Tracking with Brand Icons</h2>
+              <p className="calories-section-subtitle">
+                Pairing nutritional metrics with official SVG indicators.
+              </p>
             </div>
             <div className="calories-inline-actions">
-              <Button variant="outline" size="sm" onClick={handleSimulateQuickAdd} isLoading={isLoading}>
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<Icon name="plus" size={14} />}
+                onClick={handleSimulateQuickAdd}
+                isLoading={isLoading}
+              >
                 + Log Sample Snack (+250 kcal)
               </Button>
               <Button variant="ghost" size="sm" onClick={handleReset}>
@@ -153,7 +260,10 @@ export const App: React.FC = () => {
             <Card>
               <CardHeader>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <CardTitle>Daily Calorie Target</CardTitle>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Icon name="calories" size={26} />
+                    <CardTitle>Daily Calorie Target</CardTitle>
+                  </div>
                   <Badge variant={calorieCount >= targetCalories ? 'amber' : 'forest'}>
                     {calorieCount >= targetCalories ? 'Target Reached' : 'On Track'}
                   </Badge>
@@ -199,37 +309,55 @@ export const App: React.FC = () => {
             <Card>
               <CardHeader>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <CardTitle>Macronutrient Targets</CardTitle>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Icon name="goals" size={26} />
+                    <CardTitle>Macronutrient Targets</CardTitle>
+                  </div>
                   <Badge variant="sage">Balanced Ratio</Badge>
                 </div>
                 <CardDescription>Daily protein, carbs, and fat progress</CardDescription>
               </CardHeader>
               <CardContent>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <ProgressBar
-                    value={proteinGrams}
-                    max={targetProtein}
-                    label="Protein"
-                    unit="g"
-                    variant="forest"
-                    showPercentage={true}
-                  />
-                  <ProgressBar
-                    value={carbsGrams}
-                    max={targetCarbs}
-                    label="Carbohydrates"
-                    unit="g"
-                    variant="sage"
-                    showPercentage={true}
-                  />
-                  <ProgressBar
-                    value={fatGrams}
-                    max={targetFat}
-                    label="Fats"
-                    unit="g"
-                    variant="amber"
-                    showPercentage={true}
-                  />
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      <Icon name="protein" size={18} />
+                      <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600 }}>Protein</span>
+                    </div>
+                    <ProgressBar
+                      value={proteinGrams}
+                      max={targetProtein}
+                      unit="g"
+                      variant="forest"
+                      showPercentage={true}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      <Icon name="carbs" size={18} />
+                      <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600 }}>Carbohydrates</span>
+                    </div>
+                    <ProgressBar
+                      value={carbsGrams}
+                      max={targetCarbs}
+                      unit="g"
+                      variant="sage"
+                      showPercentage={true}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      <Icon name="fat" size={18} />
+                      <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600 }}>Fats</span>
+                    </div>
+                    <ProgressBar
+                      value={fatGrams}
+                      max={targetFat}
+                      unit="g"
+                      variant="amber"
+                      showPercentage={true}
+                    />
+                  </div>
                 </div>
               </CardContent>
               <CardFooter>
@@ -241,71 +369,56 @@ export const App: React.FC = () => {
           </div>
         </section>
 
-        {/* Reusable UI Components Section */}
+        {/* Master Color Palette Section */}
         <section className="calories-section">
           <div className="calories-section-header">
             <div>
-              <h2 className="calories-section-title">3. Reusable Component Primitives</h2>
-              <p className="calories-section-subtitle">Buttons, Form Fields, Badges, and Semantic States.</p>
+              <h2 className="calories-section-title">3. Master Color Palette Tokens</h2>
+              <p className="calories-section-subtitle">Single source of truth defined in CSS variables and tokens JSON.</p>
+            </div>
+            <Badge variant="sage">WCAG AA Compliant</Badge>
+          </div>
+
+          <div className="calories-swatches-grid">
+            {brandSwatches.map((swatch) => (
+              <div key={swatch.name} className="calories-swatch-card">
+                <div
+                  className="calories-swatch-preview"
+                  style={{
+                    backgroundColor: swatch.hex,
+                    border: swatch.border ? '1px solid rgba(21, 34, 56, 0.12)' : 'none',
+                    color: swatch.darkText ? '#152238' : '#FFFFFF',
+                  }}
+                >
+                  <span className="calories-swatch-hex">{swatch.hex}</span>
+                </div>
+                <div className="calories-swatch-info">
+                  <div className="calories-swatch-name">{swatch.name}</div>
+                  <div className="calories-swatch-var">{swatch.variable}</div>
+                  <div className="calories-swatch-role">{swatch.role}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Form Fields & Interactive Actions */}
+        <section className="calories-section">
+          <div className="calories-section-header">
+            <div>
+              <h2 className="calories-section-title">4. Form Controls with Icon Integration</h2>
+              <p className="calories-section-subtitle">Inputs and select dropdowns styled with the brand design system.</p>
             </div>
           </div>
 
-          <div className="calories-grid-three">
-            {/* Button Variants */}
+          <div className="calories-grid-two">
             <Card>
               <CardHeader>
-                <CardTitle>Button Primitives</CardTitle>
-                <CardDescription>5 semantic variants with 3 size tiers</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="calories-component-stack">
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    <Button variant="primary" size="sm">Primary SM</Button>
-                    <Button variant="primary" size="md">Primary MD</Button>
-                    <Button variant="primary" size="lg">Primary LG</Button>
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    <Button variant="secondary" size="md">Secondary</Button>
-                    <Button variant="outline" size="md">Outline</Button>
-                    <Button variant="destructive" size="md">Destructive</Button>
-                    <Button variant="ghost" size="md">Ghost</Button>
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    <Button variant="primary" size="md" isLoading={true}>Loading</Button>
-                    <Button variant="primary" size="md" disabled={true}>Disabled</Button>
-                  </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Icon name="meals" size={22} />
+                  <CardTitle>Sample Meal Form</CardTitle>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Badges & Indicators */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Badge System</CardTitle>
-                <CardDescription>Semantic status chips with WCAG contrast</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="calories-component-stack">
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    <Badge variant="default">Default Neutral</Badge>
-                    <Badge variant="forest">Forest (Completed)</Badge>
-                    <Badge variant="sage">Sage (In Progress)</Badge>
-                    <Badge variant="amber">Amber (Review Needed)</Badge>
-                    <Badge variant="destructive">Destructive (Over Limit)</Badge>
-                    <Badge variant="neutral">Source: Manual</Badge>
-                  </div>
-                  <div className="calories-editorial-note">
-                    <strong>Accessibility Rule:</strong> State is never communicated by color alone; clear text labels accompany all badges.
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Form Fields & Inputs */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Form Fields & Inputs</CardTitle>
-                <CardDescription>Label, error, hint, and validation wiring</CardDescription>
+                <CardDescription>Simulates entering a food item</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="calories-component-stack">
@@ -314,10 +427,11 @@ export const App: React.FC = () => {
                     htmlFor="food-name-input"
                     required={true}
                     error={inputError}
-                    hint="e.g. Oatmeal with Almond Milk"
+                    hint="e.g. Oatmeal with Blueberries"
                   >
                     <Input
                       id="food-name-input"
+                      leftIcon={<Icon name="search" size={16} />}
                       value={testFoodInput}
                       onChange={(e) => handleValidateInput(e.target.value)}
                       placeholder="Enter food name..."
@@ -340,6 +454,71 @@ export const App: React.FC = () => {
                   </FormField>
                 </div>
               </CardContent>
+              <CardFooter>
+                <Button
+                  variant="primary"
+                  leftIcon={<Icon name="check" size={16} />}
+                  onClick={() => alert(`Validated: ${testFoodInput} for ${selectedMealType}`)}
+                  disabled={!!inputError || !testFoodInput.trim()}
+                >
+                  Save Entry
+                </Button>
+              </CardFooter>
+            </Card>
+
+            {/* Official Branding Assets Card */}
+            <Card>
+              <CardHeader>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Icon name="heart" size={22} />
+                  <CardTitle>Official Brand Lockups</CardTitle>
+                </div>
+                <CardDescription>High-resolution brand assets from <code>/branding/</code></CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ padding: '12px', background: 'var(--color-sand-soft)', borderRadius: '12px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                      Horizontal Logo
+                    </span>
+                    <div style={{ marginTop: '8px' }}>
+                      <img
+                        src="/branding/calories-logo-horizontal.png"
+                        alt="Calories Horizontal Logo"
+                        style={{ height: '44px', width: 'auto', objectFit: 'contain' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                    <div style={{ padding: '12px', background: 'var(--color-sand-soft)', borderRadius: '12px', textAlign: 'center' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                        App Icon Light
+                      </span>
+                      <div style={{ marginTop: '8px' }}>
+                        <img
+                          src="/branding/calories-app-icon-light.png"
+                          alt="Calories Light App Icon"
+                          style={{ height: '56px', width: '56px', objectFit: 'contain', borderRadius: '12px' }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ padding: '12px', background: '#152238', borderRadius: '12px', textAlign: 'center' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: '#FAF9F6', textTransform: 'uppercase' }}>
+                        App Icon Dark
+                      </span>
+                      <div style={{ marginTop: '8px' }}>
+                        <img
+                          src="/branding/calories-app-icon-dark.png"
+                          alt="Calories Dark App Icon"
+                          style={{ height: '56px', width: '56px', objectFit: 'contain', borderRadius: '12px' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
             </Card>
           </div>
         </section>
@@ -348,9 +527,9 @@ export const App: React.FC = () => {
       {/* Editorial Footer */}
       <footer className="calories-footer">
         <div className="calories-footer-container">
-          <CaloriesLogo size="sm" showTagline={false} />
+          <CaloriesLogo size="sm" variant="image" />
           <span className="calories-footer-text">
-            Calories Platform — Stage 2: Brand Identity & Design Tokens Verified.
+            Calories Platform — Official Brand Assets &amp; 22-Icon SVG Suite Verified.
           </span>
           <span className="calories-footer-domain">calories.bhhc.me</span>
         </div>

@@ -6,3 +6,4 @@ export * from './ProgressBar.js';
 export * from './Input.js';
 export * from './Select.js';
 export * from './FormField.js';
+export * from './Icon.js';

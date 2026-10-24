@@ -224,12 +224,12 @@ In `server/src/app.ts`, add an `uptimeSeconds: Math.floor(process.uptime())` pro
 **Date:** 2026-10-24
 
 #### What we built
-1. Original SVG Brand Assets:
-   - `client/public/brand/icon.svg`: Custom vector icon featuring the editorial nutrition leaf and calibrated energy node geometry with brand colors (#152238 ink navy, #285B46 forest green, #BFD8C2 sage green, #FAF9F6 warm ivory).
-   - `client/public/brand/wordmark.svg`: Typographic SVG wordmark "Calories" in Ink Navy with Forest Green accent.
-   - `client/public/brand/logo.svg`: Combined horizontal logo lockup with icon, wordmark, and tagline ("Your nutrition, made clearer.").
-   - `client/public/favicon.svg`: Brand favicon replacing the default Vite logo.
-   - `client/index.html`: Updated page title to "Calories — Your nutrition, made clearer.", added meta description, preconnected Google Fonts for Inter, and linked the new SVG favicon.
+1. Original SVG Brand Assets & Official Brand Suite:
+   - `client/public/branding/` & `client/public/brand/`: Integrated official high-resolution branding assets (`calories-logo-horizontal.png`, `calories-app-icon-light.png`, `calories-app-icon-dark.png`, `calories-favicon.png`, `calories-banner.png`, `calories-icon.png`, `calories-watermark.png`, `calories-tagline.png`).
+   - `client/public/icons/`: Integrated the 22-icon custom SVG suite (`ai-scan.svg`, `calendar.svg`, `calories.svg`, `camera.svg`, `carbs.svg`, `check.svg`, `dashboard.svg`, `fat.svg`, `goals.svg`, `heart.svg`, `meals.svg`, `navigation-leaf.svg`, `plus.svg`, `profile.svg`, `protein.svg`, `reports.svg`, `search.svg`, `settings.svg`, `supplements.svg`, `vitamins.svg`, `water.svg`, `weight.svg`).
+   - `client/src/components/ui/Icon.tsx`: Strongly-typed React SVG icon component dynamically rendering any of the 22 icons with custom size and accessibility attributes.
+   - `client/public/brand/icon.svg` & `logo.svg`: Vector assets for clean SVG rendering.
+   - `client/index.html`: Updated page title to "Calories — Your nutrition, made clearer.", added meta description, preconnected Google Fonts for Inter, and linked the official `/branding/calories-favicon.png` with SVG fallback.
 2. Authoritative Design Tokens:
    - `client/src/styles/calories.tokens.json`: Comprehensive design token dictionary documenting colors, semantic roles, typography scale, spacing hierarchy, border radii, and restrained shadow elevations.
    - `client/src/styles/calories.css`: Declared CSS custom properties for tokens, accessible focus outlines (`:focus-visible`), WCAG AA compliant contrast ratios, base typographic resets, and `@media (prefers-reduced-motion: reduce)` accessibility rules.
@@ -256,6 +256,9 @@ Building user interfaces without a unified design system leads to inconsistent p
 #### Files changed
 | File | Responsibility |
 |---|---|
+| `client/public/branding/` | Official brand assets (horizontal logo, app icons, favicon, banner, watermark). |
+| `client/public/icons/` | Official 22-icon SVG suite for navigation, metrics, and actions. |
+| `client/src/components/ui/Icon.tsx` | Strongly-typed icon component for all 22 custom SVGs. |
 | `client/public/brand/icon.svg` | Original SVG nutrition leaf and calibrated energy node icon. |
 | `client/public/brand/wordmark.svg` | Typographic SVG wordmark in Ink Navy. |
 | `client/public/brand/logo.svg` | Full horizontal brand lockup (icon + wordmark + tagline). |

@@ -1,20 +1,58 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export interface CaloriesLogoProps {
   size?: 'sm' | 'md' | 'lg';
   showTagline?: boolean;
+  variant?: 'image' | 'vector';
   className?: string;
 }
 
 export const CaloriesLogo: React.FC<CaloriesLogoProps> = ({
   size = 'md',
   showTagline = true,
+  variant = 'image',
   className = '',
 }) => {
+  const [imageError, setImageError] = useState(false);
+
+  const heights = {
+    sm: 32,
+    md: 42,
+    lg: 54,
+  }[size];
+
+  // If image variant requested and no loading error occurred
+  if (variant === 'image' && !imageError) {
+    return (
+      <div
+        className={`calories-logo-container ${className}`}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          userSelect: 'none',
+        }}
+      >
+        <img
+          src="/branding/calories-logo-horizontal.png"
+          alt="Calories — Your nutrition, made clearer."
+          height={heights}
+          style={{
+            height: `${heights}px`,
+            width: 'auto',
+            objectFit: 'contain',
+            display: 'block',
+          }}
+          onError={() => setImageError(true)}
+        />
+      </div>
+    );
+  }
+
+  // Fallback or explicit vector lockup
   const iconDimensions = {
-    sm: { width: 28, height: 28, text: 'text-base', tagline: 'text-xs' },
-    md: { width: 36, height: 36, text: 'text-xl', tagline: 'text-xs' },
-    lg: { width: 48, height: 48, text: 'text-2xl', tagline: 'text-sm' },
+    sm: { width: 28, height: 28 },
+    md: { width: 36, height: 36 },
+    lg: { width: 48, height: 48 },
   }[size];
 
   const fontSize = size === 'sm' ? 18 : size === 'lg' ? 26 : 22;
@@ -30,32 +68,22 @@ export const CaloriesLogo: React.FC<CaloriesLogoProps> = ({
         userSelect: 'none',
       }}
     >
-      {/* Brand Icon SVG */}
-      <svg
+      <img
+        src="/branding/calories-icon.png"
+        alt="Calories logo icon"
         width={iconDimensions.width}
         height={iconDimensions.height}
-        viewBox="0 0 64 64"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        role="img"
-        aria-label="Calories brand icon"
-        style={{ flexShrink: 0 }}
-      >
-        <rect width="64" height="64" rx="16" fill="#152238" />
-        <circle cx="32" cy="32" r="22" fill="#285B46" />
-        <path
-          d="M32 16C32 16 45 23 45 35C45 43 39 48 32 48C25 48 19 43 19 35C19 23 32 16 32 16Z"
-          fill="#BFD8C2"
-        />
-        <path
-          d="M32 16C32 16 43 25 40 37C36 32 32 28 26 26C21 24 19 35 19 35C19 23 32 16 32 16Z"
-          fill="#285B46"
-        />
-        <circle cx="32" cy="33" r="4.5" fill="#FAF9F6" />
-        <circle cx="32" cy="33" r="2" fill="#152238" />
-      </svg>
-
-      {/* Brand Typography */}
+        style={{
+          width: `${iconDimensions.width}px`,
+          height: `${iconDimensions.height}px`,
+          objectFit: 'contain',
+          borderRadius: '8px',
+        }}
+        onError={(e) => {
+          // Fallback to SVG if png not loaded
+          e.currentTarget.style.display = 'none';
+        }}
+      />
       <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span
