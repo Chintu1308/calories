@@ -97,6 +97,35 @@ export interface DietPdfUploadResponse {
   instruction: DietInstructionItem;
 }
 
+export interface ChatNutritionMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface ChatNutritionContextSummary {
+  targetCalories: number;
+  consumedCalories: number;
+  remainingCalories: number;
+  targetProtein: number;
+  consumedProtein: number;
+  remainingProtein: number;
+  targetCarbs: number;
+  consumedCarbs: number;
+  remainingCarbs: number;
+  targetFat: number;
+  consumedFat: number;
+  remainingFat: number;
+  allergies: string[];
+  activeDietRulesCount: number;
+  todayMealCount: number;
+}
+
+export interface ChatNutritionResponse {
+  reply: string;
+  suggestedPrompts: string[];
+  contextSummary: ChatNutritionContextSummary;
+}
+
 export interface SmartRecommendationItem {
   id: string;
   foodName: string;
@@ -461,5 +490,20 @@ export const apiClient = {
   async getRecommendations(category?: string): Promise<SmartRecommendationsResponse> {
     const qs = category ? `?category=${encodeURIComponent(category)}` : '';
     return request<SmartRecommendationsResponse>(`/goals/recommendations${qs}`);
+  },
+
+  /**
+   * Sends a nutrition or diet query to the AI Nutrition Chat Assistant.
+   * Grounded with real-time awareness of today's consumed nutrients, active targets, allergies, and clinical diet rules.
+   */
+  async sendNutritionChat(
+    message: string,
+    conversationHistory: ChatNutritionMessage[] = [],
+    clientDate?: string
+  ): Promise<ChatNutritionResponse> {
+    return request<ChatNutritionResponse>('/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message, conversationHistory, clientDate }),
+    });
   },
 };

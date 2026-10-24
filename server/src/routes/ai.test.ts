@@ -136,3 +136,111 @@ test('POST /api/v1/ai/extract extracts uncommitted nutritional proposal from mea
   const finalMealCount = await Meal.countDocuments({ userId: userAId });
   assert.equal(finalMealCount, initialMealCount, 'AI extraction improperly saved a meal to MongoDB!');
 });
+
+test('POST /api/v1/ai/chat requires valid Bearer token (401)', async () => {
+  const res = await fetch(`${baseUrl}/api/v1/ai/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: 'What should I eat for dinner?' }),
+  });
+  assert.equal(res.status, 401);
+});
+
+test('POST /api/v1/ai/chat rejects request with empty message (400)', async () => {
+  const res = await fetch(`${baseUrl}/api/v1/ai/chat`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${tokenA}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ message: '   ' }),
+  });
+  assert.equal(res.status, 400);
+  const data = (await res.json()) as { error: { code: string; message: string } };
+  assert.equal(data.error.code, 'BAD_REQUEST');
+  assert.ok(data.error.message.includes('cannot be empty'));
+});
+
+test('POST /api/v1/ai/chat returns intelligent contextual reply with deficit snapshot and prompt suggestions (200)', async () => {
+  const res = await fetch(`${baseUrl}/api/v1/ai/chat`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${tokenA}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message: 'What should I eat for dinner to reach my protein goal?',
+    }),
+  });
+
+  assert.equal(res.status, 200);
+  const data = (await res.json()) as {
+    reply: string;
+    suggestedPrompts: string[];
+    contextSummary: {
+      targetCalories: number;
+      remainingCalories: number;
+      targetProtein: number;
+      remainingProtein: number;
+      allergies: string[];
+    };
+  };
+
+  assert.ok(data.reply.length > 20);
+  assert.ok(Array.isArray(data.suggestedPrompts));
+  assert.ok(data.suggestedPrompts.length > 0);
+  assert.equal(data.contextSummary.targetCalories, 2000);
+  assert.equal(data.contextSummary.targetProtein, 160);
+  assert.deepEqual(data.contextSummary.allergies, ['Fish']);
+});
+
+test('POST /api/v1/ai/chat enforces strict tenant isolation between users', async () => {
+  // Create User B with completely distinct goals and allergies
+  const userBId = new mongoose.Types.ObjectId().toString();
+  const tokenB = generateToken({ userId: userBId, email: 'user.ai.b@example.com' });
+
+  await User.create({
+    _id: userBId,
+    email: 'user.ai.b@example.com',
+    passwordHash: '$2a$10$abcdefghijklmnopqrstuv',
+    name: 'User B Nutritionist',
+    heightCm: 188,
+    currentWeightKg: 95,
+    targetWeightKg: 90,
+    allergies: ['Peanuts', 'Gluten'],
+  });
+
+  await Goal.create({
+    userId: userBId,
+    title: 'Muscle Bulk',
+    dailyCaloriesKcal: 3200,
+    proteinGrams: 220,
+    carbohydrateGrams: 350,
+    fatGrams: 85,
+    isActive: true,
+  });
+
+  const res = await fetch(`${baseUrl}/api/v1/ai/chat`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${tokenB}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ message: 'Show my daily macros' }),
+  });
+
+  assert.equal(res.status, 200);
+  const data = (await res.json()) as {
+    reply: string;
+    contextSummary: {
+      targetCalories: number;
+      targetProtein: number;
+      allergies: string[];
+    };
+  };
+
+  // Assert User B receives User B's metrics with zero User A leakage
+  assert.equal(data.contextSummary.targetCalories, 3200);
+  assert.equal(data.contextSummary.targetProtein, 220);
+  assert.deepEqual(data.contextSummary.allergies, ['Peanuts', 'Gluten']);
+});

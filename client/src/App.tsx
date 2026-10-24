@@ -10,6 +10,7 @@ import { AuthPage } from './pages/AuthPage.js';
 import { ErrorPage, type HttpErrorCode } from './components/errors/ErrorPage.js';
 import { AddMealModal } from './components/meals/AddMealModal.js';
 import { AuthOnboardingModal, type AuthModalMode } from './components/auth/AuthOnboardingModal.js';
+import { NutritionChatAssistant } from './components/chat/NutritionChatAssistant.js';
 import { CaloriesLogo, CaloriesTagline } from './components/ui/index.js';
 import type { MealItem, MealType, DailyGoal, DayNutritionalSummary, UserProfile, SupplementItem, WaterLogEntry, SupplementLogEntry } from './types/nutrition.js';
 import { exportNutritionReportPdf } from './utils/exportPdf.js';
@@ -821,6 +822,21 @@ export const App: React.FC = () => {
           onAuthSuccess={(name) => {
             setUserProfile((prev) => (prev ? { ...prev, name } : null));
           }}
+        />
+      )}
+
+      {/* AI NUTRITION CHAT ASSISTANT (BONUS FEATURE) */}
+      {userProfile && (
+        <NutritionChatAssistant
+          userName={userProfile.name}
+          activeGoal={goal}
+          consumedCalories={daySummary.consumedCalories}
+          consumedProtein={daySummary.consumedProtein}
+          consumedCarbs={daySummary.consumedCarbs}
+          consumedFat={daySummary.consumedFat}
+          waterIntakeMl={daySummary.waterIntakeMl}
+          selectedDate={selectedDateString}
+          allergies={userProfile.allergies}
         />
       )}
     </>

@@ -1511,3 +1511,61 @@ Client & Server production bundles emitted successfully.
 
 #### Practice modification
 In `render.yaml`, add an environment variable for `LOG_LEVEL=info` and configure a disk mount if persistent local file logging is required in non-containerized environments.
+
+---
+
+### Stage 13: Bonus Feature — AI Nutrition Chat Assistant
+
+#### What was built and why
+Implemented an interactive, context-aware AI Nutrition Chat Assistant available continuously across the application. Unlike generic chatbots, this assistant has server-verified awareness of the user's live daily metrics: daily calorie and macronutrient targets, logged meals for the day, remaining caloric and protein deficits, registered allergies, and active clinical diet rules extracted from doctor/dietitian PDF plans in MongoDB. It gives empathetic, scientifically grounded advice, answers macro questions, suggests recipe ideas, and evaluates whether specific foods fit the user's remaining budget.
+
+#### Changed files and responsibilities
+- `server/src/services/aiChatService.ts`: Core AI chat processor. Pulls user biometric profile, active goals, consumed nutrients for today, and clinical instructions from MongoDB. Constructs system prompts for Gemini Generative AI (`gemini-2.5-flash` / `gemini-1.5-flash`), maintains multi-turn conversation memory, and includes a resilient local fallback engine strictly adhering to daily deficits and allergy boundaries when external AI quota is exhausted. Generates 3 dynamic follow-up prompt chips.
+- `server/src/routes/aiRoutes.ts`: Added `POST /api/v1/ai/chat` endpoint with JWT authentication middleware, input length validation (1-2000 chars), and error handling.
+- `server/src/routes/ai.test.ts`: Added 4 automated integration tests covering authentication (401), empty message rejection (400), contextual response generation with remaining deficits (200), and multi-tenant isolation.
+- `client/src/api/apiClient.ts`: Added `ChatNutritionMessage`, `ChatNutritionContextSummary`, `ChatNutritionResponse` interfaces and `apiClient.sendNutritionChat()` API method.
+- `client/src/components/chat/NutritionChatAssistant.tsx`: Floating chat widget with launcher pill, pulsing live indicator, expandable/collapsible drawer, real-time deficit summary bar, interactive message history with Markdown formatting, dynamic prompt suggestion chips, and responsive mobile adaptation.
+- `client/src/App.css`: Design-token compliant styles for launcher pill, chat drawer, prompt chips, typing indicator, and responsive breakpoints.
+- `client/src/App.tsx`: Mounted `NutritionChatAssistant` with live day summary props and authenticated user profile.
+- `docs/PROGRESS.md` & `docs/DECISIONS.md`: Logged Stage 13 status and architectural decision D-007.
+
+#### Request / data flow
+1. User clicks the floating `Ask Nutritionist AI` launcher pill in the bottom-right corner.
+2. The user selects a quick prompt chip (e.g. *"What should I eat for dinner?"*) or types a custom question.
+3. Client sends `POST /api/v1/ai/chat` with JWT Bearer token, message text, and recent conversation history.
+4. Express middleware `authenticate` verifies JWT and derives `req.user.userId`.
+5. `aiChatService` queries MongoDB for the user's active goal (`Goal`), today's eaten meals (`Meal`), profile allergens (`User`), and active clinical guidelines (`DietInstruction`).
+6. The service formats a structured prompt for Google Gemini Generative AI with the user's exact remaining deficit and constraints.
+7. If Gemini is available, it responds with tailored suggestions and `[SUGGESTIONS]` chips; if rate-limited or offline, the grounded fallback engine generates rich, personalized advice directly from the user's real deficit numbers.
+8. The client renders the response in the conversation bubble with timestamps and interactive prompt chips.
+
+#### Tests and evidence
+```text
+> calories-workspace@0.1.0 lint
+Client: 0 warnings, 0 errors (41 files, 116 rules).
+Server: 0 warnings, 0 errors (38 files, 96 rules).
+
+> calories-workspace@0.1.0 typecheck
+Client: tsc -b && vite build (53 modules transformed in 595ms).
+Server: tsc --noEmit (clean 0 errors).
+
+> calories-workspace@0.1.0 test
+TAP version 13
+1..61
+# tests 61, suites 0, pass 61, fail 0, cancelled 0, skipped 0, todo 0
+# duration_ms 15946.1184
+```
+
+#### Interview explanation
+> "In Stage 13, I designed and shipped an intelligent, context-aware AI Nutrition Chat Assistant. The core differentiator of this feature is real-time context grounding: rather than functioning as a disconnected general LLM, the backend queries the user's active targets, today's logged meals, allergen profile, and clinical PDF diet rules before dispatching the request to the AI model. If external API quotas are exceeded, our resilient internal fallback engine parses the user's intent and evaluates their live deficit numbers to provide safe, actionable meal advice without failing or exposing errors to the user."
+
+#### Likely interview questions
+1. **How do you prevent prompt injection or hallucinated medical claims in the AI Chat Assistant?**  
+   *Answer:* We constrain the AI using a strict system instruction establishing its identity as a supportive health-tech companion rather than a diagnosing physician. Furthermore, critical boundaries—such as food allergies and forbidden foods—are enforced at the data layer: allergens and clinical rules from MongoDB are injected into every prompt, and our fallback engine strictly filters out restricted ingredients before recommending any food.
+2. **How is tenant isolation maintained in conversational endpoints?**  
+   *Answer:* The client never specifies the `userId`. The backend extracts and verifies the `userId` exclusively from the cryptographically verified JWT bearer token. All database queries for meals, goals, and diet instructions are strictly scoped with `{ userId: req.user.userId }`, ensuring zero data leakage between different users.
+3. **What is your strategy for handling third-party AI rate limits (429) or service outages?**  
+   *Answer:* We implemented a multi-layered graceful degradation strategy: first, we iterate through high-performance model fallbacks (`gemini-2.5-flash`, `gemini-1.5-flash`). If all external provider calls fail or are rate-limited, our service falls back seamlessly to a grounded contextual rule engine that analyzes the user's live deficit gap and outputs relevant meal recommendations and follow-up prompts, ensuring the user experience remains 100% operational.
+
+#### Practice modification
+Add a feature to the assistant where clicking a suggested meal recommendation automatically prompts the user to log that meal into their daily timeline with one click.

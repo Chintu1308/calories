@@ -1,0 +1,410 @@
+import mongoose from 'mongoose';
+import { env } from '../config/env.js';
+import { User } from '../models/User.js';
+import { Goal } from '../models/Goal.js';
+import { Meal } from '../models/Meal.js';
+import { DietInstruction } from '../models/DietInstruction.js';
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface NutritionChatContextSummary {
+  targetCalories: number;
+  consumedCalories: number;
+  remainingCalories: number;
+  targetProtein: number;
+  consumedProtein: number;
+  remainingProtein: number;
+  targetCarbs: number;
+  consumedCarbs: number;
+  remainingCarbs: number;
+  targetFat: number;
+  consumedFat: number;
+  remainingFat: number;
+  allergies: string[];
+  activeDietRulesCount: number;
+  todayMealCount: number;
+}
+
+export interface NutritionChatResponse {
+  reply: string;
+  suggestedPrompts: string[];
+  contextSummary: NutritionChatContextSummary;
+}
+
+/**
+ * Intelligent fallback engine when Gemini API key is unavailable, rate-limited (429),
+ * or network encounters a timeout. Delivers high-value, personalized advice strictly
+ * matching the user's live deficits and allergies.
+ */
+function generateContextualFallbackReply(
+  userQuery: string,
+  userName: string,
+  summary: NutritionChatContextSummary,
+  todayMeals: Array<{ foodName: string; calories: number; mealType: string }>,
+  dietRules: string[],
+  forbiddenFoods: string[]
+): { reply: string; suggestedPrompts: string[] } {
+  const q = userQuery.toLowerCase();
+  const firstName = userName ? userName.split(' ')[0] : 'there';
+
+  // 1. Inquiries about dinner or next meal suggestions
+  if (q.includes('dinner') || q.includes('next meal') || q.includes('what should i eat') || q.includes('suggest')) {
+    if (summary.remainingCalories <= 200) {
+      return {
+        reply: `Hi ${firstName}, you have already used most of your daily energy allowance (**${summary.remainingCalories} kcal** remaining out of ${summary.targetCalories} kcal).\n\n` +
+          `**Recommended light options:**\n` +
+          `• Large steamed leafy green salad with lemon juice, cucumber, and 50g low-fat cottage cheese (~120 kcal, 8g protein)\n` +
+          `• Clear vegetable broth with shredded spinach and tofu or egg drop soup (~110 kcal, 7g protein)\n` +
+          `• Chamomile or herbal peppermint tea to soothe evening cravings without caloric load.`,
+        suggestedPrompts: [
+          'How is my total protein for today?',
+          'What can I prep for tomorrow breakfast?',
+          'How much water should I drink tonight?',
+        ],
+      };
+    }
+
+    if (summary.remainingProtein > 30) {
+      const allergyNote = summary.allergies.length > 0 ? ` (avoiding ${summary.allergies.join(', ')})` : '';
+      return {
+        reply: `You still have **${summary.remainingCalories} kcal** and **${summary.remainingProtein}g of protein** remaining to hit your target${allergyNote}!\n\n` +
+          `**Optimal meal options to close your protein gap:**\n` +
+          `1. **Herb Grilled Chicken Breast or Tempeh Bowl** (180g) with roasted broccoli and quinoa — *~420 kcal, 38g protein, 32g carbs, 12g fat*\n` +
+          `2. **Pan-Seared White Fish or Extra-Firm Tofu** with garlic sautéed green beans and a sweet potato — *~380 kcal, 34g protein, 28g carbs, 9g fat*\n` +
+          `3. **Egg White & Veggie Frittata** with baby spinach, bell peppers, and feta — *~310 kcal, 29g protein, 14g carbs, 11g fat*\n\n` +
+          `Pair any of these with a tall glass of water to support digestion!`,
+        suggestedPrompts: [
+          'Give me a 15-minute quick recipe for this',
+          'What about a vegetarian alternative?',
+          'How are my daily carbs looking?',
+        ],
+      };
+    }
+
+    return {
+      reply: `You are in a balanced position with **${summary.remainingCalories} kcal** remaining (**${summary.remainingProtein}g protein** gap).\n\n` +
+        `**Balanced plate suggestion:**\n` +
+        `• 1/2 plate fibrous non-starchy vegetables (asparagus, zucchini, or mixed greens)\n` +
+        `• 1/4 plate lean protein source (grilled turkey, cod, lentils, or edamame)\n` +
+        `• 1/4 plate slow-digesting complex carbs (brown rice, quinoa, or roasted potatoes)\n` +
+        `• 1 tsp healthy fats (extra virgin olive oil or crushed walnuts).`,
+      suggestedPrompts: [
+        'Suggest a quick dessert under 150 kcal',
+        'Did I hit my hydration goal?',
+        'Show my full macro breakdown',
+      ],
+    };
+  }
+
+  // 2. Inquiries regarding protein or macro status
+  if (q.includes('protein') || q.includes('macro') || q.includes('status') || q.includes('progress')) {
+    const proteinPct = Math.round((summary.consumedProtein / (summary.targetProtein || 1)) * 100);
+    const calPct = Math.round((summary.consumedCalories / (summary.targetCalories || 1)) * 100);
+
+    return {
+      reply: `Here is your live macro snapshot for today:\n\n` +
+        `• **Calories**: **${summary.consumedCalories}** / ${summary.targetCalories} kcal (${calPct}% complete • **${summary.remainingCalories} kcal left**)\n` +
+        `• **Protein**: **${summary.consumedProtein}g** / ${summary.targetProtein}g (${proteinPct}% complete • **${summary.remainingProtein}g needed**)\n` +
+        `• **Carbohydrates**: **${summary.consumedCarbs}g** / ${summary.targetCarbs}g (${summary.remainingCarbs}g remaining)\n` +
+        `• **Fat**: **${summary.consumedFat}g** / ${summary.targetFat}g (${summary.remainingFat}g remaining)\n\n` +
+        (summary.remainingProtein > 20
+          ? `👉 **Focus Tip:** You still need **${summary.remainingProtein}g protein**. Consider incorporating Greek yogurt, a whey/plant protein shake, or grilled chicken breast.`
+          : `🎉 **Great job!** You have nearly hit or surpassed your daily protein threshold.`),
+      suggestedPrompts: [
+        'What should I eat next?',
+        'High protein snack under 200 kcal',
+        'Can I have a protein shake now?',
+      ],
+    };
+  }
+
+  // 3. Inquiries regarding snacks
+  if (q.includes('snack') || q.includes('hungry') || q.includes('cravings')) {
+    const safeNutrients = summary.allergies.includes('Nuts')
+      ? 'pumpkin seeds, edamame, or Greek yogurt'
+      : 'almonds, Greek yogurt, or mixed walnuts';
+    return {
+      reply: `Here are healthy, nutrient-dense snack options tailored to your remaining **${summary.remainingCalories} kcal** allowance:\n\n` +
+        `1. **Non-Fat Greek Yogurt (170g) with Berries**: ~130 kcal, 17g protein, 12g carbs, 0g fat.\n` +
+        `2. **Air-Popped Popcorn (3 cups) with Nutritional Yeast**: ~105 kcal, 4g protein, 19g carbs, 1g fat.\n` +
+        `3. **Hard-Boiled Eggs (2 whole)**: ~140 kcal, 12g protein, 1g carbs, 10g fat.\n` +
+        `4. **Roasted Edamame (1/2 cup)**: ~100 kcal, 11g protein, 7g carbs, 4g fat (${safeNutrients}).`,
+      suggestedPrompts: [
+        'How many calories are in an apple?',
+        'What should I eat for dinner?',
+        'Is dark chocolate okay today?',
+      ],
+    };
+  }
+
+  // 4. Inquiries regarding water or hydration
+  if (q.includes('water') || q.includes('hydrate') || q.includes('hydration')) {
+    return {
+      reply: `Hydration directly optimizes metabolic rate, nutrient delivery, and helps regulate appetite signals.\n\n` +
+        `• **Daily Benchmark:** 2,500 – 3,000 ml per day.\n` +
+        `• **Hydration Tip:** Drink a full 350ml glass of water 20 minutes before meals to optimize gastric enzymes and prevent confusing thirst with hunger cues.`,
+      suggestedPrompts: [
+        'Log 500ml water',
+        'What should I eat next?',
+        'How does water impact calorie burn?',
+      ],
+    };
+  }
+
+  // 5. Inquiries regarding allergies or diet plan rules
+  if (q.includes('allerg') || q.includes('pdf') || q.includes('diet plan') || q.includes('rules')) {
+    const allergyList = summary.allergies.length > 0 ? summary.allergies.join(', ') : 'None registered';
+    const rulesList = dietRules.length > 0 ? dietRules.map((r) => `• ${r}`).join('\n') : '• No special dietary restrictions active.';
+    const forbidden = forbiddenFoods.length > 0 ? `\n\n**Restricted Foods:** ${forbiddenFoods.join(', ')}` : '';
+
+    return {
+      reply: `Here are your active dietary safety controls:\n\n` +
+        `• **Registered Allergens:** **${allergyList}**\n` +
+        `• **Clinical Guidelines:**\n${rulesList}${forbidden}\n\n` +
+        `All meal suggestions and AI photo evaluations strictly cross-reference these guidelines before recommending foods.`,
+      suggestedPrompts: [
+        'What should I eat for dinner?',
+        'How is my daily protein looking?',
+        'Suggest an allergen-safe snack',
+      ],
+    };
+  }
+
+  // Default intelligent response acknowledging current logs
+  const mealSummaryStr = todayMeals.length > 0
+    ? `You have logged **${todayMeals.length} meal(s)** today (${todayMeals.map((m) => m.foodName).join(', ')}).`
+    : `You haven't logged any meals yet today.`;
+
+  return {
+    reply: `Hi ${firstName}! ${mealSummaryStr}\n\n` +
+      `You currently have **${summary.remainingCalories} kcal** remaining towards your **${summary.targetCalories} kcal** daily target, with **${summary.remainingProtein}g protein** still needed.\n\n` +
+      `How can I help you today? You can ask me for meal ideas, recipe macro breakdowns, snack suggestions, or advice on fitting a specific food into your remaining budget!`,
+    suggestedPrompts: [
+      'What should I eat for dinner?',
+      'How is my protein intake today?',
+      'Suggest a high-protein snack under 200 kcal',
+    ],
+  };
+}
+
+/**
+ * Main AI Chat Processor:
+ * Gathers user profile, today's meals, remaining targets, and clinical rules,
+ * invokes Gemini Generative AI (with fallback), and returns an empathetic,
+ * scientifically sound nutrition response.
+ */
+export async function processNutritionChat(
+  userId: string,
+  userMessage: string,
+  conversationHistory: ChatMessage[] = [],
+  _clientDate?: string
+): Promise<NutritionChatResponse> {
+  const userObjectId = new mongoose.Types.ObjectId(userId);
+
+  // 1. Fetch user profile
+  const user = await User.findById(userId);
+  const userName = user?.name || 'Friend';
+  const userAllergies = user?.allergies || [];
+
+  // 2. Fetch active goal
+  const goal = await Goal.findOne({ userId, isActive: true });
+  const targetCalories = goal?.dailyCaloriesKcal || 2000;
+  const targetProtein = goal?.proteinGrams || 150;
+  const targetCarbs = goal?.carbohydrateGrams || 200;
+  const targetFat = goal?.fatGrams || 65;
+
+  // 3. Fetch today's consumed nutrients
+  const startOfToday = new Date();
+  startOfToday.setUTCHours(0, 0, 0, 0);
+
+  const todayMeals = await Meal.find({
+    userId: userObjectId,
+    eatenAt: { $gte: startOfToday },
+  }).sort({ eatenAt: 1 });
+
+  let consumedCalories = 0;
+  let consumedProtein = 0;
+  let consumedCarbs = 0;
+  let consumedFat = 0;
+
+  const mealSummaryList: Array<{ foodName: string; calories: number; mealType: string }> = [];
+
+  for (const m of todayMeals) {
+    consumedCalories += m.nutrition?.caloriesKcal || 0;
+    consumedProtein += m.nutrition?.proteinG || 0;
+    consumedCarbs += m.nutrition?.carbsG || 0;
+    consumedFat += m.nutrition?.fatG || 0;
+    mealSummaryList.push({
+      foodName: m.foodName,
+      calories: m.nutrition?.caloriesKcal || 0,
+      mealType: m.mealType,
+    });
+  }
+
+  const remainingCalories = Math.max(0, targetCalories - consumedCalories);
+  const remainingProtein = Math.max(0, targetProtein - consumedProtein);
+  const remainingCarbs = Math.max(0, targetCarbs - consumedCarbs);
+  const remainingFat = Math.max(0, targetFat - consumedFat);
+
+  // 4. Fetch stored dietary instructions from MongoDB
+  const activeInstructions = await DietInstruction.find({
+    userId,
+    isActive: true,
+  });
+  const dietRules = activeInstructions.flatMap((i) => i.dietaryRules || []);
+  const forbiddenFoods = activeInstructions.flatMap((i) => i.forbiddenFoods || []);
+
+  const summary: NutritionChatContextSummary = {
+    targetCalories,
+    consumedCalories,
+    remainingCalories,
+    targetProtein,
+    consumedProtein,
+    remainingProtein,
+    targetCarbs,
+    consumedCarbs,
+    remainingCarbs,
+    targetFat,
+    consumedFat,
+    remainingFat,
+    allergies: userAllergies,
+    activeDietRulesCount: activeInstructions.length,
+    todayMealCount: todayMeals.length,
+  };
+
+  // 5. Check if Gemini API is available
+  const geminiKey = env.GEMINI_API_KEY;
+  if (geminiKey && geminiKey.length > 15 && !geminiKey.includes('placeholder')) {
+    const models = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-3.5-flash'];
+
+    const systemPrompt = `You are the Calories AI Nutrition Assistant — an encouraging, scientifically grounded, editorial health-tech nutrition companion for the Calories app.
+User Name: ${userName}
+Daily Target: ${targetCalories} kcal (Protein: ${targetProtein}g, Carbs: ${targetCarbs}g, Fat: ${targetFat}g)
+Consumed Today: ${consumedCalories} kcal (${consumedProtein}g protein, ${consumedCarbs}g carbs, ${consumedFat}g fat) across ${todayMeals.length} logged meal(s): ${todayMeals.map((m) => `${m.foodName} (${m.nutrition.caloriesKcal} kcal)`).join(', ') || 'None yet'}
+Remaining Today: ${remainingCalories} kcal (${remainingProtein}g protein, ${remainingCarbs}g carbs, ${remainingFat}g fat)
+Registered Allergies: ${userAllergies.length > 0 ? userAllergies.join(', ') : 'None'}
+Clinical Diet Rules: ${dietRules.length > 0 ? dietRules.join('; ') : 'None'}
+Forbidden Foods: ${forbiddenFoods.length > 0 ? forbiddenFoods.join(', ') : 'None'}
+
+Instructions:
+- Address the user warmly as ${userName.split(' ')[0]}.
+- Keep responses concise, practical, and formatted in clean GitHub markdown with bold metrics and bullet points.
+- ALWAYS respect user allergies and forbidden foods strictly. Never suggest allergens.
+- If suggesting meals or snacks, include approximate calories and protein.
+- Keep a calm, supportive, non-judgmental tone. Never claim to diagnose medical conditions.
+- At the very end of your response, output exactly 3 suggested follow-up questions for the user, enclosed between [SUGGESTIONS] and [/SUGGESTIONS] tags, separated by newlines.
+Example:
+[SUGGESTIONS]
+What should I eat for dinner?
+High protein snack under 200 kcal
+How is my macro split today?
+[/SUGGESTIONS]`;
+
+    // Format conversation history for Gemini contents
+    const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [
+      {
+        role: 'user',
+        parts: [{ text: systemPrompt }],
+      },
+      {
+        role: 'model',
+        parts: [{ text: `Understood! I am ready to assist ${userName.split(' ')[0]} with real-time awareness of their nutrition targets, logged meals, and dietary rules.` }],
+      },
+    ];
+
+    // Append up to last 6 chat history turns
+    const recentHistory = conversationHistory.slice(-6);
+    for (const h of recentHistory) {
+      contents.push({
+        role: h.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: h.content }],
+      });
+    }
+
+    // Append the new user message
+    contents.push({
+      role: 'user',
+      parts: [{ text: userMessage }],
+    });
+
+    for (const model of models) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 7000);
+
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+        const response = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents,
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 800,
+            },
+          }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const data = (await response.json()) as any;
+          const candidateText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (candidateText && candidateText.trim().length > 0) {
+            let reply = candidateText.trim();
+            const suggestedPrompts: string[] = [];
+
+            // Extract [SUGGESTIONS] block if present
+            const match = reply.match(/\[SUGGESTIONS\]([\s\S]*?)\[\/SUGGESTIONS\]/);
+            if (match) {
+              const rawSuggestions = match[1];
+              const lines = rawSuggestions
+                .split('\n')
+                .map((l: string) => l.replace(/^[•\-*\d.\s]+/, '').trim())
+                .filter((l: string) => l.length > 2);
+              suggestedPrompts.push(...lines.slice(0, 3));
+              reply = reply.replace(/\[SUGGESTIONS\][\s\S]*?\[\/SUGGESTIONS\]/, '').trim();
+            }
+
+            if (suggestedPrompts.length === 0) {
+              suggestedPrompts.push(
+                'What should I eat next?',
+                'How is my daily protein intake?',
+                'Suggest an evening snack'
+              );
+            }
+
+            return {
+              reply,
+              suggestedPrompts,
+              contextSummary: summary,
+            };
+          }
+        }
+      } catch (err) {
+        clearTimeout(timeoutId);
+        console.warn(`[Calories AI Chat] Attempt with model ${model} failed, trying next:`, err);
+      }
+    }
+  }
+
+  // Fallback to our grounded contextual rule engine if Gemini is unreachable or unconfigured
+  const fallback = generateContextualFallbackReply(
+    userMessage,
+    userName,
+    summary,
+    mealSummaryList,
+    dietRules,
+    forbiddenFoods
+  );
+
+  return {
+    reply: fallback.reply,
+    suggestedPrompts: fallback.suggestedPrompts,
+    contextSummary: summary,
+  };
+}

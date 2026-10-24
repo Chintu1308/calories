@@ -7,6 +7,7 @@ import { Meal } from '../models/Meal.js';
 import { DietInstruction } from '../models/DietInstruction.js';
 import { extractNutritionFromImage } from '../services/aiVisionService.js';
 import { parseDietPlanPdf } from '../services/dietPdfService.js';
+import { processNutritionChat } from '../services/aiChatService.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { AppError } from '../errors/AppError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -262,5 +263,41 @@ aiRouter.delete(
       message: 'Diet instruction removed from AI engine.',
       id,
     });
+  })
+);
+
+/**
+ * POST /api/v1/ai/chat (BONUS FEATURE)
+ * Interactive AI Nutrition Chat Assistant.
+ * Provides personalized nutritional advice, meal recommendations, and macro deficit analysis
+ * grounded in the user's active goals, consumed meals today, allergies, and diet PDF instructions.
+ */
+aiRouter.post(
+  '/chat',
+  asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw AppError.unauthorized();
+    }
+
+    const { message, conversationHistory, clientDate } = req.body;
+
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      throw AppError.badRequest('Message cannot be empty. Please ask a nutrition question.');
+    }
+
+    if (message.length > 2000) {
+      throw AppError.badRequest('Message exceeds maximum allowed length (2000 characters).');
+    }
+
+    const history = Array.isArray(conversationHistory) ? conversationHistory : [];
+
+    const chatResult = await processNutritionChat(
+      req.user.userId,
+      message.trim(),
+      history,
+      clientDate
+    );
+
+    res.status(200).json(chatResult);
   })
 );
