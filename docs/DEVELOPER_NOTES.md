@@ -917,7 +917,7 @@ In `server/src/models/User.ts`, add a `lastLoginAt: Date` timestamp field and up
 
 ### Stage 6 — Goal Setting & Personal Nutrition Targets
 **Status:** Verified  
-**Commit:** `Pending` (feat(goals): add personal nutrition targets)  
+**Commit:** `6b219f5 feat(goals): add personal nutrition targets`  
 **Date:** 2026-10-24
 
 #### What we built
