@@ -12,7 +12,54 @@ import {
   Icon,
 } from '../components/ui/index.js';
 import type { DailyGoal, MealItem, FoodRecommendation } from '../types/nutrition.js';
-import { SAMPLE_RECOMMENDATIONS, generateWeightProjection } from '../data/mockNutritionData.js';
+import { generateWeightProjection } from '../utils/weightProjection.js';
+
+const RECOMMENDED_HEALTH_FOODS: FoodRecommendation[] = [
+  {
+    id: 'rec_1',
+    foodName: 'Grilled Chicken Breast with Steamed Broccoli',
+    portion: '160g chicken + 100g broccoli',
+    caloriesKcal: 260,
+    proteinG: 48,
+    carbsG: 7,
+    fatG: 4,
+    reason: 'Fulfills remaining protein target with lean, high-satiety volume',
+    macroFocus: 'protein',
+  },
+  {
+    id: 'rec_2',
+    foodName: '0% Fat Greek Yogurt with Chia & Raspberries',
+    portion: '200g yogurt + 40g raspberries',
+    caloriesKcal: 170,
+    proteinG: 21,
+    carbsG: 16,
+    fatG: 2,
+    reason: 'Slow-digesting casein protein plus gut-friendly dietary fiber',
+    macroFocus: 'protein',
+  },
+  {
+    id: 'rec_3',
+    foodName: 'Wild Atlantic Salmon Fillet with Asparagus',
+    portion: '180g salmon + 8 spears',
+    caloriesKcal: 380,
+    proteinG: 36,
+    carbsG: 4,
+    fatG: 22,
+    reason: 'Nutrient-dense dinner option rich in bioavailable Omega-3s',
+    macroFocus: 'balanced',
+  },
+  {
+    id: 'rec_4',
+    foodName: 'Tofu & Edamame Sauté with Brown Rice',
+    portion: '150g firm tofu + 50g edamame + 80g rice',
+    caloriesKcal: 320,
+    proteinG: 24,
+    carbsG: 38,
+    fatG: 8,
+    reason: 'Plant-powered complete amino acid profile with complex carbohydrates',
+    macroFocus: 'balanced',
+  },
+];
 
 export interface GoalsPageProps {
   currentGoal: DailyGoal;
@@ -422,7 +469,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-          {SAMPLE_RECOMMENDATIONS.map((rec) => (
+          {RECOMMENDED_HEALTH_FOODS.map((rec) => (
             <Card key={rec.id} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <CardContent style={{ padding: '18px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>

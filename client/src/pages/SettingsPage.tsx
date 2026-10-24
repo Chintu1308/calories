@@ -13,7 +13,21 @@ import {
   Icon,
 } from '../components/ui/index.js';
 import type { MealItem, DailyGoal, UserProfile } from '../types/nutrition.js';
-import { SAMPLE_USER_PROFILE } from '../data/mockNutritionData.js';
+
+const DEFAULT_SETTINGS_PROFILE: UserProfile = {
+  id: '',
+  name: 'User',
+  email: '',
+  heightCm: 175,
+  currentWeightKg: 75,
+  targetWeightKg: 70,
+  targetWeeks: 8,
+  targetDate: new Date().toISOString().split('T')[0],
+  activityLevel: 'moderate',
+  allergies: [],
+  supplements: [],
+  primaryGoal: 'fat_loss',
+};
 
 export interface SettingsPageProps {
   meals: MealItem[];
@@ -26,7 +40,7 @@ export interface SettingsPageProps {
 export const SettingsPage: React.FC<SettingsPageProps> = ({
   meals,
   goal,
-  userProfile = SAMPLE_USER_PROFILE,
+  userProfile = DEFAULT_SETTINGS_PROFILE,
   onEditProfile,
   onExportPdf,
 }) => {

@@ -24,6 +24,7 @@ export interface DashboardShellProps {
   onOpenAIScan: () => void;
   userName?: string;
   onOpenAuthModal?: () => void;
+  onLogout?: () => void;
 }
 
 export const DashboardShell: React.FC<DashboardShellProps> = ({
@@ -40,8 +41,9 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
   weeklyTrend,
   onAddMeal,
   onOpenAIScan,
-  userName = 'Alex Henderson',
+  userName = 'User',
   onOpenAuthModal,
+  onLogout,
 }) => {
   const isLoading = viewState === 'loading';
   const displayedMeals = viewState === 'empty' ? [] : meals;
@@ -67,6 +69,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
         onOpenAIScan={onOpenAIScan}
         userName={userName}
         onOpenAuthModal={onOpenAuthModal}
+        onLogout={onLogout}
       />
 
       {/* 2. Main Dashboard Canvas */}

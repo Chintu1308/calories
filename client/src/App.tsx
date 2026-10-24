@@ -6,21 +6,41 @@ import { GoalsPage } from './pages/GoalsPage.js';
 import { ReportsPage } from './pages/ReportsPage.js';
 import { AIScanPage } from './pages/AIScanPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
+import { AuthPage } from './pages/AuthPage.js';
 import { ErrorPage, type HttpErrorCode } from './components/errors/ErrorPage.js';
 import { AddMealModal } from './components/meals/AddMealModal.js';
 import { AuthOnboardingModal, type AuthModalMode } from './components/auth/AuthOnboardingModal.js';
 import { CaloriesLogo } from './components/ui/index.js';
-import {
-  SAMPLE_DAILY_GOAL,
-  SAMPLE_USER_PROFILE,
-} from './data/mockNutritionData.js';
-import type { MealItem, MealType, DailyGoal, DayNutritionalSummary, UserProfile } from './types/nutrition.js';
+import type { MealItem, MealType, DailyGoal, DayNutritionalSummary, UserProfile, SupplementItem } from './types/nutrition.js';
 import { exportNutritionReportPdf } from './utils/exportPdf.js';
 import { computeWeeklyTrend } from './utils/trendCalculator.js';
-import { apiClient } from './api/apiClient.js';
+import { apiClient, getStoredToken, setStoredToken } from './api/apiClient.js';
 import './App.css';
 
+const DEFAULT_INITIAL_GOAL: DailyGoal = {
+  dailyCaloriesKcal: 2000,
+  proteinGrams: 150,
+  carbohydrateGrams: 200,
+  fatGrams: 65,
+  targetWeight: 70,
+  weightUnit: 'kg',
+  title: 'Daily Nutrition Target',
+};
+
 export const App: React.FC = () => {
+  // Authentication State
+  const [token, setToken] = useState<string | null>(() => getStoredToken());
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
+    try {
+      const saved = localStorage.getItem('calories_user_profile');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const isAuthenticated = Boolean(token && userProfile);
+
   // Navigation & State Management
   const [activeTab, setActiveTab] = useState<NavTabId>('dashboard');
   const [viewState, setViewState] = useState<DashboardViewState>('normal');
@@ -46,56 +66,68 @@ export const App: React.FC = () => {
     }
   });
 
-  // Sync meals to localStorage for client-side persistence and offline resilience
+  // Sync meals to localStorage for client-side persistence
   useEffect(() => {
-    try {
-      localStorage.setItem('calories_meals', JSON.stringify(meals));
-    } catch {
-      // Ignore localStorage write error
+    if (isAuthenticated) {
+      try {
+        localStorage.setItem('calories_meals', JSON.stringify(meals));
+      } catch {
+        // Ignore localStorage write error
+      }
     }
-  }, [meals]);
+  }, [meals, isAuthenticated]);
 
   // Goal state persisted to localStorage and MongoDB
   const [goal, setGoal] = useState<DailyGoal>(() => {
     try {
       const saved = localStorage.getItem('calories_daily_goal');
-      return saved ? JSON.parse(saved) : SAMPLE_DAILY_GOAL;
+      return saved ? JSON.parse(saved) : DEFAULT_INITIAL_GOAL;
     } catch {
-      return SAMPLE_DAILY_GOAL;
+      return DEFAULT_INITIAL_GOAL;
     }
   });
 
   useEffect(() => {
-    try {
-      localStorage.setItem('calories_daily_goal', JSON.stringify(goal));
-    } catch {
-      // Ignore localStorage write error
+    if (isAuthenticated) {
+      try {
+        localStorage.setItem('calories_daily_goal', JSON.stringify(goal));
+      } catch {
+        // Ignore localStorage write error
+      }
     }
-  }, [goal]);
+  }, [goal, isAuthenticated]);
 
-  // User Profile & Onboarding State (persisted to localStorage)
-  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
-    try {
-      const saved = localStorage.getItem('calories_user_profile');
-      return saved ? JSON.parse(saved) : SAMPLE_USER_PROFILE;
-    } catch {
-      return SAMPLE_USER_PROFILE;
-    }
-  });
-
+  // Persist userProfile to localStorage when updated
   useEffect(() => {
-    try {
-      localStorage.setItem('calories_user_profile', JSON.stringify(userProfile));
-    } catch {
-      // Ignore localStorage write error
+    if (userProfile) {
+      try {
+        localStorage.setItem('calories_user_profile', JSON.stringify(userProfile));
+      } catch {
+        // Ignore localStorage write error
+      }
     }
   }, [userProfile]);
+
+  // Logout handler
+  const handleLogout = () => {
+    apiClient.logout();
+    setToken(null);
+    setUserProfile(null);
+    setMeals([]);
+    try {
+      localStorage.removeItem('calories_user_profile');
+      localStorage.removeItem('calories_meals');
+      localStorage.removeItem('calories_daily_goal');
+    } catch {
+      // Ignore storage clear error
+    }
+  };
 
   // Modal dialog states
   const [isAddMealOpen, setIsAddMealOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<MealType>('Breakfast');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<AuthModalMode>('register');
+  const [authModalMode, setAuthModalMode] = useState<AuthModalMode>('edit_profile');
 
   // Dynamic calculations from meals
   const consumedCalories = meals.reduce((acc, m) => acc + m.nutrition.caloriesKcal, 0);
@@ -119,8 +151,8 @@ export const App: React.FC = () => {
     targetFat: goal.fatGrams,
     waterIntakeMl: 2250,
     targetWaterMl: 3000,
-    currentWeightKg: userProfile.currentWeightKg || 74.2,
-    targetWeightKg: userProfile.targetWeightKg || goal.targetWeight || 70.0,
+    currentWeightKg: userProfile?.currentWeightKg || 74.2,
+    targetWeightKg: userProfile?.targetWeightKg || goal.targetWeight || 70.0,
   };
 
   // Date labels
@@ -153,31 +185,67 @@ export const App: React.FC = () => {
     setIsAddMealOpen(true);
   };
 
-  // Synchronize with backend API on mount
+  // Synchronize with backend API on mount ONLY when authenticated
   useEffect(() => {
+    if (!isAuthenticated) return;
     let isMounted = true;
+
     const syncWithBackend = async () => {
       try {
-        const [goalRes, mealsRes] = await Promise.allSettled([
+        const [meRes, goalRes, mealsRes] = await Promise.allSettled([
+          apiClient.getMe(),
           apiClient.getActiveGoal(),
           apiClient.getMeals({ limit: 50 }),
         ]);
+
         if (!isMounted) return;
+
+        // Verify session validity
+        if (meRes.status === 'fulfilled' && meRes.value?.user) {
+          const u = meRes.value.user;
+          const mappedSupplements: SupplementItem[] = (u.supplements || []).map((s) => ({
+            id: s.id,
+            name: s.name,
+            dosage: s.dosage,
+            timing: (s.timing as SupplementItem['timing']) || 'Morning',
+            notes: s.notes,
+          }));
+
+          setUserProfile((prev) => ({
+            id: u._id,
+            name: u.name,
+            email: u.email,
+            heightCm: u.heightCm || prev?.heightCm || 175,
+            currentWeightKg: u.currentWeightKg || prev?.currentWeightKg || 75,
+            targetWeightKg: u.targetWeightKg || prev?.targetWeightKg || 70,
+            targetWeeks: u.targetWeeks || prev?.targetWeeks || 8,
+            targetDate: prev?.targetDate || new Date().toISOString().split('T')[0],
+            activityLevel: prev?.activityLevel || 'moderate',
+            allergies: u.allergies || prev?.allergies || [],
+            supplements: mappedSupplements.length > 0 ? mappedSupplements : prev?.supplements || [],
+            primaryGoal: (u.primaryGoal as UserProfile['primaryGoal']) || prev?.primaryGoal || 'fat_loss',
+          }));
+        } else if (meRes.status === 'rejected' && (meRes.reason as { status?: number })?.status === 401) {
+          handleLogout();
+          return;
+        }
+
         if (goalRes.status === 'fulfilled' && goalRes.value?.goal) {
           setGoal(goalRes.value.goal);
         }
-        if (mealsRes.status === 'fulfilled' && mealsRes.value?.meals?.length > 0) {
+        if (mealsRes.status === 'fulfilled' && mealsRes.value?.meals) {
           setMeals(mealsRes.value.meals);
         }
-      } catch {
-        // Retain local defaults if server is unreachable
+      } catch (err) {
+        console.warn('[Calories Client] Backend sync offline notice:', err);
       }
     };
+
     syncWithBackend();
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isAuthenticated]);
 
   // Intercept uncaught API HTTP errors and present the branded error page
   useEffect(() => {
@@ -185,7 +253,14 @@ export const App: React.FC = () => {
       const reason = event.reason;
       if (reason && typeof reason === 'object' && 'status' in reason) {
         const status = Number(reason.status);
-        if ([400, 401, 402, 403, 404, 500, 503].includes(status)) {
+        if (status === 401) {
+          // Session expired or unauthenticated, return smoothly to login
+          handleLogout();
+          event.preventDefault();
+          return;
+        }
+
+        if ([400, 402, 403, 404, 500, 503].includes(status)) {
           setActiveError({
             code: status as HttpErrorCode,
             message: (reason as { message?: string }).message || undefined,
@@ -208,7 +283,11 @@ export const App: React.FC = () => {
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'status' in err) {
         const status = Number((err as { status: number }).status);
-        if ([400, 401, 403, 404, 500, 503].includes(status)) {
+        if (status === 401) {
+          handleLogout();
+          return;
+        }
+        if ([400, 403, 404, 500, 503].includes(status)) {
           setActiveError({ code: status as HttpErrorCode, message: (err as { message?: string }).message });
         }
       }
@@ -222,7 +301,11 @@ export const App: React.FC = () => {
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'status' in err) {
         const status = Number((err as { status: number }).status);
-        if ([400, 401, 403, 404, 500, 503].includes(status)) {
+        if (status === 401) {
+          handleLogout();
+          return;
+        }
+        if ([400, 403, 404, 500, 503].includes(status)) {
           setActiveError({ code: status as HttpErrorCode, message: (err as { message?: string }).message });
         }
       }
@@ -236,14 +319,18 @@ export const App: React.FC = () => {
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'status' in err) {
         const status = Number((err as { status: number }).status);
-        if ([400, 401, 403, 404, 500, 503].includes(status)) {
+        if (status === 401) {
+          handleLogout();
+          return;
+        }
+        if ([400, 403, 404, 500, 503].includes(status)) {
           setActiveError({ code: status as HttpErrorCode, message: (err as { message?: string }).message });
         }
       }
     }
   };
 
-  const handleOpenAuthModal = (mode: AuthModalMode = 'register') => {
+  const handleOpenAuthModal = (mode: AuthModalMode = 'edit_profile') => {
     setAuthModalMode(mode);
     setIsAuthModalOpen(true);
   };
@@ -258,6 +345,24 @@ export const App: React.FC = () => {
       }));
     }
   };
+
+  // If user is not authenticated, render the Auth/Sign-in Gate (NO dashboard shown without login)
+  if (!isAuthenticated) {
+    return (
+      <AuthPage
+        onAuthSuccess={(profile, newToken) => {
+          setStoredToken(newToken);
+          setToken(newToken);
+          setUserProfile(profile);
+          try {
+            localStorage.setItem('calories_user_profile', JSON.stringify(profile));
+          } catch {
+            // Ignore storage error
+          }
+        }}
+      />
+    );
+  }
 
   // Dynamic rolling 7-day trend calculated from user's genuine meal entries
   const weeklyTrend = computeWeeklyTrend(meals, goal.dailyCaloriesKcal);
@@ -277,8 +382,9 @@ export const App: React.FC = () => {
             setActiveError(null);
             setActiveTab('ai-scan');
           }}
-          userName={userProfile.name}
+          userName={userProfile?.name || 'User'}
           onOpenAuthModal={() => handleOpenAuthModal('edit_profile')}
+          onLogout={handleLogout}
         />
 
         <main className="calories-main" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '65vh' }}>
@@ -324,8 +430,9 @@ export const App: React.FC = () => {
           weeklyTrend={weeklyTrend}
           onAddMeal={handleOpenAddMeal}
           onOpenAIScan={() => setActiveTab('ai-scan')}
-          userName={userProfile.name}
+          userName={userProfile?.name || 'User'}
           onOpenAuthModal={() => handleOpenAuthModal('edit_profile')}
+          onLogout={handleLogout}
         />
       ) : (
         <div className="calories-showcase-layout">
@@ -334,8 +441,9 @@ export const App: React.FC = () => {
             onTabChange={setActiveTab}
             onOpenAddMeal={() => handleOpenAddMeal('Breakfast')}
             onOpenAIScan={() => setActiveTab('ai-scan')}
-            userName={userProfile.name}
+            userName={userProfile?.name || 'User'}
             onOpenAuthModal={() => handleOpenAuthModal('edit_profile')}
+            onLogout={handleLogout}
           />
 
           <main className="calories-main">
@@ -352,7 +460,7 @@ export const App: React.FC = () => {
               <GoalsPage
                 currentGoal={goal}
                 onSaveGoal={handleSaveGoal}
-                currentWeightKg={userProfile.currentWeightKg}
+                currentWeightKg={userProfile?.currentWeightKg}
                 consumedCalories={consumedCalories}
                 consumedProtein={consumedProtein}
                 consumedCarbs={consumedCarbs}
@@ -365,7 +473,7 @@ export const App: React.FC = () => {
               <ReportsPage
                 meals={meals}
                 goal={goal}
-                userProfile={userProfile}
+                userProfile={userProfile || undefined}
                 weeklyTrend={weeklyTrend}
               />
             )}
@@ -380,7 +488,7 @@ export const App: React.FC = () => {
                 remainingProtein={remainingProtein}
                 remainingCarbs={remainingCarbs}
                 remainingFat={remainingFat}
-                userAllergies={userProfile.allergies}
+                userAllergies={userProfile?.allergies || []}
               />
             )}
 
@@ -388,11 +496,24 @@ export const App: React.FC = () => {
               <SettingsPage
                 meals={meals}
                 goal={goal}
-                userProfile={userProfile}
+                userProfile={userProfile || undefined}
                 onEditProfile={() => handleOpenAuthModal('edit_profile')}
                 onExportPdf={() =>
                   exportNutritionReportPdf({
-                    userProfile,
+                    userProfile: userProfile || {
+                      id: '',
+                      name: 'User',
+                      email: '',
+                      heightCm: 175,
+                      currentWeightKg: 75,
+                      targetWeightKg: 70,
+                      targetWeeks: 8,
+                      targetDate: new Date().toISOString().split('T')[0],
+                      activityLevel: 'moderate',
+                      allergies: [],
+                      supplements: [],
+                      primaryGoal: 'fat_loss',
+                    },
                     goal,
                     meals,
                     weeklyTrend,
@@ -422,17 +543,19 @@ export const App: React.FC = () => {
         onSaveMeal={handleSaveMeal}
       />
 
-      {/* USER REGISTER / LOGIN & HEALTH ONBOARDING PROFILE MODAL */}
-      <AuthOnboardingModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        initialMode={authModalMode}
-        currentProfile={userProfile}
-        onSaveProfile={handleSaveUserProfile}
-        onAuthSuccess={(name) => {
-          setUserProfile((prev) => ({ ...prev, name }));
-        }}
-      />
+      {/* USER EDIT PROFILE MODAL */}
+      {userProfile && (
+        <AuthOnboardingModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          initialMode={authModalMode}
+          currentProfile={userProfile}
+          onSaveProfile={handleSaveUserProfile}
+          onAuthSuccess={(name) => {
+            setUserProfile((prev) => (prev ? { ...prev, name } : null));
+          }}
+        />
+      )}
     </>
   );
 };

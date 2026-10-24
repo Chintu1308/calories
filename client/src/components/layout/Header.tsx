@@ -16,6 +16,7 @@ export interface HeaderProps {
   onOpenAIScan: () => void;
   userName?: string;
   onOpenAuthModal?: () => void;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,8 +24,9 @@ export const Header: React.FC<HeaderProps> = ({
   onTabChange,
   onOpenAddMeal,
   onOpenAIScan,
-  userName = 'Alex Henderson',
+  userName = 'User',
   onOpenAuthModal,
+  onLogout,
 }) => {
   const navItems: { id: NavTabId; label: string; icon: IconName }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
@@ -115,6 +117,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             Log Meal
           </Button>
+
+          {onLogout && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onLogout}
+              title="Sign Out of Calories"
+              style={{ color: 'var(--text-secondary)', padding: '4px 8px', fontSize: '11px' }}
+            >
+              Sign Out
+            </Button>
+          )}
         </div>
       </div>
     </header>

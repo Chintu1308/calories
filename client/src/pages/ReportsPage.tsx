@@ -13,10 +13,24 @@ import {
   Icon,
 } from '../components/ui/index.js';
 import type { MealItem, DailyGoal, UserProfile } from '../types/nutrition.js';
-import { SAMPLE_USER_PROFILE } from '../data/mockNutritionData.js';
 import { exportNutritionReportPdf } from '../utils/exportPdf.js';
 import { computeWeeklyTrend } from '../utils/trendCalculator.js';
 import type { DayTrendPoint } from '../components/reports/WeeklyTrendPreview.js';
+
+const DEFAULT_REPORT_PROFILE: UserProfile = {
+  id: '',
+  name: 'User',
+  email: '',
+  heightCm: 175,
+  currentWeightKg: 75,
+  targetWeightKg: 70,
+  targetWeeks: 8,
+  targetDate: new Date().toISOString().split('T')[0],
+  activityLevel: 'moderate',
+  allergies: [],
+  supplements: [],
+  primaryGoal: 'fat_loss',
+};
 
 export interface ReportsPageProps {
   meals: MealItem[];
@@ -28,7 +42,7 @@ export interface ReportsPageProps {
 export const ReportsPage: React.FC<ReportsPageProps> = ({
   meals,
   goal,
-  userProfile = SAMPLE_USER_PROFILE,
+  userProfile = DEFAULT_REPORT_PROFILE,
   weeklyTrend,
 }) => {
   const [groupBy, setGroupBy] = useState<'day' | 'week'>('day');
