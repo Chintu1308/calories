@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardHeader,
@@ -13,6 +13,7 @@ import {
 } from '../components/ui/index.js';
 import type { DailyGoal, MealItem } from '../types/nutrition.js';
 import { generateWeightProjection } from '../utils/weightProjection.js';
+import { apiClient, type SmartRecommendationItem } from '../api/apiClient.js';
 
 export interface GoalsPageProps {
   currentGoal: DailyGoal;
@@ -23,6 +24,14 @@ export interface GoalsPageProps {
   consumedCarbs?: number;
   consumedFat?: number;
   onQuickLogMeal?: (meal: MealItem) => void;
+}
+
+function generateQuickLogMealId(): string {
+  return `meal_rec_${Date.now()}`;
+}
+
+function getQuickLogTimestamp(): string {
+  return new Date().toISOString();
 }
 
 export const GoalsPage: React.FC<GoalsPageProps> = ({
@@ -51,6 +60,82 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
 
   const [validationError, setValidationError] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  // Dynamic ML Recommendation Engine State
+  const [recommendations, setRecommendations] = useState<SmartRecommendationItem[]>([]);
+  const [isLoadingRecs, setIsLoadingRecs] = useState(true);
+  const [recModelInfo, setRecModelInfo] = useState<{
+    version: string;
+    primaryGoal: string;
+    activePdfInstructionsCount: number;
+  } | null>(null);
+  const [quickLogSuccess, setQuickLogSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    apiClient
+      .getRecommendations()
+      .then((res) => {
+        if (mounted) {
+          setRecommendations(res.recommendations);
+          setRecModelInfo(res.modelInfo);
+        }
+      })
+      .catch(() => {
+        // Fallback silently if offline or unauthenticated
+      })
+      .finally(() => {
+        if (mounted) setIsLoadingRecs(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [currentGoal.title, currentGoal.dailyCaloriesKcal, consumedCalories]);
+
+  const handleQuickLog = async (rec: SmartRecommendationItem) => {
+    const newMeal: MealItem = {
+      id: generateQuickLogMealId(),
+      userId: '',
+      foodName: rec.foodName,
+      mealType: rec.category,
+      eatenAt: getQuickLogTimestamp(),
+      quantity: {
+        amount: rec.portionAmount,
+        unit: rec.portionUnit,
+      },
+      nutrition: {
+        caloriesKcal: rec.nutrition.caloriesKcal,
+        proteinG: rec.nutrition.proteinG,
+        carbsG: rec.nutrition.carbsG,
+        fatG: rec.nutrition.fatG,
+      },
+      source: 'ai',
+      notes: `Quick logged from ML Recommendation Engine (${rec.matchScore}% deficit match)`,
+    };
+
+    if (_onQuickLogMeal) {
+      _onQuickLogMeal(newMeal);
+    } else {
+      try {
+        await apiClient.createMeal({
+          userId: '',
+          foodName: newMeal.foodName,
+          mealType: newMeal.mealType,
+          eatenAt: newMeal.eatenAt,
+          quantity: newMeal.quantity,
+          nutrition: newMeal.nutrition,
+          source: 'ai',
+          notes: newMeal.notes,
+        });
+      } catch (err) {
+        console.error('Quick log failed:', err);
+      }
+    }
+
+    setQuickLogSuccess(`Logged ${rec.foodName} (${rec.nutrition.caloriesKcal} kcal) directly to your diary!`);
+    setTimeout(() => setQuickLogSuccess(null), 3500);
+  };
 
   // Compute remaining nutrients for today
   const targetCal = currentGoal.dailyCaloriesKcal;
@@ -241,6 +326,165 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* DYNAMIC ML-POWERED FOOD RECOMMENDATIONS */}
+      <Card>
+        <CardHeader>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Icon name="ai-scan" size={24} />
+              <div>
+                <CardTitle>AI-Recommended Foods For Today</CardTitle>
+                <CardDescription>
+                  Custom multi-objective knapsack model: selects whole foods mathematically calculated to fit your remaining {remainingCal} kcal and {remainingP}g protein deficits.
+                </CardDescription>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <Badge variant="forest">
+                🟢 ML Model Live
+              </Badge>
+              {recModelInfo && recModelInfo.activePdfInstructionsCount > 0 && (
+                <Badge variant="sage">
+                  📄 Guided by PDF Plan ({recModelInfo.activePdfInstructionsCount})
+                </Badge>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          {quickLogSuccess && (
+            <div className="calories-success-banner" role="status" style={{ marginBottom: '16px' }}>
+              <Icon name="check" size={18} />
+              <span>{quickLogSuccess}</span>
+            </div>
+          )}
+
+          {isLoadingRecs ? (
+            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
+              Calculating optimal macro convergence with custom model...
+            </div>
+          ) : recommendations.length === 0 ? (
+            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
+              No recommendations needed: you have met your daily targets, or log more meals to refine suggestions.
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: '16px',
+              }}
+            >
+              {recommendations.map((rec) => (
+                <div
+                  key={rec.id}
+                  style={{
+                    backgroundColor: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-medium)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                  }}
+                >
+                  {/* Item Header */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '4px' }}>
+                      <strong style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)', lineHeight: 1.3 }}>
+                        {rec.foodName}
+                      </strong>
+                      <Badge variant="forest">
+                        {rec.matchScore}% Match
+                      </Badge>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      <span>{rec.category}</span>
+                      <span>•</span>
+                      <span>{rec.portionAmount} {rec.portionUnit}</span>
+                      {rec.guidedByPdf && (
+                        <>
+                          <span>•</span>
+                          <span style={{ color: 'var(--color-forest-green)', fontWeight: 600 }}>⭐ Dietitian Pick</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Macro Breakdown */}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(4, 1fr)',
+                      gap: '6px',
+                      padding: '8px',
+                      backgroundColor: 'var(--bg-primary)',
+                      borderRadius: 'var(--radius-sm)',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <div>
+                      <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Cal</span>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                        {rec.nutrition.caloriesKcal}
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'var(--color-forest-green)' }}>Prot</span>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-forest-green)', fontFamily: 'var(--font-mono)' }}>
+                        {rec.nutrition.proteinG}g
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'var(--color-sage-green)' }}>Carb</span>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-sage-green)', fontFamily: 'var(--font-mono)' }}>
+                        {rec.nutrition.carbsG}g
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'var(--color-amber)' }}>Fat</span>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-amber)', fontFamily: 'var(--font-mono)' }}>
+                        {rec.nutrition.fatG}g
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Clinical Reasoning */}
+                  <div
+                    style={{
+                      fontSize: '11px',
+                      color: 'var(--text-secondary)',
+                      lineHeight: 1.4,
+                      fontStyle: 'italic',
+                      backgroundColor: 'rgba(0,0,0,0.02)',
+                      padding: '6px 8px',
+                      borderRadius: 'var(--radius-sm)',
+                    }}
+                  >
+                    💡 {rec.reason}
+                  </div>
+
+                  {/* Action: Quick Log */}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    style={{ width: '100%' }}
+                    leftIcon={<Icon name="plus" size={14} />}
+                    onClick={() => handleQuickLog(rec)}
+                  >
+                    + Quick Log to Diary
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

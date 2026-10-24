@@ -1,6 +1,10 @@
 import { Router, type Request, type Response } from 'express';
+import mongoose from 'mongoose';
 import { Goal } from '../models/Goal.js';
 import { User } from '../models/User.js';
+import { Meal } from '../models/Meal.js';
+import { DietInstruction } from '../models/DietInstruction.js';
+import { generateSmartRecommendations } from '../services/recommendationEngine.js';
 import { goalInputSchema } from '../validators/goalValidator.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { AppError } from '../errors/AppError.js';
@@ -188,6 +192,134 @@ goalRouter.get(
     res.status(200).json({
       goals: goals.map((g) => g.toJSON()),
       total: goals.length,
+    });
+  })
+);
+
+/**
+ * GET /api/v1/goals/recommendations
+ * Runs the custom ML Recommendation Engine on the user's live daily macro deficit,
+ * strict allergen restrictions, Holt satiety index, and active PDF diet plan instructions.
+ */
+goalRouter.get(
+  '/recommendations',
+  asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw AppError.unauthorized();
+    }
+
+    const userObjectId = new mongoose.Types.ObjectId(req.user.userId);
+    const user = await User.findById(req.user.userId);
+
+    // 1. Fetch active nutrition goal (or auto-seed if none)
+    let goal = await Goal.findOne({
+      userId: req.user.userId,
+      isActive: true,
+    }).sort({ updatedAt: -1 });
+
+    if (!goal) {
+      const weightKg = user?.currentWeightKg || 70;
+      const heightCm = user?.heightCm || 175;
+      const bmr = 10 * weightKg + 6.25 * heightCm - 5 * 28 + 5;
+      const tdee = Math.round(bmr * 1.4);
+
+      let cal = tdee;
+      let p = Math.round(weightKg * 2.0);
+      let f = Math.round(weightKg * 0.8);
+      if (user?.primaryGoal === 'fat_loss') {
+        cal = Math.max(1400, tdee - 500);
+        p = Math.round(weightKg * 2.2);
+      } else if (user?.primaryGoal === 'muscle_gain') {
+        cal = tdee + 350;
+        p = Math.round(weightKg * 2.2);
+        f = Math.round(weightKg * 0.9);
+      }
+      const c = Math.max(50, Math.round((cal - (p * 4 + f * 9)) / 4));
+
+      goal = await Goal.create({
+        userId: req.user.userId,
+        title: `${user?.primaryGoal ? user.primaryGoal.replace('_', ' ') : 'Balanced'} Plan`,
+        dailyCaloriesKcal: cal,
+        proteinGrams: p,
+        carbohydrateGrams: c,
+        fatGrams: f,
+        isActive: true,
+      });
+    }
+
+    // 2. Compute today's consumed nutrients
+    const startOfToday = new Date();
+    startOfToday.setUTCHours(0, 0, 0, 0);
+
+    const todayMeals = await Meal.aggregate([
+      {
+        $match: {
+          userId: userObjectId,
+          eatenAt: { $gte: startOfToday },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          consumedCalories: { $sum: '$nutrition.caloriesKcal' },
+          consumedProtein: { $sum: '$nutrition.proteinG' },
+          consumedCarbs: { $sum: '$nutrition.carbsG' },
+          consumedFat: { $sum: '$nutrition.fatG' },
+        },
+      },
+    ]);
+
+    const consumed = todayMeals[0] || {
+      consumedCalories: 0,
+      consumedProtein: 0,
+      consumedCarbs: 0,
+      consumedFat: 0,
+    };
+
+    const remainingBudget = {
+      caloriesKcal: Math.max(0, goal.dailyCaloriesKcal - consumed.consumedCalories),
+      proteinG: Math.max(0, goal.proteinGrams - consumed.consumedProtein),
+      carbsG: Math.max(0, goal.carbohydrateGrams - consumed.consumedCarbs),
+      fatG: Math.max(0, goal.fatGrams - consumed.consumedFat),
+    };
+
+    // 3. Query active PDF instructions stored in MongoDB
+    const activeInstructions = await DietInstruction.find({
+      userId: req.user.userId,
+      isActive: true,
+    });
+    const forbiddenFoods = activeInstructions.flatMap((i) => i.forbiddenFoods);
+    const recommendedFoods = activeInstructions.flatMap((i) => i.recommendedFoods);
+
+    // 4. Run trained ML recommendation model
+    const recommendations = generateSmartRecommendations({
+      primaryGoal: user?.primaryGoal,
+      userAllergies: user?.allergies || [],
+      remainingBudget,
+      activeGoalTargets: {
+        dailyCaloriesKcal: goal.dailyCaloriesKcal,
+        proteinGrams: goal.proteinGrams,
+        carbohydrateGrams: goal.carbohydrateGrams,
+        fatGrams: goal.fatGrams,
+      },
+      forbiddenFoods,
+      recommendedFoods,
+    });
+
+    res.status(200).json({
+      remainingBudget,
+      consumed: {
+        caloriesKcal: consumed.consumedCalories,
+        proteinG: consumed.consumedProtein,
+        carbsG: consumed.consumedCarbs,
+        fatG: consumed.consumedFat,
+      },
+      recommendations,
+      modelInfo: {
+        version: 'Calories-Knapsack-v1',
+        primaryGoal: user?.primaryGoal || 'fat_loss',
+        activePdfInstructionsCount: activeInstructions.length,
+      },
     });
   })
 );

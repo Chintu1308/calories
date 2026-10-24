@@ -97,6 +97,46 @@ export interface DietPdfUploadResponse {
   instruction: DietInstructionItem;
 }
 
+export interface SmartRecommendationItem {
+  id: string;
+  foodName: string;
+  category: MealType;
+  portionAmount: number;
+  portionUnit: string;
+  nutrition: {
+    caloriesKcal: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+  };
+  fiberG: number;
+  matchScore: number;
+  reason: string;
+  tags: string[];
+  guidedByPdf: boolean;
+}
+
+export interface SmartRecommendationsResponse {
+  remainingBudget: {
+    caloriesKcal: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+  };
+  consumed: {
+    caloriesKcal: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+  };
+  recommendations: SmartRecommendationItem[];
+  modelInfo: {
+    version: string;
+    primaryGoal: string;
+    activePdfInstructionsCount: number;
+  };
+}
+
 export interface AiExtractionResponse {
   proposal: {
     foodName: string;
@@ -399,5 +439,14 @@ export const apiClient = {
     return request<{ message: string; id: string }>(`/ai/diet-instructions/${id}`, {
       method: 'DELETE',
     });
+  },
+
+  /**
+   * Retrieves dynamic, personalized food recommendations from the custom ML engine
+   * based on today's remaining macro deficit, allergies, and active diet PDF rules.
+   */
+  async getRecommendations(category?: string): Promise<SmartRecommendationsResponse> {
+    const qs = category ? `?category=${encodeURIComponent(category)}` : '';
+    return request<SmartRecommendationsResponse>(`/goals/recommendations${qs}`);
   },
 };
