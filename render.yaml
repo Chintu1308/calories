@@ -1,0 +1,43 @@
+services:
+  # Backend API Web Service
+  - type: web
+    name: calories-server
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: npm install --prefix server && npm run build --prefix server
+    startCommand: npm start --prefix server
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: CLIENT_ORIGIN
+        value: https://calories.bhhc.me,http://localhost:5173
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+    healthCheckPath: /api/v1/health
+
+  # Frontend Static Site
+  - type: static
+    name: calories-client
+    buildCommand: npm install --prefix client && npm run build --prefix client
+    staticPublishPath: client/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
