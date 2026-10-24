@@ -690,7 +690,7 @@ In `client/src/pages/GoalsPage.tsx`, add an interactive milestone slider to the 
 
 ### Stage 4 — Configure Express and MongoDB
 **Status:** Verified  
-**Commit:** `feat(server): configure Express and MongoDB`  
+**Commit:** `46c0b25 feat(server): configure Express and MongoDB`  
 **Date:** 2026-10-24
 
 #### What we built
