@@ -1064,3 +1064,120 @@ ok 20 - POST /api/v1/goals archives prior goal and GET /api/v1/goals/history ret
 
 #### Practice modification
 In `server/src/models/Goal.ts`, add an optional `waterTargetMl: number` field (defaulting to 2500 ml) with a minimum bound of 500 and maximum bound of 10,000 ml, update `goalValidator.ts`, and add an assertion in `goal.test.ts` to verify water targets are persisted and retrieved.
+
+---
+
+### Stage 7 — Meal Entry Management (CRUD, Validation & Ownership)
+**Status:** Verified  
+**Commit:** `Pending` (feat(meals): implement meal entry management)  
+**Date:** 2026-10-24
+
+#### What we built
+1. **Meal Domain Model (`server/src/models/Meal.ts`):**
+   - Implemented Mongoose Meal schema adhering strictly to `docs/DATA_MODEL.md`.
+   - Fields:
+     - `userId`: `Schema.Types.ObjectId`, ref `'User'`, required, indexed.
+     - `foodName`: string, required, trimmed ($1 \le \text{length} \le 120$).
+     - `mealType`: enum `['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Brunch', 'Intermediate']`, required.
+     - `eatenAt`: Date, UTC timestamp, required, default `Date.now`.
+     - `quantity`: subdocument `{ amount: number (> 0), unit: string }`.
+     - `nutrition`: subdocument `{ caloriesKcal: number (0..10000), proteinG: number (0..1000), carbsG: number (0..1000), fatG: number (0..1000) }`.
+     - `micronutrients`: optional array of `{ name: string, amount: number, unit: 'g'|'mg'|'mcg'|'IU' }` (omitted when unknown; never default to 0).
+     - `source`: enum `'manual' | 'ai'`, default `'manual'`.
+     - `notes`: optional string (max 500 chars).
+     - `aiMetadata`: optional mixed dictionary for computer vision extraction confidence.
+   - Indexes:
+     - Compound index `{ userId: 1, eatenAt: -1 }` for reverse-chronological diary timeline sorting.
+     - Compound index `{ userId: 1, mealType: 1, eatenAt: -1 }` for category-filtered timeline lookups.
+   - Schema JSON transform strips `__v` from all API serializations.
+
+2. **Meal Input Validation (`server/src/validators/mealValidator.ts`):**
+   - Built with Zod:
+     - `createMealSchema`: Validates non-empty food name, meal categories, non-negative nutritional macros, positive quantity amounts, and optional notes.
+     - `updateMealSchema`: Partial schema enabling safe patch updates.
+     - `mealQuerySchema`: Validates pagination parameters (`page`, `limit`), optional `mealType`, and date boundaries (`startDate`, `endDate`).
+
+3. **Meal CRUD Routes (`server/src/routes/mealRoutes.ts`):**
+   - All endpoints protected by `authenticate` middleware and wrapped with `asyncHandler`.
+   - `POST /api/v1/meals`: Creates a new meal document scoped strictly to `req.user.userId` (returns HTTP 201 Created).
+   - `GET /api/v1/meals`: Returns paginated meal list for the authenticated tenant with total count and calculated total pages. Supports filtering by meal category and UTC date ranges.
+   - `GET /api/v1/meals/:id`: Retrieves single meal document, verifying tenant ownership (`{ _id: id, userId: req.user.userId }`). If the meal belongs to another user or doesn't exist, returns HTTP 404 Not Found.
+   - `PATCH /api/v1/meals/:id`: Updates fields in single meal with tenant ownership enforcement.
+   - `DELETE /api/v1/meals/:id`: Deletes meal entry, ensuring only the owner can delete their entries.
+
+4. **Integration & Multi-Tenant Isolation Tests (`server/src/routes/meal.test.ts`):**
+   - 8 automated tests running on in-memory MongoDB:
+     - Authentication required: unauthenticated requests return 401.
+     - Input validation bounds: rejects empty names and negative macros with 400.
+     - Meal creation: saves valid meal entry for User A.
+     - Paginated list: returns User A's meals with pagination metadata.
+     - Single item retrieval: fetches meal by ID for owner.
+     - Patch updates: modifies nutritional values for owner.
+     - **Tenant Isolation:** Proves User B receives 404 when attempting to GET, PATCH, or DELETE User A's meal, and User B's meal list remains empty.
+     - Deletion: removes entry and subsequent queries return 404.
+
+#### Files created and modified
+| File | Responsibility |
+|---|---|
+| `server/src/models/Meal.ts` | Mongoose Meal schema with nutrition subdocs, compound indexes, and omission semantics for micronutrients. |
+| `server/src/validators/mealValidator.ts` | Zod validation schemas for meal creation, partial updates, and query parameters. |
+| `server/src/routes/mealRoutes.ts` | Express router implementing full CRUD and pagination for authenticated users. |
+| `server/src/routes/meal.test.ts` | Node 22 native tests covering validation, CRUD, pagination, and multi-tenant isolation. |
+| `server/src/app.ts` | Mounted `mealRouter` at `/api/v1/meals`. |
+
+#### Data flow
+1. User logs a food item in the UI (e.g. via `+ Log Meal` manual modal or quick recommendation).
+2. Client sends `POST /api/v1/meals` with Bearer JWT and JSON payload.
+3. `authenticate` middleware verifies the JWT and attaches `req.user.userId`.
+4. `createMealSchema.parse(req.body)` validates nutrition quantities and bounds.
+5. Controller writes document to MongoDB with `userId: req.user.userId`.
+6. Indexed lookups on `{ userId: 1, eatenAt: -1 }` allow instant retrieval of today's diary.
+7. Centralized `errorHandler` captures any validation errors (HTTP 400) or missing entries (HTTP 404).
+
+#### Tests and evidence
+```text
+> calories-workspace@0.1.0 test
+> npm run test:server
+
+> server@0.1.0 test
+> tsx --test src/**/*.test.ts
+
+TAP version 13
+# Subtests 1-12: Health, Security & Auth tests pass (ok 1 - 12)
+# Subtests 13-20: Goals & Tenant Isolation tests pass (ok 13 - 20)
+# Subtest: GET /api/v1/meals requires valid Bearer authentication
+ok 21 - GET /api/v1/meals requires valid Bearer authentication
+# Subtest: POST /api/v1/meals validates payload bounds and rejects malformed entries with 400
+ok 22 - POST /api/v1/meals validates payload bounds and rejects malformed entries with 400
+# Subtest: POST /api/v1/meals creates meal entry for User A
+ok 23 - POST /api/v1/meals creates meal entry for User A
+# Subtest: GET /api/v1/meals lists meals for User A with pagination
+ok 24 - GET /api/v1/meals lists meals for User A with pagination
+# Subtest: GET /api/v1/meals/:id retrieves a single meal by ID for resource owner
+ok 25 - GET /api/v1/meals/:id retrieves a single meal by ID for resource owner
+# Subtest: PATCH /api/v1/meals/:id updates meal details for resource owner
+ok 26 - PATCH /api/v1/meals/:id updates meal details for resource owner
+# Subtest: Strict Tenant Isolation: User B cannot access, modify, or delete User A meal
+ok 27 - Strict Tenant Isolation: User B cannot access, modify, or delete User A meal
+# Subtest: DELETE /api/v1/meals/:id allows owner to delete meal entry
+ok 28 - DELETE /api/v1/meals/:id allows owner to delete meal entry
+1..28
+# tests 28, suites 0, pass 28, fail 0, cancelled 0, skipped 0, todo 0
+# duration_ms 3709.6876
+```
+
+#### Interview explanation
+> "In Stage 7, I implemented the meal entry management system (CRUD) with strict multi-tenant isolation. The Mongoose Meal schema incorporates compound indexes on `{ userId: 1, eatenAt: -1 }` and `{ userId: 1, mealType: 1, eatenAt: -1 }` to optimize date-range queries and category filtering without full collection scans. All endpoints—creation, paginated listing, single-item lookup, partial patch, and deletion—derive user identity solely from verified JWT claims (`req.user.userId`). When User B attempts to view, edit, or delete User A's meal ID, the database query filters by both `_id` and `userId`, returning a clean 404 rather than leaking the existence of other users' records. The automated test suite covers input bounds, CRUD lifecycle, and cross-tenant isolation over an in-memory MongoDB daemon."
+
+#### Likely interview questions
+1. **Why return HTTP 404 Not Found instead of 403 Forbidden when User B requests User A's meal ID?**  
+   *Answer:* Returning 403 Forbidden informs an attacker that the resource exists and belongs to someone else, opening up an ID enumeration / resource discovery vulnerability. Returning 404 Not Found conceals the existence of the resource entirely, preserving privacy and security.
+2. **Why use compound index `{ userId: 1, eatenAt: -1 }` instead of two separate single indexes?**  
+   *Answer:* A user query for their meal timeline always filters by `userId` and sorts by `eatenAt: -1`. A compound index allows MongoDB to satisfy both the equality filter and the sort order directly in a single index scan (IXSCAN), completely eliminating the need for an in-memory sort stage.
+3. **How are unknown micronutrients represented in the database and why?**  
+   *Answer:* As specified in `DATA_MODEL.md`, unknown or unanalyzed micronutrients are omitted (omission semantics) rather than set to 0. Setting an unmeasured vitamin or mineral to 0 falsely implies that the food contains none of that nutrient, which can misinform clinical analysis and dietary recommendations.
+4. **How do you protect against unbounded memory consumption when a user requests thousands of meal entries?**  
+   *Answer:* The `GET /api/v1/meals` endpoint enforces server-side pagination with default page size of 20 and a strict maximum limit of 100 enforced by the Zod query schema (`mealQuerySchema`). It uses `.skip()` and `.limit()` on the MongoDB query and returns pagination metadata (`totalPages`, `total`, `page`, `limit`).
+
+#### Practice modification
+In `server/src/models/Meal.ts`, add a pre-save Mongoose hook that trims whitespace from `foodName` and verifies that the sum of calories derived from macros ($\text{protein} \times 4 + \text{carbs} \times 4 + \text{fat} \times 9$) does not diverge wildly from the declared `caloriesKcal` (e.g. within $\pm 20\%$), logging an informational notice if an anomaly is detected.

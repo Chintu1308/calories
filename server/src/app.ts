@@ -4,6 +4,7 @@ import { env } from './config/env.js';
 import { getConnectionStatus } from './config/db.js';
 import { authRouter } from './routes/authRoutes.js';
 import { goalRouter } from './routes/goalRoutes.js';
+import { mealRouter } from './routes/mealRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 export const app = express();
@@ -46,6 +47,9 @@ app.use('/api/v1/auth', authRouter);
 
 // Nutrition goals routes
 app.use('/api/v1/goals', goalRouter);
+
+// Meal entry CRUD routes
+app.use('/api/v1/meals', mealRouter);
 
 // 404 handler for unmatched routes
 app.use((req: Request, res: Response) => {

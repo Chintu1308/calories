@@ -13,7 +13,7 @@ Update after every stage and commit.
 | 4. Express/MongoDB | Verified | `46c0b25` | Zod environment validation, Mongoose connection management with pooling & graceful fallback, central AppError middleware, database health in /api/v1/health, Node 22 native tests (4/4 passed) |
 | 5. Auth/ownership | Verified | `cede254` | User Mongoose model with passwordHash isolation, bcrypt password hashing, JWT token signing/verification, authenticate middleware, asyncHandler wrapper, cross-tenant isolation tests (12/12 passed) |
 | 6. Goal setting | Verified | `6b219f5` | Goal Mongoose model with macro bounds & active flag, Zod validator (500–10000 kcal), idempotent PUT upsert, POST historical deactivation, client localStorage reload persistence, 8 integration & tenant isolation tests (20/20 passed) |
-| 7. Meal CRUD | Not started | — | — |
+| 7. Meal CRUD | Verified | Pending | Meal Mongoose model with compound indexes, Zod validation, full CRUD (POST, GET paginated, GET /:id, PATCH, DELETE) with strict tenant isolation, 8 automated tests (28/28 passed) |
 | 8. Filters/pagination | Not started | — | — |
 | 9. Reports/charts | Not started | — | — |
 | 10. AI extraction | Not started | — | — |
