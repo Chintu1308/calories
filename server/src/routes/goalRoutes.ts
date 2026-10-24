@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import { Goal } from '../models/Goal.js';
+import { User } from '../models/User.js';
 import { goalInputSchema } from '../validators/goalValidator.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { AppError } from '../errors/AppError.js';
@@ -14,10 +15,12 @@ goalRouter.use(authenticate);
  * GET /api/v1/goals
  * Retrieves the currently active nutrition goal for the authenticated user.
  * Looks up the latest document matching `{ userId, isActive: true }`.
+ * If an authenticated user does not have a goal yet, automatically computes and seeds
+ * their initial clinical goal from their profile biometrics so they are immediately set up.
  *
  * @returns HTTP 200 with active goal JSON
  * @throws 401 Unauthorized if request is unauthenticated
- * @throws 404 Not Found if no active goal exists for the user
+ * @throws 404 Not Found if user is unknown and no active goal exists
  */
 goalRouter.get(
   '/',
@@ -26,10 +29,61 @@ goalRouter.get(
       throw AppError.unauthorized();
     }
 
-    const goal = await Goal.findOne({
+    let goal = await Goal.findOne({
       userId: req.user.userId,
       isActive: true,
     }).sort({ updatedAt: -1 });
+
+    if (!goal) {
+      // Auto-heal: If user exists in DB, calculate and seed active goal based on their profile
+      try {
+        const user = await User.findById(req.user.userId);
+        if (user) {
+          const weightKg = user.currentWeightKg || 70;
+          const heightCm = user.heightCm || 175;
+          const bmr = 10 * weightKg + 6.25 * heightCm - 5 * 28 + 5;
+          const tdee = Math.round(bmr * 1.4);
+
+          let calorieTarget = tdee;
+          let proteinTarget = Math.round(weightKg * 2.0);
+          let fatTarget = Math.round(weightKg * 0.8);
+
+          if (user.primaryGoal === 'fat_loss') {
+            calorieTarget = Math.max(1400, tdee - 500);
+            proteinTarget = Math.round(weightKg * 2.2);
+          } else if (user.primaryGoal === 'muscle_gain') {
+            calorieTarget = tdee + 350;
+            proteinTarget = Math.round(weightKg * 2.2);
+            fatTarget = Math.round(weightKg * 0.9);
+          } else if (user.primaryGoal === 'athletic') {
+            calorieTarget = tdee + 200;
+            proteinTarget = Math.round(weightKg * 1.8);
+          }
+
+          const remainingCals = calorieTarget - (proteinTarget * 4) - (fatTarget * 9);
+          const carbsTarget = Math.max(50, Math.round(remainingCals / 4));
+
+          const goalDate = new Date();
+          goalDate.setDate(goalDate.getDate() + (user.targetWeeks || 8) * 7);
+
+          goal = await Goal.create({
+            userId: user._id,
+            title: `${(user.primaryGoal || 'fat_loss').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())} Target`,
+            dailyCaloriesKcal: calorieTarget,
+            proteinGrams: proteinTarget,
+            carbohydrateGrams: carbsTarget,
+            fatGrams: fatTarget,
+            targetWeight: user.targetWeightKg,
+            weightUnit: 'kg',
+            targetWeeks: user.targetWeeks || 8,
+            targetDate: goalDate.toISOString().split('T')[0],
+            isActive: true,
+          });
+        }
+      } catch (seedErr: unknown) {
+        console.warn('[Goal Auto-Seed] Notice generating goal:', seedErr);
+      }
+    }
 
     if (!goal) {
       throw AppError.notFound('No active nutrition goal found. Create or update your goal to get started.');

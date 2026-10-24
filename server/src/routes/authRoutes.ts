@@ -152,6 +152,20 @@ authRouter.post(
       throw AppError.unauthorized('Invalid email or password credentials');
     }
 
+    // Sync user to Supabase Auth if not already registered in Supabase
+    if (isSupabaseConfigured() && supabase && env.SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        await supabase.auth.admin.createUser({
+          email: user.email,
+          password: validated.password,
+          email_confirm: true,
+          user_metadata: { name: user.name },
+        });
+      } catch {
+        // User already in Supabase or harmless notice - ignore
+      }
+    }
+
     const token = generateToken({
       userId: user._id.toString(),
       email: user.email,
