@@ -11,55 +11,8 @@ import {
   FormField,
   Icon,
 } from '../components/ui/index.js';
-import type { DailyGoal, MealItem, FoodRecommendation } from '../types/nutrition.js';
+import type { DailyGoal, MealItem } from '../types/nutrition.js';
 import { generateWeightProjection } from '../utils/weightProjection.js';
-
-const RECOMMENDED_HEALTH_FOODS: FoodRecommendation[] = [
-  {
-    id: 'rec_1',
-    foodName: 'Grilled Chicken Breast with Steamed Broccoli',
-    portion: '160g chicken + 100g broccoli',
-    caloriesKcal: 260,
-    proteinG: 48,
-    carbsG: 7,
-    fatG: 4,
-    reason: 'Fulfills remaining protein target with lean, high-satiety volume',
-    macroFocus: 'protein',
-  },
-  {
-    id: 'rec_2',
-    foodName: '0% Fat Greek Yogurt with Chia & Raspberries',
-    portion: '200g yogurt + 40g raspberries',
-    caloriesKcal: 170,
-    proteinG: 21,
-    carbsG: 16,
-    fatG: 2,
-    reason: 'Slow-digesting casein protein plus gut-friendly dietary fiber',
-    macroFocus: 'protein',
-  },
-  {
-    id: 'rec_3',
-    foodName: 'Wild Atlantic Salmon Fillet with Asparagus',
-    portion: '180g salmon + 8 spears',
-    caloriesKcal: 380,
-    proteinG: 36,
-    carbsG: 4,
-    fatG: 22,
-    reason: 'Nutrient-dense dinner option rich in bioavailable Omega-3s',
-    macroFocus: 'balanced',
-  },
-  {
-    id: 'rec_4',
-    foodName: 'Tofu & Edamame Sauté with Brown Rice',
-    portion: '150g firm tofu + 50g edamame + 80g rice',
-    caloriesKcal: 320,
-    proteinG: 24,
-    carbsG: 38,
-    fatG: 8,
-    reason: 'Plant-powered complete amino acid profile with complex carbohydrates',
-    macroFocus: 'balanced',
-  },
-];
 
 export interface GoalsPageProps {
   currentGoal: DailyGoal;
@@ -72,14 +25,6 @@ export interface GoalsPageProps {
   onQuickLogMeal?: (meal: MealItem) => void;
 }
 
-function generateMealId(prefix: string): string {
-  return `${prefix}_${Date.now()}`;
-}
-
-function getIsoTimestamp(): string {
-  return new Date().toISOString();
-}
-
 export const GoalsPage: React.FC<GoalsPageProps> = ({
   currentGoal,
   onSaveGoal,
@@ -88,12 +33,11 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
   consumedProtein = 0,
   consumedCarbs = 0,
   consumedFat = 0,
-  onQuickLogMeal,
+  onQuickLogMeal: _onQuickLogMeal,
 }) => {
   // Modal states for Add Goal & Edit Goal
   const [isAddGoalModalOpen, setIsAddGoalModalOpen] = useState(false);
   const [isEditGoalModalOpen, setIsEditGoalModalOpen] = useState(false);
-  const [quickLogSuccess, setQuickLogSuccess] = useState<string | null>(null);
 
   // Form states
   const [goalTitle, setGoalTitle] = useState(currentGoal.title || 'Fat Loss & Lean Definition');
@@ -189,34 +133,6 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
     setTimeout(() => setSavedSuccess(false), 3500);
   };
 
-  const handleQuickLogRecommendation = (rec: FoodRecommendation) => {
-    if (!onQuickLogMeal) return;
-
-    const newMeal: MealItem = {
-      id: generateMealId('meal_rec'),
-      userId: '',
-      foodName: rec.foodName,
-      mealType: 'Snacks',
-      eatenAt: getIsoTimestamp(),
-      quantity: {
-        amount: 1,
-        unit: 'portion',
-      },
-      nutrition: {
-        caloriesKcal: rec.caloriesKcal,
-        proteinG: rec.proteinG,
-        carbsG: rec.carbsG,
-        fatG: rec.fatG,
-      },
-      source: 'manual',
-      notes: `Smart recommendation: ${rec.reason}`,
-    };
-
-    onQuickLogMeal(newMeal);
-    setQuickLogSuccess(rec.foodName);
-    setTimeout(() => setQuickLogSuccess(null), 3000);
-  };
-
   return (
     <div className="calories-page-container">
       {/* Page Header */}
@@ -258,13 +174,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
         </div>
       )}
 
-      {/* Quick Log Success Banner */}
-      {quickLogSuccess && (
-        <div className="calories-success-banner" role="status">
-          <Icon name="check" size={18} />
-          <span>Logged "{quickLogSuccess}" to your daily journal!</span>
-        </div>
-      )}
+
 
       {/* Active Goal Highlight & Remaining Nutrients Strip */}
       <Card style={{ backgroundColor: 'var(--surface-card)', border: '1px solid var(--border-light)' }}>
@@ -497,72 +407,6 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
                 />
               </div>
             </div>
-
-      {/* "THINGS TO HAVE" - SMART FOOD RECOMMENDATIONS TO REACH GOALS */}
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Icon name="meals" size={20} />
-              <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-                Things to Have - Foods to Meet Today's Targets
-              </h2>
-            </div>
-            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
-              Tailored nutritional suggestions aligned with your remaining {remainingP}g protein and {remainingCal} kcal budget.
-            </p>
-          </div>
-
-          <Badge variant="forest">Allergy Checked</Badge>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-          {RECOMMENDED_HEALTH_FOODS.map((rec) => (
-            <Card key={rec.id} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <CardContent style={{ padding: '18px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                  <strong style={{ fontSize: 'var(--text-base)', color: 'var(--text-primary)' }}>
-                    {rec.foodName}
-                  </strong>
-                  <Badge variant={rec.macroFocus === 'protein' ? 'forest' : 'sage'}>
-                    {rec.macroFocus}
-                  </Badge>
-                </div>
-
-                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                  Portion: {rec.portion}
-                </div>
-
-                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-primary)', margin: '10px 0', fontStyle: 'italic', background: 'var(--color-sand-soft)', padding: '8px 10px', borderRadius: 'var(--radius-sm)' }}>
-                  💡 {rec.reason}
-                </p>
-
-                <div style={{ display: 'flex', gap: '8px', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', borderTop: '1px solid var(--border-light)', paddingTop: '10px' }}>
-                  <span><strong>{rec.caloriesKcal}</strong> kcal</span>
-                  <span>•</span>
-                  <span><strong>{rec.proteinG}g</strong> Protein</span>
-                  <span>•</span>
-                  <span><strong>{rec.carbsG}g</strong> Carbs</span>
-                  <span>•</span>
-                  <span><strong>{rec.fatG}g</strong> Fat</span>
-                </div>
-              </CardContent>
-
-              <div style={{ padding: '0 18px 16px' }}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  style={{ width: '100%' }}
-                  leftIcon={<Icon name="plus" size={14} />}
-                  onClick={() => handleQuickLogRecommendation(rec)}
-                >
-                  + Quick Log to Journal
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </div>
 
       
 

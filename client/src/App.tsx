@@ -10,7 +10,7 @@ import { AuthPage } from './pages/AuthPage.js';
 import { ErrorPage, type HttpErrorCode } from './components/errors/ErrorPage.js';
 import { AddMealModal } from './components/meals/AddMealModal.js';
 import { AuthOnboardingModal, type AuthModalMode } from './components/auth/AuthOnboardingModal.js';
-import { CaloriesLogo } from './components/ui/index.js';
+import { CaloriesLogo, CaloriesTagline } from './components/ui/index.js';
 import type { MealItem, MealType, DailyGoal, DayNutritionalSummary, UserProfile, SupplementItem } from './types/nutrition.js';
 import { exportNutritionReportPdf } from './utils/exportPdf.js';
 import { computeWeeklyTrend } from './utils/trendCalculator.js';
@@ -403,7 +403,7 @@ export const App: React.FC = () => {
           <div className="calories-footer-container">
             <CaloriesLogo size="sm" variant="image" />
             <span className="calories-footer-text">
-              Calories Platform — Complete Editorial Health-Tech Suite Verified.
+              Calories Platform - Complete Editorial Health-Tech Suite Verified.
             </span>
             <span className="calories-footer-domain">calories.bhhc.me</span>
           </div>
@@ -525,9 +525,10 @@ export const App: React.FC = () => {
 
           <footer className="calories-footer">
             <div className="calories-footer-container">
+              <CaloriesTagline />
               <CaloriesLogo size="sm" variant="image" />
               <span className="calories-footer-text">
-                Calories Platform — Complete Editorial Health-Tech Suite Verified.
+                Calories Platform - Complete Editorial Health-Tech Suite Verified.
               </span>
               <span className="calories-footer-domain">calories.bhhc.me</span>
             </div>
