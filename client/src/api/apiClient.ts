@@ -1,6 +1,12 @@
 import type { DailyGoal, MealItem, MealType } from '../types/nutrition.js';
 
-const API_BASE = '/api/v1';
+const envApiUrl = (
+  typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL
+    ? String(import.meta.env.VITE_API_URL)
+    : ''
+).replace(/\/$/, '');
+
+const API_BASE = `${envApiUrl}/api/v1`;
 
 export interface AuthResponse {
   token: string;

@@ -15,14 +15,21 @@ export const app = express();
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// CORS configuration: allow configured client origin or default local dev
+// CORS configuration: allow configured client origin, local dev, or vercel preview deployments
 const allowedOrigins = env.CLIENT_ORIGIN.split(',').map((origin) => origin.trim());
 
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
-      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      const isAllowedExplicitly = allowedOrigins.includes(origin) || allowedOrigins.includes('*');
+      const isVercelDomain = /^https:\/\/[a-zA-Z0-9_.-]+\.vercel\.app$/.test(origin);
+
+      if (isAllowedExplicitly || isVercelDomain) {
         callback(null, true);
       } else {
         callback(new Error(`Origin ${origin} not allowed by CORS`));
