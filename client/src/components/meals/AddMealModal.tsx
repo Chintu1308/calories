@@ -8,6 +8,7 @@ import {
   Icon,
 } from '../ui/index.js';
 import type { MealItem, MealType } from '../../types/nutrition.js';
+import { apiClient } from '../../api/apiClient.js';
 
 export interface AddMealModalProps {
   isOpen: boolean;
@@ -66,6 +67,22 @@ export const AddMealModal: React.FC<AddMealModalProps> = ({
       setFormError('');
     };
     reader.readAsDataURL(file);
+
+    // Call AI vision extraction to prefill nutritional estimates
+    apiClient
+      .extractFromImage(file)
+      .then((res) => {
+        if (res.proposal.foodName && !foodName.trim()) {
+          setFoodName(res.proposal.foodName);
+        }
+        setCalories(String(res.proposal.nutrition.caloriesKcal));
+        setProtein(String(res.proposal.nutrition.proteinG));
+        setCarbs(String(res.proposal.nutrition.carbsG));
+        setFat(String(res.proposal.nutrition.fatG));
+      })
+      .catch(() => {
+        // Fallback default estimates will apply if offline
+      });
   };
 
   const handleManualSubmit = (e: React.FormEvent) => {

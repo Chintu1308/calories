@@ -15,6 +15,9 @@ const envSchema = z.object({
     .default('dev_jwt_secret_calories_platform_key_32_chars_min'),
   AI_SERVICE_URL: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),
+  SUPABASE_URL: z.string().optional(),
+  SUPABASE_ANON_KEY: z.string().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

@@ -18,6 +18,7 @@ import {
 } from './data/mockNutritionData.js';
 import type { MealItem, MealType, DailyGoal, DayNutritionalSummary, UserProfile } from './types/nutrition.js';
 import { exportNutritionReportPdf } from './utils/exportPdf.js';
+import { apiClient } from './api/apiClient.js';
 import './App.css';
 
 export const App: React.FC = () => {
@@ -123,12 +124,57 @@ export const App: React.FC = () => {
     setIsAddMealOpen(true);
   };
 
-  const handleDeleteMeal = (mealId: string) => {
+  // Synchronize with backend API on mount
+  useEffect(() => {
+    let isMounted = true;
+    const syncWithBackend = async () => {
+      try {
+        const [goalRes, mealsRes] = await Promise.allSettled([
+          apiClient.getActiveGoal(),
+          apiClient.getMeals({ limit: 50 }),
+        ]);
+        if (!isMounted) return;
+        if (goalRes.status === 'fulfilled' && goalRes.value?.goal) {
+          setGoal(goalRes.value.goal);
+        }
+        if (mealsRes.status === 'fulfilled' && mealsRes.value?.meals?.length > 0) {
+          setMeals(mealsRes.value.meals);
+        }
+      } catch {
+        // Retain local defaults if server is unreachable
+      }
+    };
+    syncWithBackend();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleDeleteMeal = async (mealId: string) => {
     setMeals((prev) => prev.filter((m) => m.id !== mealId));
+    try {
+      await apiClient.deleteMeal(mealId);
+    } catch {
+      // Local state already updated
+    }
   };
 
-  const handleSaveMeal = (newMeal: MealItem) => {
+  const handleSaveMeal = async (newMeal: MealItem) => {
     setMeals((prev) => [newMeal, ...prev]);
+    try {
+      await apiClient.createMeal(newMeal);
+    } catch {
+      // Local state already updated
+    }
+  };
+
+  const handleSaveGoal = async (updatedGoal: DailyGoal) => {
+    setGoal(updatedGoal);
+    try {
+      await apiClient.putActiveGoal(updatedGoal);
+    } catch {
+      // Local state and localStorage already updated
+    }
   };
 
   const handleOpenAuthModal = (mode: AuthModalMode = 'register') => {
@@ -192,7 +238,7 @@ export const App: React.FC = () => {
             {activeTab === 'goals' && (
               <GoalsPage
                 currentGoal={goal}
-                onSaveGoal={setGoal}
+                onSaveGoal={handleSaveGoal}
                 currentWeightKg={userProfile.currentWeightKg}
                 consumedCalories={consumedCalories}
                 consumedProtein={consumedProtein}
