@@ -99,7 +99,7 @@ export const AddMealModal: React.FC<AddMealModalProps> = ({
 
     const newMeal: MealItem = {
       id: generateMealId('meal_man'),
-      userId: 'user_alex_h',
+      userId: '',
       foodName: foodName.trim(),
       mealType: selectedCategory,
       eatenAt: getIsoTimestamp(),
@@ -136,7 +136,7 @@ export const AddMealModal: React.FC<AddMealModalProps> = ({
 
     const newMeal: MealItem = {
       id: generateMealId('meal_photo'),
-      userId: 'user_alex_h',
+      userId: '',
       foodName: foodName.trim(),
       mealType: selectedCategory,
       eatenAt: getIsoTimestamp(),

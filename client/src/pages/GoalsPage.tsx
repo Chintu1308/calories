@@ -194,7 +194,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
 
     const newMeal: MealItem = {
       id: generateMealId('meal_rec'),
-      userId: 'user_alex_h',
+      userId: '',
       foodName: rec.foodName,
       mealType: 'Snacks',
       eatenAt: getIsoTimestamp(),

@@ -59,6 +59,8 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
         }
       : summary;
 
+  const displayGreetingName = userName && userName !== 'User' ? userName.split(' ')[0] : 'there';
+
   return (
     <div className="calories-showcase-layout">
       {/* 1. Primary Responsive Header */}
@@ -139,7 +141,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
         <section className="calories-greeting-section">
           <div className="calories-greeting-left">
             <div className="calories-greeting-tagline">Your nutrition, made clearer.</div>
-            <h1 className="calories-greeting-title">Good morning, Alex</h1>
+            <h1 className="calories-greeting-title">Welcome back, {displayGreetingName}</h1>
             <p className="calories-greeting-subtext">
               Here is your nutritional overview. You have consumed{' '}
               <strong>{displayedSummary.consumedCalories.toLocaleString()} kcal</strong> of your{' '}

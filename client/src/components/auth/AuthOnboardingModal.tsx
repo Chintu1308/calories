@@ -197,7 +197,7 @@ export const AuthOnboardingModal: React.FC<AuthOnboardingModalProps> = ({
     } catch (err: unknown) {
       console.warn('Backend login notice:', err);
     }
-    if (onAuthSuccess) onAuthSuccess(name || 'Alex Henderson');
+    if (onAuthSuccess) onAuthSuccess(name || email.split('@')[0] || 'User');
     onClose();
   };
 
@@ -283,7 +283,7 @@ export const AuthOnboardingModal: React.FC<AuthOnboardingModalProps> = ({
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="alex.henderson@example.com"
+                  placeholder="you@example.com"
                   autoFocus={true}
                 />
               </FormField>
@@ -345,7 +345,7 @@ export const AuthOnboardingModal: React.FC<AuthOnboardingModalProps> = ({
                         id="user-name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="Alex Henderson"
+                        placeholder="e.g. John Doe"
                       />
                     </FormField>
 
@@ -355,7 +355,7 @@ export const AuthOnboardingModal: React.FC<AuthOnboardingModalProps> = ({
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="alex@example.com"
+                        placeholder="you@example.com"
                       />
                     </FormField>
                   </div>

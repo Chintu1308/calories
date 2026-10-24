@@ -217,9 +217,17 @@ export const apiClient = {
 
   /**
    * Retrieves the user's currently active nutrition and calorie goal.
+   * Gracefully returns null if no active goal is found (404), avoiding unhandled rejections.
    */
-  async getActiveGoal(): Promise<{ goal: DailyGoal }> {
-    return request<{ goal: DailyGoal }>('/goals');
+  async getActiveGoal(): Promise<{ goal: DailyGoal | null }> {
+    try {
+      return await request<{ goal: DailyGoal }>('/goals');
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        return { goal: null };
+      }
+      throw err;
+    }
   },
 
   /**

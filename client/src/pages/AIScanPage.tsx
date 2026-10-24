@@ -169,7 +169,7 @@ export const AIScanPage: React.FC<AIScanPageProps> = ({
     e.preventDefault();
     const newMeal: MealItem = {
       id: generateMealId('meal_ai'),
-      userId: 'user_alex_h',
+      userId: '',
       foodName: foodName.trim() || 'AI Extracted Meal',
       mealType: mealCategory,
       eatenAt: getIsoTimestamp(),
