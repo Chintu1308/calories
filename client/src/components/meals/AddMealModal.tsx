@@ -48,6 +48,7 @@ export const AddMealModal: React.FC<AddMealModalProps> = ({
 
   // Photo-specific fields
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
   const [formError, setFormError] = useState('');
 
   if (!isOpen) return null;
@@ -69,19 +70,26 @@ export const AddMealModal: React.FC<AddMealModalProps> = ({
     reader.readAsDataURL(file);
 
     // Call AI vision extraction to prefill nutritional estimates
+    setIsAnalyzingPhoto(true);
     apiClient
       .extractFromImage(file)
       .then((res) => {
-        if (res.proposal.foodName && !foodName.trim()) {
+        if (res.proposal.foodName) {
           setFoodName(res.proposal.foodName);
+        }
+        if (res.proposal.mealType) {
+          setSelectedCategory(res.proposal.mealType);
         }
         setCalories(String(res.proposal.nutrition.caloriesKcal));
         setProtein(String(res.proposal.nutrition.proteinG));
         setCarbs(String(res.proposal.nutrition.carbsG));
         setFat(String(res.proposal.nutrition.fatG));
       })
-      .catch(() => {
-        // Fallback default estimates will apply if offline
+      .catch((err: unknown) => {
+        console.warn('AI photo analysis notice:', err);
+      })
+      .finally(() => {
+        setIsAnalyzingPhoto(false);
       });
   };
 
@@ -128,11 +136,16 @@ export const AddMealModal: React.FC<AddMealModalProps> = ({
       return;
     }
 
-    // Default or estimated nutrition values for photo dishes
-    const cal = Number(calories) || 380;
-    const p = Number(protein) || 22;
-    const c = Number(carbs) || 35;
-    const f = Number(fat) || 14;
+    // Nutrition values extracted from photo or adjusted by user
+    const cal = Number(calories) || 0;
+    const p = Number(protein) || 0;
+    const c = Number(carbs) || 0;
+    const f = Number(fat) || 0;
+
+    if (!cal || cal <= 0) {
+      setFormError('Please enter estimated calories or wait for AI analysis to finish.');
+      return;
+    }
 
     const newMeal: MealItem = {
       id: generateMealId('meal_photo'),
@@ -385,9 +398,15 @@ export const AddMealModal: React.FC<AddMealModalProps> = ({
                     size="sm"
                     style={{ marginTop: '10px' }}
                     onClick={() => document.getElementById('dish-photo-file')?.click()}
+                    disabled={isAnalyzingPhoto}
                   >
-                    {photoPreview ? 'Change Photo' : 'Capture / Select Photo'}
+                    {isAnalyzingPhoto ? 'Analyzing...' : photoPreview ? 'Change Photo' : 'Capture / Select Photo'}
                   </Button>
+                  {isAnalyzingPhoto && (
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-forest-green)', fontWeight: 600, marginTop: '8px' }}>
+                      ✨ Analyzing food photo with Google Gemini AI...
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -395,32 +414,38 @@ export const AddMealModal: React.FC<AddMealModalProps> = ({
               <div style={{ background: 'var(--color-sage-soft)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(40, 91, 70, 0.2)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-forest-green)' }}>
-                    Estimated Nutrients (Auto-filled or adjust)
+                    Nutritional Breakdown (AI Extracted)
                   </span>
-                  <Badge variant="neutral">Auto 380 kcal baseline</Badge>
+                  {isAnalyzingPhoto ? (
+                    <Badge variant="amber">Analyzing Image...</Badge>
+                  ) : calories ? (
+                    <Badge variant="forest">AI Extracted ✓</Badge>
+                  ) : (
+                    <Badge variant="neutral">Select Photo</Badge>
+                  )}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
                   <FormField label="Calories" htmlFor="p-cal">
-                    <Input id="p-cal" type="number" placeholder="380" value={calories} onChange={(e) => setCalories(e.target.value)} />
+                    <Input id="p-cal" type="number" placeholder="e.g. 450" value={calories} onChange={(e) => setCalories(e.target.value)} disabled={isAnalyzingPhoto} />
                   </FormField>
                   <FormField label="Protein (g)" htmlFor="p-prot">
-                    <Input id="p-prot" type="number" placeholder="22" value={protein} onChange={(e) => setProtein(e.target.value)} />
+                    <Input id="p-prot" type="number" placeholder="e.g. 35" value={protein} onChange={(e) => setProtein(e.target.value)} disabled={isAnalyzingPhoto} />
                   </FormField>
                   <FormField label="Carbs (g)" htmlFor="p-carb">
-                    <Input id="p-carb" type="number" placeholder="35" value={carbs} onChange={(e) => setCarbs(e.target.value)} />
+                    <Input id="p-carb" type="number" placeholder="e.g. 40" value={carbs} onChange={(e) => setCarbs(e.target.value)} disabled={isAnalyzingPhoto} />
                   </FormField>
                   <FormField label="Fat (g)" htmlFor="p-fat">
-                    <Input id="p-fat" type="number" placeholder="14" value={fat} onChange={(e) => setFat(e.target.value)} />
+                    <Input id="p-fat" type="number" placeholder="e.g. 15" value={fat} onChange={(e) => setFat(e.target.value)} disabled={isAnalyzingPhoto} />
                   </FormField>
                 </div>
               </div>
 
               <div className="calories-modal-footer">
-                <Button variant="ghost" size="md" onClick={resetAndClose}>
+                <Button variant="ghost" size="md" onClick={resetAndClose} disabled={isAnalyzingPhoto}>
                   Cancel
                 </Button>
-                <Button variant="primary" size="md" type="submit" leftIcon={<Icon name="check" size={16} />}>
-                  Add Meal with Photo
+                <Button variant="primary" size="md" type="submit" disabled={isAnalyzingPhoto} leftIcon={<Icon name="check" size={16} />}>
+                  {isAnalyzingPhoto ? 'Analyzing Photo...' : 'Add Meal with Photo'}
                 </Button>
               </div>
             </form>

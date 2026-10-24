@@ -450,14 +450,62 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
         </CardContent>
       </Card>
 
-      {/* "THINGS TO HAVE" — SMART FOOD RECOMMENDATIONS TO REACH GOALS */}
+      {/* MACRO DISTRIBUTION ENERGY RATIO SPLIT CARD */}
+      <Card>
+        <CardHeader>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Icon name="reports" size={24} />
+            <CardTitle>Daily Macronutrient Energy Distribution</CardTitle>
+          </div>
+          <CardDescription>
+            Calculated from 4 kcal/g protein &amp; carbs, 9 kcal/g dietary fat
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Macro Calorie Bar */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>Macro Energy Total</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)' }}>
+                  <strong>{totalMacroKcal.toLocaleString()} kcal</strong> ({numCal > 0 ? Math.round((totalMacroKcal / numCal) * 100) : 0}% of budget)
+                </span>
+              </div>
+
+              <div className="calories-macro-ratio-bar">
+                <div
+                  title={`Protein: ${proteinPct}%`}
+                  style={{
+                    width: `${proteinPct}%`,
+                    backgroundColor: 'var(--color-forest-green)',
+                  }}
+                />
+                <div
+                  title={`Carbohydrates: ${carbsPct}%`}
+                  style={{
+                    width: `${carbsPct}%`,
+                    backgroundColor: 'var(--color-sage-green)',
+                  }}
+                />
+                <div
+                  title={`Fats: ${fatPct}%`}
+                  style={{
+                    width: `${fatPct}%`,
+                    backgroundColor: 'var(--color-amber)',
+                  }}
+                />
+              </div>
+            </div>
+
+      {/* "THINGS TO HAVE" - SMART FOOD RECOMMENDATIONS TO REACH GOALS */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Icon name="meals" size={20} />
               <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-                Things to Have — Foods to Meet Today's Targets
+                Things to Have - Foods to Meet Today's Targets
               </h2>
             </div>
             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
@@ -516,53 +564,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
         </div>
       </div>
 
-      {/* MACRO DISTRIBUTION ENERGY RATIO SPLIT CARD */}
-      <Card>
-        <CardHeader>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Icon name="reports" size={24} />
-            <CardTitle>Daily Macronutrient Energy Distribution</CardTitle>
-          </div>
-          <CardDescription>
-            Calculated from 4 kcal/g protein &amp; carbs, 9 kcal/g dietary fat
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* Macro Calorie Bar */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>Macro Energy Total</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)' }}>
-                  <strong>{totalMacroKcal.toLocaleString()} kcal</strong> ({numCal > 0 ? Math.round((totalMacroKcal / numCal) * 100) : 0}% of budget)
-                </span>
-              </div>
-
-              <div className="calories-macro-ratio-bar">
-                <div
-                  title={`Protein: ${proteinPct}%`}
-                  style={{
-                    width: `${proteinPct}%`,
-                    backgroundColor: 'var(--color-forest-green)',
-                  }}
-                />
-                <div
-                  title={`Carbohydrates: ${carbsPct}%`}
-                  style={{
-                    width: `${carbsPct}%`,
-                    backgroundColor: 'var(--color-sage-green)',
-                  }}
-                />
-                <div
-                  title={`Fats: ${fatPct}%`}
-                  style={{
-                    width: `${fatPct}%`,
-                    backgroundColor: 'var(--color-amber)',
-                  }}
-                />
-              </div>
-            </div>
+      
 
             {/* Individual Breakdown Stats */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>

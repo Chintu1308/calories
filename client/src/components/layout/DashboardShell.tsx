@@ -3,7 +3,7 @@ import { Header, type NavTabId } from './Header.js';
 import { GoalSummaryCards } from '../goals/GoalSummaryCards.js';
 import { MealTimeline } from '../meals/MealTimeline.js';
 import { WeeklyTrendPreview, type DayTrendPoint } from '../reports/WeeklyTrendPreview.js';
-import { Button, Badge, Card, CardContent, Icon, CaloriesLogo } from '../ui/index.js';
+import { Button, Card, CardContent, Icon, CaloriesLogo } from '../ui/index.js';
 import type { DayNutritionalSummary, MealItem, MealType } from '../../types/nutrition.js';
 
 export type DashboardViewState = 'normal' | 'empty' | 'loading' | 'error';
@@ -76,45 +76,6 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
 
       {/* 2. Main Dashboard Canvas */}
       <main className="calories-main">
-        {/* State Simulator Controls Toolbar for Interview Demonstration */}
-        <section className="calories-state-toolbar" aria-label="Demo State Switcher">
-          <div className="calories-state-toolbar-inner">
-            <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>
-              Interview Demo Controls:
-            </span>
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className={`calories-pill-btn ${viewState === 'normal' ? 'active' : ''}`}
-                onClick={() => onViewStateChange('normal')}
-              >
-                Normal View
-              </button>
-              <button
-                type="button"
-                className={`calories-pill-btn ${viewState === 'empty' ? 'active' : ''}`}
-                onClick={() => onViewStateChange('empty')}
-              >
-                Empty State
-              </button>
-              <button
-                type="button"
-                className={`calories-pill-btn ${viewState === 'loading' ? 'active' : ''}`}
-                onClick={() => onViewStateChange('loading')}
-              >
-                Loading Skeletons
-              </button>
-              <button
-                type="button"
-                className={`calories-pill-btn ${viewState === 'error' ? 'active' : ''}`}
-                onClick={() => onViewStateChange('error')}
-              >
-                Error Banner
-              </button>
-            </div>
-          </div>
-        </section>
-
         {/* Error State Banner */}
         {viewState === 'error' && (
           <div className="calories-error-banner" role="alert">
@@ -165,17 +126,6 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
             </Button>
           </div>
         </section>
-
-        {/* Production Architecture & Live Persistence Bar */}
-        <div className="calories-demo-notice-bar">
-          <Icon name="navigation-leaf" size={16} />
-          <span>
-            <strong>Production Health-Tech Engine:</strong> Real-time persistence via MongoDB Atlas, Google Gemini AI Vision extraction, and multi-tenant security boundary.
-          </span>
-          <Badge variant="forest" style={{ marginLeft: 'auto' }}>
-            System Live &amp; Connected
-          </Badge>
-        </div>
 
         {/* 3. Goal Summary Cards (Calorie Budget, Macros, Hydration & Weight) */}
         <section aria-label="Daily Nutrition Goals">

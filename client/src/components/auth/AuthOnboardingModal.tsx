@@ -297,10 +297,7 @@ export const AuthOnboardingModal: React.FC<AuthOnboardingModalProps> = ({
                 />
               </FormField>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
-                  Demo mode: Any password accepted
-                </span>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '12px' }}>
                 <Button variant="primary" size="md" type="submit">
                   Sign In
                 </Button>

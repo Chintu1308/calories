@@ -119,26 +119,9 @@ export const AIScanPage: React.FC<AIScanPageProps> = ({
           : [res.contextualFit.fittingEvaluation]
       );
       setHasProposal(true);
-    } catch {
-      // Graceful offline fallback simulation
-      setFoodName(selectedFile.name.includes('label') ? 'Almond Butter Crunch Protein Bar' : 'Mediterranean Grilled Chicken Salad');
-      setCalories('420');
-      setProtein('38');
-      setCarbs('18');
-      setFat('22');
-      setConfidence(0.91);
-      setIngredients([
-        'Grilled pasture-raised chicken breast (sliced)',
-        'Crisp romaine lettuce & baby spinach',
-        'Kalamata olives (pitted)',
-        'Cherry tomatoes & English cucumbers',
-        'Crumbled feta cheese',
-        'Cold-pressed extra virgin olive oil vinaigrette',
-      ]);
-      setWarnings([
-        'Estimated portion based on visual plate geometry. Olive oil dressing estimated at 1.5 tbsp.',
-      ]);
-      setHasProposal(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unable to extract nutrition from this image. Please try again.';
+      setUploadError(msg);
     } finally {
       setIsAnalyzing(false);
     }
