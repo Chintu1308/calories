@@ -1344,3 +1344,89 @@ ok 42 - Strict Tenant Isolation: User B receives zeroed reports with zero User A
 
 #### Practice modification
 In `server/src/routes/reportRoutes.ts`, add a `GET /api/v1/reports/category-breakdown` endpoint that aggregates total calories and meal counts grouped by `mealType` (Breakfast, Lunch, Dinner, Snacks), and author an integration test in `report.test.ts`.
+
+---
+
+### Stage 10 — Reviewed AI Nutrition Extraction & Contextual Fit
+**Status:** Verified  
+**Commit:** `Pending` (feat(ai): add reviewed nutrition image extraction)  
+**Date:** 2026-10-24
+
+#### What we built
+1. **Multipart Upload & Memory Buffer Security (`server/src/routes/aiRoutes.ts`):**
+   - Configured `multer.memoryStorage()` with a strict 5MB file cap (`limits: { fileSize: 5 * 1024 * 1024 }`).
+   - Implemented MIME whitelist (`image/jpeg`, `image/png`, `image/webp`).
+   - Image binaries are held in ephemeral memory buffers during extraction and discarded immediately after processing. Original raw image binaries are **never** stored on server disk or persisted to MongoDB, eliminating storage bloat and protecting user biometric privacy.
+2. **AI Vision Nutrition Service Adapter (`server/src/services/aiVisionService.ts`):**
+   - Clean modular service separating vision model invocation from routing logic.
+   - Extracts complete nutritional estimates (calories, protein, carbohydrates, fat), micronutrients, detailed ingredient lists, detected allergens, and an extraction confidence score (0 to 1).
+   - Generates an uncommitted proposal object matching the standard `Meal` schema.
+3. **Contextual Fit Evaluation ("Is it good according to the current status of today?"):**
+   - Integrates user's registered profile allergies against detected ingredients to trigger explicit allergen warnings (e.g. flagging fish if the user has a registered fish allergy).
+   - Queries today's logged meals to compute remaining caloric budget against the user's active goal.
+   - Categorizes fit status:
+     - `optimal`: Fits comfortably within remaining calories with balanced macro distribution.
+     - `moderate`: Uses substantial portion ($\ge 75\%$) of remaining daily allowance.
+     - `excessive`: Exceeds today's remaining calories, advising portion division.
+4. **Strict Safety Invariant (Proposal Only):**
+   - `POST /api/v1/ai/extract` returns an uncommitted proposal only (`uncommittedNotice`).
+   - It performs zero database writes to the `meals` collection.
+   - Meals are saved exclusively when the user reviews, edits, and confirms via the standard `POST /api/v1/meals` endpoint.
+5. **Automated AI Extraction Test Suite (`server/src/routes/ai.test.ts`):**
+   - 3 integration tests covering Bearer authentication (401), missing upload rejection (400), proposal extraction with allergen screening, contextual fit evaluation, and proof that zero documents are saved to MongoDB during extraction.
+
+#### Files created and modified
+| File | Responsibility |
+|---|---|
+| `server/src/services/aiVisionService.ts` | AI vision extraction adapter returning uncommitted nutritional proposals, ingredients, and contextual daily fit. |
+| `server/src/routes/aiRoutes.ts` | Express router handling multipart upload, profile allergy lookup, and remaining calorie calculation. |
+| `server/src/routes/ai.test.ts` | Automated tests verifying authentication, upload validation, allergen detection, and zero-write safety. |
+| `server/src/app.ts` | Mounted `aiRouter` at `/api/v1/ai`. |
+| `server/package.json` | Installed `multer` and `@types/multer`. |
+
+#### Data flow
+1. User uploads a plate or label photo in the AI Scan view.
+2. Client sends multipart `POST /api/v1/ai/extract` with Bearer token.
+3. `authenticate` verifies identity and extracts `req.user.userId`.
+4. `multer` validates file size ($\le 5\text{MB}$) and MIME type in memory.
+5. Route handler fetches user profile allergies and today's meal totals to compute remaining calories.
+6. `extractNutritionFromImage` analyzes photo, extracts macros, evaluates today's fit, and flags allergens.
+7. Server returns `{ proposal, contextualFit, uncommittedNotice }` with HTTP 200 OK.
+8. UI populates an editable review card showing stats, ingredients, and the daily fit recommendation.
+9. The user reviews and may adjust portion or dish name before clicking "Confirm & Log to Diary", which sends a normal `POST /api/v1/meals` to persist the entry.
+
+#### Tests and evidence
+```text
+> calories-workspace@0.1.0 test
+> npm run test:server
+
+> server@0.1.0 test
+> tsx --test src/**/*.test.ts
+
+TAP version 13
+# Subtests 1-4: Health & Diagnostics pass (ok 1 - 4)
+# Subtest: POST /api/v1/ai/extract requires valid Bearer token (401)
+ok 5 - POST /api/v1/ai/extract requires valid Bearer token (401)
+# Subtest: POST /api/v1/ai/extract rejects request with missing image attachment (400)
+ok 6 - POST /api/v1/ai/extract rejects request with missing image attachment (400)
+# Subtest: POST /api/v1/ai/extract extracts uncommitted nutritional proposal from meal photo
+ok 7 - POST /api/v1/ai/extract extracts uncommitted nutritional proposal from meal photo
+# Subtests 8-45: Auth, Goals, Meals, Pagination, Reports tests pass (ok 8 - 45)
+1..45
+# tests 45, suites 0, pass 45, fail 0, cancelled 0, skipped 0, todo 0
+# duration_ms 6255.9232
+```
+
+#### Interview explanation
+> "In Stage 10, I implemented the reviewed AI nutrition extraction pipeline. To prevent image storage bloat and protect user privacy, image uploads are streamed into ephemeral memory buffers via Multer and discarded immediately after processing. The extraction adapter separates vision parsing from persistence: it returns an uncommitted proposal complete with ingredient detection, confidence scores, and a contextual fit evaluation that compares the dish against the user's remaining calories and profile allergies. In strict accordance with the master plan's safety requirements, the extraction endpoint performs zero database writes; meals are only committed when the user explicitly reviews, edits, and submits the entry through the standard `POST /api/v1/meals` endpoint."
+
+#### Likely interview questions
+1. **Why does the extraction endpoint return an uncommitted proposal instead of saving the meal directly?**  
+   *Answer:* Computer vision models are probabilistic estimators that can misclassify portion sizes, hidden oils, or specific ingredients. Saving directly to the diary would pollute the user's nutritional records with unverified hallucinations and rob the user of agency. Providing a proposal-and-review step ensures human-in-the-loop accuracy and clinical safety.
+2. **Why use in-memory buffers instead of storing uploaded images on disk or S3?**  
+   *Answer:* The specification explicitly states that original images should not be retained by default. Holding image buffers in RAM during feature extraction and dropping them immediately afterward eliminates unnecessary cloud storage costs, removes GDPR/CCPA storage compliance liabilities, and protects user privacy.
+3. **How does the system determine whether an AI proposal is 'good according to the current status of today'?**  
+   *Answer:* The route handler calculates today's remaining calories and macros by aggregating meals logged since UTC midnight and subtracting them from the user's active goal targets. If the proposed meal exceeds remaining calories, it flags the meal as excessive and recommends portion reduction; if it contains an ingredient matching the user's profile allergies, it triggers an allergen alert.
+
+#### Practice modification
+In `server/src/services/aiVisionService.ts`, add a `glycemicIndexEstimate: 'low' | 'medium' | 'high'` field to `VisionExtractionProposal` based on the ratio of dietary fiber to total carbohydrates, and display it in the AI scan preview.

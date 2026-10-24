@@ -6,6 +6,7 @@ import { authRouter } from './routes/authRoutes.js';
 import { goalRouter } from './routes/goalRoutes.js';
 import { mealRouter } from './routes/mealRoutes.js';
 import { reportRouter } from './routes/reportRoutes.js';
+import { aiRouter } from './routes/aiRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 export const app = express();
@@ -54,6 +55,9 @@ app.use('/api/v1/meals', mealRouter);
 
 // Nutritional analytics & aggregate reports routes
 app.use('/api/v1/reports', reportRouter);
+
+// AI vision nutritional extraction routes
+app.use('/api/v1/ai', aiRouter);
 
 // 404 handler for unmatched routes
 app.use((req: Request, res: Response) => {
