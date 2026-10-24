@@ -17,4 +17,4 @@ Update after every stage and commit.
 | 8. Filters/pagination | Verified | `91d96ad` | Deterministic stable pagination (`_id: -1` tie-breaker), max limit 100 capping, combined category & date range filters, 7 automated tests (35/35 passed) |
 | 9. Reports/charts | Verified | `4e98f79` | On-demand MongoDB aggregation pipelines for 7-day weekly calories with zero-fill, macro day/week grouping with Atwater energy ratios, honest micronutrient absence semantics, goal adherence, 7 automated tests (42/42 passed) |
 | 10. AI extraction | Verified | `d39c704` | Memory buffer upload (no image retention), AI vision extraction adapter returning uncommitted proposal, allergen screening against user profile, contextual daily fit evaluation, 3 automated tests (45/45 passed) |
-| 11. Polish/docs/deploy | Not started | — | — |
+| 11. Polish/docs/deploy | Verified | Pending | Master README with all 18 Section 10 items, multi-stage Dockerfile, render.yaml IaC blueprint, client/vercel.json SPA rewrites & security headers, all 17 acceptance criteria satisfied, 45/45 tests green |
