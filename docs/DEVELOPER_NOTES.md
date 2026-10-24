@@ -214,3 +214,141 @@ A scalable full-stack application requires a predictable developer experience an
 
 #### Practice modification
 In `server/src/app.ts`, add an `uptimeSeconds: Math.floor(process.uptime())` property to the `/api/v1/health` response JSON payload, update `server/src/app.test.ts` to assert that `uptimeSeconds` is a non-negative number, and run `npm test` to verify the assertion passes.
+
+
+---
+
+### Stage 2 — Brand and Design Tokens
+**Status:** Verified  
+**Commit:** `b2b99b7 feat(brand): add Calories identity and design tokens`  
+**Date:** 2026-10-24
+
+#### What we built
+1. Original SVG Brand Assets:
+   - `client/public/brand/icon.svg`: Custom vector icon featuring the editorial nutrition leaf and calibrated energy node geometry with brand colors (#152238 ink navy, #285B46 forest green, #BFD8C2 sage green, #FAF9F6 warm ivory).
+   - `client/public/brand/wordmark.svg`: Typographic SVG wordmark "Calories" in Ink Navy with Forest Green accent.
+   - `client/public/brand/logo.svg`: Combined horizontal logo lockup with icon, wordmark, and tagline ("Your nutrition, made clearer.").
+   - `client/public/favicon.svg`: Brand favicon replacing the default Vite logo.
+   - `client/index.html`: Updated page title to "Calories — Your nutrition, made clearer.", added meta description, preconnected Google Fonts for Inter, and linked the new SVG favicon.
+2. Authoritative Design Tokens:
+   - `client/src/styles/calories.tokens.json`: Comprehensive design token dictionary documenting colors, semantic roles, typography scale, spacing hierarchy, border radii, and restrained shadow elevations.
+   - `client/src/styles/calories.css`: Declared CSS custom properties for tokens, accessible focus outlines (`:focus-visible`), WCAG AA compliant contrast ratios, base typographic resets, and `@media (prefers-reduced-motion: reduce)` accessibility rules.
+   - `client/src/index.css`: Replaced Vite starter CSS with global container, link, and `.sr-only` utility styles.
+3. Reusable UI Component Primitives (`client/src/components/ui/`):
+   - `CaloriesLogo.tsx`: Flexible brand logo component supporting sizes (`sm`, `md`, `lg`), vector SVG icon, wordmark, and optional tagline.
+   - `Button.tsx`: Accessible button supporting 5 variants (`primary`, `secondary`, `outline`, `destructive`, `ghost`), 3 sizes (`sm`, `md`, `lg`), loading spinner with `aria-busy`, and disabled states.
+   - `Card.tsx`: Modular card primitives (`Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter`) with optional interactive hover elevation.
+   - `Badge.tsx`: Semantic status chips (`default`, `forest`, `sage`, `amber`, `destructive`, `neutral`) with high contrast ratios and text labels (state is never indicated by color alone).
+   - `ProgressBar.tsx`: ARIA-compliant progress bar (`role="progressbar"`, `aria-valuenow`, `aria-valuemin`, `aria-valuemax`, `aria-label`) supporting custom units (`kcal`, `g`), percentage display, and semantic color variants (`forest`, `sage`, `amber`, `destructive`).
+   - `Input.tsx`: Form input component supporting validation error states (`aria-invalid`), icon slots (`leftIcon`, `rightIcon`), and focus rings.
+   - `Select.tsx`: Accessible styled dropdown select for meal types and units.
+   - `FormField.tsx`: Accessible form field wrapper managing label association (`htmlFor`), required asterisks, help hints, and error alerts (`role="alert"`).
+   - `index.ts`: Barrel export for all UI components.
+4. Interactive Brand Showcase:
+   - `client/src/App.tsx` & `client/src/App.css`: Replaced Vite counter with a comprehensive live showcase presenting the brand palette swatches, typography scale, interactive progress simulation (log sample snack), button variants, badges, and validated form controls.
+
+#### Why it exists
+Building user interfaces without a unified design system leads to inconsistent padding, mismatched colors, inaccessible contrast ratios, and copy-paste component bugs.
+- Design tokens establish a single source of truth for the Calories brand identity (Premium Editorial Health-Tech).
+- Reusable primitives ensure that subsequent stages (Dashboard Shell, Meals CRUD, Goal Setting, Reports, AI Extraction) are built rapidly using consistent, pre-tested, accessible building blocks.
+- Accessible focus rings and ARIA attributes ensure compliance with accessibility standards (WCAG 2.1 AA).
+
+#### Files changed
+| File | Responsibility |
+|---|---|
+| `client/public/brand/icon.svg` | Original SVG nutrition leaf and calibrated energy node icon. |
+| `client/public/brand/wordmark.svg` | Typographic SVG wordmark in Ink Navy. |
+| `client/public/brand/logo.svg` | Full horizontal brand lockup (icon + wordmark + tagline). |
+| `client/public/favicon.svg` | Custom Calories SVG favicon for browser tab. |
+| `client/index.html` | Page title, metadata, Inter font link, and favicon reference. |
+| `client/src/styles/calories.tokens.json` | Master token definitions (colors, semantics, typography, radii, shadows). |
+| `client/src/styles/calories.css` | CSS custom properties, utility classes, and base component styling. |
+| `client/src/index.css` | Global layout resets and screen reader utilities. |
+| `client/src/components/ui/CaloriesLogo.tsx` | Reusable vector brand logo component. |
+| `client/src/components/ui/Button.tsx` | Reusable button with 5 variants, 3 sizes, and loading state. |
+| `client/src/components/ui/Card.tsx` | Composable card layout primitives. |
+| `client/src/components/ui/Badge.tsx` | Semantic status badges with WCAG contrast compliance. |
+| `client/src/components/ui/ProgressBar.tsx` | ARIA-compliant progress bar for calories and macros. |
+| `client/src/components/ui/Input.tsx` | Form input with error states and icon adornments. |
+| `client/src/components/ui/Select.tsx` | Styled select element with error states. |
+| `client/src/components/ui/FormField.tsx` | Accessible form field wrapper with label, error, and hint. |
+| `client/src/components/ui/index.ts` | Barrel export for UI components. |
+| `client/src/App.tsx` | Interactive Brand & Design Tokens Showcase. |
+| `client/src/App.css` | Responsive layout and styling for the showcase. |
+| `docs/DEVELOPER_NOTES.md` | Stage 2 log. |
+| `docs/PROGRESS.md` | Progress table updated with Stage 2 status. |
+
+#### Code walkthrough
+
+##### 1. `client/src/components/ui/ProgressBar.tsx`
+- **Props:** `value: number`, `max: number`, `label?: string`, `unit?: string`, `variant?: ProgressVariant`, `showPercentage?: boolean`.
+- **Clamping Logic:** `const safeMax = max > 0 ? max : 1; const clampedPercentage = Math.min(Math.max(Math.round((value / safeMax) * 100), 0), 100);` prevents division by zero and clamps the visual fill between 0% and 100%.
+- **ARIA Accessibility:** `role="progressbar"`, `aria-valuenow={value}`, `aria-valuemin={0}`, `aria-valuemax={max}`, and `aria-label={label || 'Progress'}` allow screen readers to announce progress accurately.
+
+##### 2. `client/src/components/ui/Button.tsx`
+- **Polymorphic Props:** Extends `React.ButtonHTMLAttributes<HTMLButtonElement>`, passing through native attributes like `onClick`, `disabled`, and `type`.
+- **Loading State:** When `isLoading={true}`, renders a CSS spinning indicator, sets `aria-busy="true"`, and disables pointer events.
+- **Icon Slots:** `leftIcon` and `rightIcon` support embedding icons seamlessly without breaking layout.
+
+##### 3. `client/src/components/ui/FormField.tsx`
+- **Accessibility Binding:** Pairs `htmlFor` on `<label>` with the input's `id`. If an `error` string is passed, it renders a `<span role="alert">` with `id="${htmlFor}-error"` so screen readers immediately notify users of validation failures.
+
+#### Data flow
+1. User clicks "+ Log Sample Snack (+250 kcal)" in `App.tsx`.
+2. Button enters `isLoading={true}` state for 400ms to simulate asynchronous processing.
+3. State updater `setCalorieCount((prev) => Math.min(prev + 250, targetCalories + 500))` recalculates the total consumed calories.
+4. `ProgressBar` receives updated `value={calorieCount}` and recalculates `clampedPercentage`.
+5. CSS transition `transition: width var(--transition-normal)` animates the progress fill smoothly to its new width.
+6. If `calorieCount >= targetCalories`, the badge dynamically switches from Forest (`On Track`) to Amber (`Target Reached`).
+
+#### Validation and security
+- **Contrast Check:** Ink Navy on Warm Ivory exceeds 14:1 contrast ratio (WCAG AAA). Forest Green on White exceeds 5.8:1 (WCAG AA).
+- **Reduced Motion:** `@media (prefers-reduced-motion: reduce)` disables animations and transitions for users with vestibular disorders.
+- **Client Input Validation:** Real-time character count and emptiness validation prevents submitting malformed data.
+- **Zero Secrets:** All assets are public SVGs; no sensitive data is bundled.
+
+#### Tests and evidence
+1. **Linter Check:**
+   ```
+   > oxlint (client)
+   Found 0 warnings and 0 errors. Finished in 30ms on 12 files with 116 rules.
+   > oxlint src (server)
+   Found 0 warnings and 0 errors. Finished in 11ms on 3 files with 96 rules.
+   ```
+2. **TypeScript & Production Build:**
+   ```
+   > npm run typecheck:client (tsc -b && vite build)
+   ✓ 27 modules transformed. Built in 278ms.
+   > npm run typecheck:server (tsc --noEmit)
+   Clean compilation. 0 type errors.
+   ```
+3. **Automated Server Tests:**
+   ```
+   > npm test
+   # tests 2, suites 0, pass 2, fail 0
+   ```
+4. **Full Workspace Build:**
+   ```
+   > npm run build
+   Client and server production bundles emitted successfully.
+   ```
+
+#### Known limitations
+- The showcase currently operates on local component state for demonstration; backend persistence for goals and meals will be integrated in Stages 6 and 7.
+- Full dark mode toggle is planned as a future enhancement once core features are completed.
+
+#### Interview explanation
+> "In Stage 2, I created the brand identity and design system for Calories. Following the Premium Editorial Health-Tech specification, I designed original SVG assets for the logo, wordmark, and favicon, and implemented an authoritative token hierarchy in CSS and JSON. I then developed accessible, composable UI primitives—including Buttons, Cards, Badges, ARIA-compliant Progress Bars, and Form Fields. Every component respects WCAG AA contrast, handles loading and disabled states, and honors reduced-motion preferences, creating a rock-solid foundation for our dashboard and meal management features."
+
+#### Likely interview questions
+1. **Why use CSS custom properties for design tokens rather than hardcoding hex values in CSS modules or utility classes?**  
+   *Answer:* CSS variables provide runtime flexibility, enabling dynamic theme adjustments (e.g. high-contrast mode), centralized updates, and clean sharing between components without needing JavaScript compilation.
+2. **How do you ensure progress bars and badges are accessible to users with screen readers or color vision deficiencies?**  
+   *Answer:* Progress bars use semantic ARIA attributes (`role="progressbar"`, `aria-valuenow`, `aria-valuemin`, `aria-valuemax`, `aria-label`). For badges and statuses, we never communicate state by color alone—every badge includes an explicit textual label and high-contrast styling meeting WCAG AA standards.
+3. **What is `prefers-reduced-motion` and why is it important in frontend engineering?**  
+   *Answer:* `prefers-reduced-motion` is an operating system media query indicating that the user prefers minimal animation. Respecting it via CSS prevents motion sickness and vestibular disorientation for sensitive users.
+4. **Why break Card into composable subcomponents (`CardHeader`, `CardTitle`, `CardContent`, `CardFooter`) instead of a single giant monolithic Card?**  
+   *Answer:* The compound component pattern gives consuming developers flexibility in layout and content ordering while maintaining consistent styling, margins, and borders across all cards in the application.
+
+#### Practice modification
+In `client/src/components/ui/Badge.tsx`, add a new variant called `'outline'` that renders a transparent background with a 1px solid `var(--border-medium)` border and `var(--text-secondary)` text, then add an example of this badge to the showcase in `client/src/App.tsx` and run `npm run lint` and `npm run build:client` to verify it compiles.

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" role="img" aria-label="Calories Icon">
+  <rect width="64" height="64" rx="16" fill="#152238" />
+  <circle cx="32" cy="32" r="22" fill="#285B46" />
+  <path d="M32 16C32 16 45 23 45 35C45 43 39 48 32 48C25 48 19 43 19 35C19 23 32 16 32 16Z" fill="#BFD8C2" />
+  <path d="M32 16C32 16 43 25 40 37C36 32 32 28 26 26C21 24 19 35 19 35C19 23 32 16 32 16Z" fill="#285B46" />
+  <circle cx="32" cy="33" r="4.5" fill="#FAF9F6" />
+  <circle cx="32" cy="33" r="2" fill="#152238" />
+</svg>

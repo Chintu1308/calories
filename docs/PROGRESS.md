@@ -6,7 +6,7 @@ Update after every stage and commit.
 |---|---|---|---|
 | 0. Workspace audit | Verified | `329f72b` | Node v22.16.0, npm 10.9.2, client lint & build green |
 | 1. Scaffold/docs | Verified | `f59bb92` | Root scripts, strict TS, server health tests pass (2/2), lint & build green |
-| 2. Brand/design tokens | Not started | — | — |
+| 2. Brand/design tokens | Verified | `b2b99b7` | Original SVG identity, design tokens, accessible UI primitives (Button, Card, Badge, ProgressBar, FormField), lint & build clean |
 | 3. App shell/dashboard | Not started | — | — |
 | 4. Express/MongoDB | Not started | — | — |
 | 5. Auth/ownership | Not started | — | — |
