@@ -1349,7 +1349,7 @@ In `server/src/routes/reportRoutes.ts`, add a `GET /api/v1/reports/category-brea
 
 ### Stage 10 — Reviewed AI Nutrition Extraction & Contextual Fit
 **Status:** Verified  
-**Commit:** `Pending` (feat(ai): add reviewed nutrition image extraction)  
+**Commit:** `d39c704 feat(ai): add reviewed nutrition image extraction`  
 **Date:** 2026-10-24
 
 #### What we built

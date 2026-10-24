@@ -16,5 +16,5 @@ Update after every stage and commit.
 | 7. Meal CRUD | Verified | `543d297` | Meal Mongoose model with compound indexes, Zod validation, full CRUD (POST, GET paginated, GET /:id, PATCH, DELETE) with strict tenant isolation, 8 automated tests (28/28 passed) |
 | 8. Filters/pagination | Verified | `91d96ad` | Deterministic stable pagination (`_id: -1` tie-breaker), max limit 100 capping, combined category & date range filters, 7 automated tests (35/35 passed) |
 | 9. Reports/charts | Verified | `4e98f79` | On-demand MongoDB aggregation pipelines for 7-day weekly calories with zero-fill, macro day/week grouping with Atwater energy ratios, honest micronutrient absence semantics, goal adherence, 7 automated tests (42/42 passed) |
-| 10. AI extraction | Verified | Pending | Memory buffer upload (no image retention), AI vision extraction adapter returning uncommitted proposal, allergen screening against user profile, contextual daily fit evaluation, 3 automated tests (45/45 passed) |
+| 10. AI extraction | Verified | `d39c704` | Memory buffer upload (no image retention), AI vision extraction adapter returning uncommitted proposal, allergen screening against user profile, contextual daily fit evaluation, 3 automated tests (45/45 passed) |
 | 11. Polish/docs/deploy | Not started | — | — |
