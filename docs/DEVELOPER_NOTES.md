@@ -1069,7 +1069,7 @@ In `server/src/models/Goal.ts`, add an optional `waterTargetMl: number` field (d
 
 ### Stage 7 — Meal Entry Management (CRUD, Validation & Ownership)
 **Status:** Verified  
-**Commit:** `Pending` (feat(meals): implement meal entry management)  
+**Commit:** `543d297 feat(meals): implement meal entry management`  
 **Date:** 2026-10-24
 
 #### What we built
