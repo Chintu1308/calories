@@ -513,7 +513,7 @@ In `client/src/components/meals/MealCategoryCard.tsx`, add an item deletion butt
 
 ### Stage 3b — Full Application Screens & Bespoke HTTP Error Pages
 **Status:** Verified  
-**Commit:** `feat(ui): add application screens and branded HTTP error pages`  
+**Commit:** `9e5c1ea feat(ui): add application screens and branded HTTP error pages`  
 **Date:** 2026-10-24
 
 #### What we built
