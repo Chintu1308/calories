@@ -7,3 +7,4 @@ export * from './Input.js';
 export * from './Select.js';
 export * from './FormField.js';
 export * from './Icon.js';
+export * from './Skeleton.js';

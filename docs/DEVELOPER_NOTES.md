@@ -355,3 +355,156 @@ Building user interfaces without a unified design system leads to inconsistent p
 
 #### Practice modification
 In `client/src/components/ui/Badge.tsx`, add a new variant called `'outline'` that renders a transparent background with a 1px solid `var(--border-medium)` border and `var(--text-secondary)` text, then add an example of this badge to the showcase in `client/src/App.tsx` and run `npm run lint` and `npm run build:client` to verify it compiles.
+
+
+---
+
+### Stage 3 — App Shell / Static Dashboard
+**Status:** Verified  
+**Commit:** `b359abf feat(ui): build branded dashboard shell`  
+**Date:** 2026-10-24
+
+#### What we built
+1. Domain Type System:
+   - `client/src/types/nutrition.ts`: Strongly typed interfaces modeling `MealItem`, `MealType` (Breakfast, Lunch, Dinner, Snacks, Brunch, Intermediate), `NutritionInfo` (calories, protein, carbs, fat), `QuantityInfo`, `Micronutrient` (with explicit units; omitted when unknown, never default to 0), `DailyGoal`, and `DayNutritionalSummary`.
+2. Realistic Mock Nutrition Dataset:
+   - `client/src/data/mockNutritionData.ts`: Structured sample meals and 7-day calorie historical records adhering strictly to `docs/DATA_MODEL.md`. Clearly labeled as temporary UI demonstration data.
+3. Responsive Header & Navigation:
+   - `client/src/components/layout/Header.tsx`: Navigation bar featuring the official Calories logo, active tab navigation (`Dashboard`, `Meals`, `Goals`, `Reports`, `AI Scan`), and quick-action buttons (`Log Meal`, `AI Scan`).
+4. Daily Goal Summary Cards:
+   - `client/src/components/goals/GoalSummaryCards.tsx`: Three responsive overview cards:
+     - Calorie Target Card with progress bar, remaining energy budget, and goal-vs-actual percentage.
+     - Macronutrient Breakdown Card with individual protein, carbohydrate, and fat progress bars paired with official SVG icons (`protein.svg`, `carbs.svg`, `fat.svg`).
+     - Hydration & Weight Tracker Card with water intake progress and current-vs-target weight display.
+5. Meal Timeline & Category Cards:
+   - `client/src/components/meals/MealCategoryCard.tsx`: Category cards grouping meals by Breakfast, Lunch, Dinner, and Snacks. Computes category subtotals, displays item details (food name, portion, time, macros, micronutrient pills, source badges), and provides an inline "+ Add" trigger.
+   - `client/src/components/meals/MealTimeline.tsx`: Chronological journal section organizing all categories, handling empty states, and providing quick logging actions.
+6. 7-Day Calorie Intake Trend Preview:
+   - `client/src/components/reports/WeeklyTrendPreview.tsx`: Branded bar chart preview with proportional columns, target guideline reference line (2,200 kcal), today's indicator, chart legend, and an accessible `sr-only` table summary for screen readers.
+7. State Simulator & Edge-Case Views:
+   - `client/src/components/layout/DashboardShell.tsx`: Top toolbar allowing instant one-click switching between **Normal View**, **Empty State**, **Loading Skeletons**, and **Error Banner** for interview demonstrations.
+   - `client/src/components/ui/Skeleton.tsx`: Accessible loading skeleton with smooth pulse animation.
+8. Interactive Modals:
+   - `client/src/App.tsx`: Wired manual Add Meal modal with client-side validation and AI Plate Scanner simulation modal.
+
+#### Why it exists
+Before integrating database persistence and API calls, building a complete, high-fidelity app shell provides several critical advantages:
+- Validates the visual hierarchy (greeting, calorie progress, macro progress, meal timeline, weekly trends) on real desktop and mobile viewports.
+- Exercises the domain data structures against UI rendering requirements.
+- Enables demonstration of edge cases (empty states, loading skeletons, error states) during live technical interviews without needing to induce artificial network errors.
+
+#### Files changed
+| File | Responsibility |
+|---|---|
+| `client/src/types/nutrition.ts` | TypeScript domain interfaces for meals, nutrition, quantities, and goals. |
+| `client/src/data/mockNutritionData.ts` | Fictional sample nutrition dataset strictly conforming to data model. |
+| `client/src/components/ui/Skeleton.tsx` | Accessible animated loading placeholder primitive. |
+| `client/src/components/layout/Header.tsx` | Responsive header with brand logo, nav tabs, and action buttons. |
+| `client/src/components/goals/GoalSummaryCards.tsx` | Summary cards for calories, macros, hydration, and weight. |
+| `client/src/components/meals/MealCategoryCard.tsx` | Card displaying meal items for a category with subtotal calculations. |
+| `client/src/components/meals/MealTimeline.tsx` | Chronological meal journal with empty, loading, and populated states. |
+| `client/src/components/reports/WeeklyTrendPreview.tsx` | 7-day calorie intake trend chart preview with ARIA table. |
+| `client/src/components/layout/DashboardShell.tsx` | Main dashboard layout with date navigation, greeting, and state simulator toolbar. |
+| `client/src/components/ui/index.ts` | Exported `Skeleton` primitive. |
+| `client/src/App.tsx` | Main application component orchestrating dashboard state, modals, and meal data. |
+| `client/src/App.css` | Styles for dashboard columns, meal cards, trend charts, and modal dialogs. |
+| `docs/DEVELOPER_NOTES.md` | Stage 3 log. |
+| `docs/PROGRESS.md` | Progress table updated with Stage 3 status. |
+
+#### Code walkthrough
+
+##### 1. Subtotal Calculations in `MealCategoryCard.tsx`
+```tsx
+const totalCalories = meals.reduce((acc, m) => acc + m.nutrition.caloriesKcal, 0);
+const totalProtein = meals.reduce((acc, m) => acc + m.nutrition.proteinG, 0);
+const totalCarbs = meals.reduce((acc, m) => acc + m.nutrition.carbsG, 0);
+const totalFat = meals.reduce((acc, m) => acc + m.nutrition.fatG, 0);
+```
+- Iterates over meals belonging to that category to compute instant nutritional subtotals.
+- Subtotals update dynamically as new meal items are added.
+
+##### 2. Accessible Chart Fallback in `WeeklyTrendPreview.tsx`
+```tsx
+<div className="calories-trend-chart-container" aria-hidden="true">
+  {/* Visual columns and target reference line */}
+</div>
+<div className="sr-only">
+  <table>
+    <caption>Weekly Calorie Consumption Data</caption>
+    {/* Screen-reader accessible rows */}
+  </table>
+</div>
+```
+- Pure visual elements use `aria-hidden="true"` to prevent screen reader clutter.
+- An off-screen `.sr-only` table provides structured tabular data for assistive technologies.
+
+##### 3. Reactive State Management in `App.tsx`
+```tsx
+const [meals, setMeals] = useState<MealItem[]>(SAMPLE_MEALS);
+const consumedCalories = meals.reduce((acc, m) => acc + m.nutrition.caloriesKcal, 0);
+```
+- When a user logs a meal (manually or via AI simulation), `setMeals((prev) => [newMeal, ...prev])` prepends the item.
+- The summary totals recalculate automatically, propagating to `GoalSummaryCards`, category cards, and progress bars.
+
+#### Data flow
+1. User clicks "+ Log Meal" in the header or on a specific category card.
+2. Modal opens with pre-selected category (e.g. `Lunch`).
+3. User enters food name ("Grilled Salmon Salad") and calories (420 kcal).
+4. Client validation ensures non-empty name and positive numeric calories.
+5. `handleSaveMeal` creates a new typed `MealItem` with UTC timestamp and appends it to `meals` state.
+6. React re-renders:
+   - `GoalSummaryCards` recalculates consumed energy and re-computes `remainingKcal`.
+   - `MealCategoryCard` recalculates category subtotal and inserts the new item row with macro pills and source badge.
+   - `ProgressBar` animates to the new width.
+
+#### Validation and security
+- **Form Input Validation:** Food name must be non-empty; calories must be a positive finite number.
+- **XSS Protection:** React JSX automatically escapes user strings rendered in the UI.
+- **Zero Secrets:** No API keys or credentials exist on the client.
+- **Accessible Focus:** All modal dialogs trap focus and support keyboard dismissal (`Escape` / close button).
+
+#### Tests and evidence
+1. **Linter Check:**
+   ```
+   > oxlint (client)
+   Found 0 warnings and 0 errors. Finished in 28ms on 22 files with 116 rules.
+   > oxlint src (server)
+   Found 0 warnings and 0 errors. Finished in 14ms on 3 files with 96 rules.
+   ```
+2. **TypeScript & Production Build:**
+   ```
+   > npm run typecheck:client (tsc -b && vite build)
+   ✓ 36 modules transformed. Built in 449ms.
+   > npm run typecheck:server (tsc --noEmit)
+   Clean compilation. 0 type errors.
+   ```
+3. **Automated Server Tests:**
+   ```
+   > npm test
+   # tests 2, suites 0, pass 2, fail 0
+   ```
+4. **Full Workspace Build:**
+   ```
+   > npm run build
+   Client and server production bundles emitted successfully.
+   ```
+
+#### Known limitations
+- Data is currently stored in React memory (`useState`); backend REST endpoints and MongoDB persistence will be wired in Stages 4–7.
+- Date navigation currently switches between sample day labels; dynamic date querying will be implemented in Stage 8.
+
+#### Interview explanation
+> "In Stage 3, I engineered the complete branded app shell and interactive dashboard for Calories. Following our design specification, I structured the interface into a clear visual hierarchy: date and greeting controls, daily calorie and macronutrient goal summary cards, a chronological meal timeline grouped by Breakfast, Lunch, Dinner, and Snacks, and a 7-day trend preview with accessible table fallbacks. I also built a state simulator toolbar enabling one-click switching between Normal, Empty, Loading, and Error states, allowing interviewers to instantly evaluate how the application handles every edge case."
+
+#### Likely interview questions
+1. **How do you handle accessibility for custom SVG bar charts or visualizations?**  
+   *Answer:* The visual visualization is marked `aria-hidden="true"` to prevent screen readers from reading raw styling or unstructured coordinates. Alongside it, a visually hidden table (`.sr-only`) provides structured semantic markup with `<caption>`, `<th>`, and `<td>` elements that screen reader users can navigate predictably.
+2. **Why build loading skeletons instead of a simple full-page spinning loader?**  
+   *Answer:* Skeletons maintain the layout geometry while data loads, preventing jarring cumulative layout shifts (CLS), reducing perceived latency, and indicating to the user exactly where content will appear.
+3. **Why compute category subtotals and daily totals on the fly using `reduce` rather than storing them in state?**  
+   *Answer:* Deriving totals directly from the raw `meals` array ensures single-source-of-truth consistency. If we stored subtotals in separate state variables, we would risk state synchronization bugs where an added meal item updates the list but fails to increment the subtotal.
+4. **How does the meal timeline communicate whether an entry was logged manually or generated by AI?**  
+   *Answer:* Every meal record carries a `source: 'manual' | 'ai'` attribute. The UI renders a distinct semantic badge for AI-extracted meals, ensuring transparency and reminding users that AI suggestions were reviewed and confirmed.
+
+#### Practice modification
+In `client/src/components/meals/MealCategoryCard.tsx`, add an item deletion button (with a trash icon or "✕") next to each meal row that triggers an `onDeleteMeal(meal.id)` callback, connect it to `App.tsx` to filter out the deleted item from state, and verify that the category subtotal and daily budget update immediately.
