@@ -618,7 +618,7 @@ In `client/src/pages/ErrorsPage.tsx`, add a query parameter simulator (e.g. `?co
 
 ### Stage 3c — User Onboarding, Dual-Log Flow, Goal Trajectory & Clinical PDF Export
 **Status:** Verified  
-**Commit:** `feat(ui): add onboarding profile, dual meal log, goal trajectory, and PDF export`  
+**Commit:** `979920b feat(ui): add onboarding profile, dual meal log, goal trajectory, and PDF export`  
 **Date:** 2026-10-24
 
 #### What we built
