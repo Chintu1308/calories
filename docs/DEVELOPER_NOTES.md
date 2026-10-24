@@ -685,3 +685,110 @@ In `client/src/pages/ErrorsPage.tsx`, add a query parameter simulator (e.g. `?co
 
 #### Practice modification
 In `client/src/pages/GoalsPage.tsx`, add an interactive milestone slider to the timeline projection graph allowing users to adjust their projected weekly rate of weight change (e.g., from 0.5 kg/week to 0.75 kg/week) and watch the required daily calorie deficit line update in real time.
+
+---
+
+### Stage 4 — Configure Express and MongoDB
+**Status:** Verified  
+**Commit:** `feat(server): configure Express and MongoDB`  
+**Date:** 2026-10-24
+
+#### What we built
+1. **Type-Safe Environment Configuration (`server/src/config/env.ts`):**
+   - Implemented Zod schema validation for all server environment variables:
+     - `PORT`: Coerced integer (default `5000`).
+     - `NODE_ENV`: Enum (`'development' | 'test' | 'production'`, default `'development'`).
+     - `CLIENT_ORIGIN`: CORS origin allowlist (default `'http://localhost:5173'`).
+     - `MONGODB_URI`: MongoDB connection string with Atlas support and local fallback.
+     - `JWT_SECRET`: Minimum 16 characters for token encryption.
+     - `AI_SERVICE_URL` & `GEMINI_API_KEY`: Optional microservice integration endpoints.
+   - Fails fast in production with formatted diagnostics if critical environment variables are missing or malformed.
+2. **Robust Mongoose Database Management (`server/src/config/db.ts`):**
+   - Configured `connectDatabase` with connection pooling (`maxPoolSize: 10`) and bounded timeouts (`serverSelectionTimeoutMS: 5000`).
+   - Graceful offline fallback: If MongoDB is starting up or temporarily offline, logs descriptive diagnostics without crashing the Express process, enabling non-dependent routes (like health pings and static documentation) to stay active.
+   - Global event listeners for `error`, `disconnected`, and `reconnected`.
+   - `getConnectionStatus()` helper exposing database connection state (`connected`, `connecting`, `disconnected`, `error`) and readyState numbers.
+   - Clean shutdown helper `disconnectDatabase()`.
+3. **Operational Error Architecture (`server/src/errors/AppError.ts`):**
+   - Custom typed `AppError` class extending native JavaScript `Error`.
+   - Distinguishes trusted operational errors from programmer bugs with `isOperational: true`.
+   - Factory methods: `AppError.badRequest()`, `AppError.unauthorized()`, `AppError.paymentRequired()`, `AppError.forbidden()`, `AppError.notFound()`, `AppError.conflict()`, `AppError.internal()`.
+4. **Centralized Error Handling Middleware (`server/src/middleware/errorHandler.ts`):**
+   - Maps errors into the standard Calories error envelope:
+     - `AppError` -> HTTP status code and custom code.
+     - `ZodError` -> HTTP 400 Bad Request with field-by-field issue breakdown.
+     - `mongoose.Error.ValidationError` -> HTTP 400 Bad Request with schema validation paths.
+     - `mongoose.Error.CastError` -> HTTP 400 Bad Request for malformed ObjectIds.
+     - MongoDB Duplicate Key (`11000`) -> HTTP 409 Conflict.
+     - Uncaught exceptions -> HTTP 500 Internal Server Error (suppressing stack traces in production).
+5. **Database-Aware Health Telemetry (`server/src/app.ts`):**
+   - Enhanced `GET /api/v1/health` to report real-time database connectivity and Mongoose readyState.
+6. **Server Lifecycle & Graceful Shutdown (`server/src/server.ts`):**
+   - Connects to MongoDB at boot.
+   - Listens for `SIGINT` and `SIGTERM` signals: closes HTTP server first to reject new incoming connections, then gracefully closes Mongoose database connection pools before process termination.
+7. **Automated Integration Test Suite (`server/src/app.test.ts`):**
+   - 4 automated integration tests running over ephemeral ports verifying health endpoints, 404 route handling, error payload formatting, and database status reporting.
+
+#### Files created and modified
+| File | Responsibility |
+|---|---|
+| `server/src/config/env.ts` | Zod validation schema for server environment variables. |
+| `server/src/config/db.ts` | Mongoose connection management, event logging, status monitoring, and graceful disconnection. |
+| `server/src/errors/AppError.ts` | Custom operational error class with HTTP status codes and factory helpers. |
+| `server/src/middleware/errorHandler.ts` | Central Express error middleware formatting Zod, Mongoose, and AppError instances. |
+| `server/src/app.ts` | Express application setup with CORS, health check with DB status, 404 handler, and error handler. |
+| `server/src/server.ts` | Entry point connecting to database, listening on port, and managing graceful shutdown. |
+| `server/src/app.test.ts` | Automated integration tests verifying health, 404, AppError, and database status. |
+| `server/package.json` | Added dependencies `mongoose` and `zod`. |
+
+#### Data flow
+1. When the server starts (`npm run dev:server` or `node dist/server.js`), `env.ts` parses and validates `process.env`.
+2. `server.ts` calls `connectDatabase()`, establishing a pooled connection to MongoDB.
+3. Incoming HTTP requests pass through CORS allowlist and JSON body parsing middleware.
+4. When `GET /api/v1/health` is queried, it reads `getConnectionStatus()` from Mongoose and returns `{ status: 'ok', database: { status: 'connected', readyState: 1 }, timestamp: '...' }`.
+5. Any synchronous or asynchronous error thrown in route handlers is forwarded via `next(err)` to `errorHandler.ts`, which normalizes it into a standard JSON envelope with an appropriate HTTP status code.
+
+#### Validation and security
+- **Environment Bounds:** Ports must be positive integers; `NODE_ENV` must match allowed environments; `JWT_SECRET` must meet minimum length criteria.
+- **Connection Security:** MongoDB connection strings sanitize credentials in logs (`//***:***@`) to prevent credential leakage.
+- **Information Leakage Prevention:** Error middleware suppresses stack traces when `NODE_ENV !== 'development'`.
+- **CORS Defense:** Only requests from verified origins or configured allowlist can read credentials or access endpoints.
+
+#### Tests and evidence
+```text
+> oxlint (client & server)
+Found 0 warnings and 0 errors across 39 files with 116 rules.
+
+> npm run typecheck (client & server)
+✓ 46 modules transformed. Built in 721ms.
+Server: tsc --noEmit clean compilation (0 errors).
+
+> npm test (Node 22 native test runner)
+TAP version 13
+# Subtest: GET /api/v1/health returns 200 OK with database connection status
+ok 1 - GET /api/v1/health returns 200 OK with database connection status
+# Subtest: GET /unknown-route returns 404 with standard error payload
+ok 2 - GET /unknown-route returns 404 with standard error payload
+# Subtest: Central errorHandler formats AppError into standard JSON envelope
+ok 3 - Central errorHandler formats AppError into standard JSON envelope
+# Subtest: Database connection status returns valid readyState
+ok 4 - Database connection status returns valid readyState
+1..4
+# tests 4, suites 0, pass 4, fail 0
+```
+
+#### Interview explanation
+> "In Stage 4, I architected the Express and MongoDB backend layer. I introduced strict environment variable validation using Zod to ensure the server fails fast if critical configuration is missing. I built a Mongoose connection manager with connection pooling and graceful offline degradation, allowing non-dependent routes like health checks to remain operational even during database cold starts. I also designed a centralized error-handling middleware that intercepts operational AppErrors, Zod validation issues, and Mongoose schema errors, translating them into a unified JSON envelope with standard HTTP status codes. Finally, I implemented graceful shutdown listeners that cleanly close active HTTP sockets and disconnect database pools on process termination."
+
+#### Likely interview questions
+1. **Why validate environment variables with Zod at application startup rather than reading `process.env` directly throughout the codebase?**  
+   *Answer:* Direct `process.env` lookups throughout the codebase lead to runtime crashes when an expected variable is undefined, type bugs (since all environment variables are strings), and silent failures in production. Parsing with Zod at boot guarantees type safety, applies sensible defaults, coerces types (like port numbers), and fails fast with a clear error before the application accepts traffic.
+2. **What happens if MongoDB is temporarily down or slow to respond when the Express server starts?**  
+   *Answer:* Rather than crashing the entire Node process or hanging indefinitely, our `connectDatabase` function sets a bounded `serverSelectionTimeoutMS: 5000` and catches connection errors gracefully. The server continues running, allowing monitoring systems and reverse proxies to query `/api/v1/health`, which reports degraded database status while the connection manager attempts reconnection.
+3. **Why distinguish between operational errors and programmer errors in an Express API?**  
+   *Answer:* Operational errors (e.g. invalid user input, expired tokens, duplicate keys) are predictable and expected in production; they should be translated into clear HTTP 4xx responses without restarting the server. Programmer errors (e.g. TypeError, undefined property access) are unexpected bugs; they must be logged with high severity, return a generic HTTP 500 without leaking stack traces, and potentially trigger process recycling if state is corrupted.
+4. **Why is graceful shutdown critical when deploying on container platforms like Render or Kubernetes?**  
+   *Answer:* Cloud platforms terminate containers by sending `SIGTERM`, waiting a brief grace period (e.g., 30s), and then sending `SIGKILL`. Without graceful shutdown, in-flight HTTP requests and database write operations are abruptly severed, causing data corruption and client connection reset errors. Our shutdown handler closes the HTTP server to reject new traffic while finishing active requests, then cleanly disconnects Mongoose before exiting.
+
+#### Practice modification
+In `server/src/middleware/errorHandler.ts`, add a rate-limit error handler for HTTP 429 (`Too Many Requests`) that inspects a `Retry-After` header and includes the retry duration in the error details response.

@@ -1,5 +1,8 @@
-import express, { type Request, type Response, type NextFunction } from 'express';
+import express, { type Request, type Response } from 'express';
 import cors from 'cors';
+import { env } from './config/env.js';
+import { getConnectionStatus } from './config/db.js';
+import { errorHandler } from './middleware/errorHandler.js';
 
 export const app = express();
 
@@ -8,9 +11,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // CORS configuration: allow configured client origin or default local dev
-const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
-  .split(',')
-  .map((origin) => origin.trim());
+const allowedOrigins = env.CLIENT_ORIGIN.split(',').map((origin) => origin.trim());
 
 app.use(
   cors({
@@ -26,12 +27,14 @@ app.use(
   })
 );
 
-// Standard API v1 health-check endpoint
+// Standard API v1 health-check endpoint with database status
 app.get('/api/v1/health', (_req: Request, res: Response) => {
+  const dbStatus = getConnectionStatus();
   res.status(200).json({
     status: 'ok',
     service: 'calories-server',
     version: '0.1.0',
+    database: dbStatus,
     timestamp: new Date().toISOString(),
   });
 });
@@ -46,13 +49,5 @@ app.use((req: Request, res: Response) => {
   });
 });
 
-// Central error handler
-app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  const errorMessage = err instanceof Error ? err.message : 'Internal Server Error';
-  res.status(500).json({
-    error: {
-      code: 'INTERNAL_SERVER_ERROR',
-      message: errorMessage,
-    },
-  });
-});
+// Centralized error handling middleware
+app.use(errorHandler);

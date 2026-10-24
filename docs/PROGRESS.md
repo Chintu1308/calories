@@ -10,7 +10,7 @@ Update after every stage and commit.
 | 3. App shell/dashboard | Verified | `b359abf` | Branded dashboard shell, date/greeting hierarchy, meal timeline (Breakfast/Lunch/Dinner/Snacks), goal summary cards, weekly trend preview, empty/loading/error states |
 | 3b. App screens & custom error suite | Verified | `9e5c1ea` | Complete screen suite (MealsPage, GoalsPage, ReportsPage, AIScanPage, SettingsPage) & bespoke health-tech error pages (400, 401, 402, 403, 404, 500, 503) with live interactive preview catalog |
 | 3c. Onboarding, Dual-Log & Clinical PDF | Verified | `979920b` | Registration/Onboarding with height, weight, allergies & permanent daily supplements; dual-option Log Meal modal; Goal timeline approximation SVG curve & "Things to Have" recommendations; AI daily fit evaluation; executive clinical PDF export |
-| 4. Express/MongoDB | Not started | — | — |
+| 4. Express/MongoDB | Verified | Pending commit | Zod environment validation, Mongoose connection management with pooling & graceful fallback, central AppError middleware, database health in /api/v1/health, Node 22 native tests (4/4 passed) |
 | 5. Auth/ownership | Not started | — | — |
 | 6. Goal setting | Not started | — | — |
 | 7. Meal CRUD | Not started | — | — |
