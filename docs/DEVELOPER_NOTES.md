@@ -797,7 +797,7 @@ In `server/src/middleware/errorHandler.ts`, add a rate-limit error handler for H
 
 ### Stage 5 — Enforce Authenticated User Access & Multi-Tenant Ownership
 **Status:** Verified  
-**Commit:** `feat(auth): enforce authenticated user access`  
+**Commit:** `cede254 feat(auth): enforce authenticated user access`  
 **Date:** 2026-10-24
 
 #### What we built
