@@ -488,7 +488,9 @@ export async function extractNutritionFromImage(
   dayRemainingCalories: number = 2000,
   dayRemainingProtein: number = 150,
   dayRemainingCarbs: number = 200,
-  dayRemainingFat: number = 65
+  dayRemainingFat: number = 65,
+  dietaryRules: string[] = [],
+  forbiddenFoods: string[] = []
 ): Promise<ExtractionResult> {
   const lowerName = filename.toLowerCase();
 
@@ -516,7 +518,11 @@ export async function extractNutritionFromImage(
       ? 'image/webp'
       : 'image/jpeg';
 
-    const prompt = `You are an expert nutritional analyst for the Calories platform. Analyze this food image (meal plate, snack, or nutrition label). Return strictly valid JSON:
+    const rulesContext = dietaryRules.length > 0
+      ? `\nActive Dietitian / Doctor Guidelines from User's Uploaded PDF:\n${dietaryRules.map((r, i) => `${i + 1}. ${r}`).join('\n')}\nForbidden Foods from PDF: ${forbiddenFoods.join(', ')}\nIn the 'notes' field, note if this meal conforms to or conflicts with these clinical instructions.`
+      : '';
+
+    const prompt = `You are an expert nutritional analyst for the Calories platform. Analyze this food image (meal plate, snack, or nutrition label).${rulesContext} Return strictly valid JSON:
 {
   "foodName": "Accurate title of the dish or product",
   "mealType": "Breakfast" | "Lunch" | "Dinner" | "Snacks" | "Brunch" | "Intermediate",
@@ -606,7 +612,7 @@ export async function extractNutritionFromImage(
     }
   }
 
-  // Cross-reference user profile allergies against detected ingredients
+  // Cross-reference user profile allergies and PDF forbidden foods against detected ingredients
   const allergenAlerts: string[] = [];
   for (const allergy of userAllergies) {
     const allergyLower = allergy.toLowerCase();
@@ -614,6 +620,17 @@ export async function extractNutritionFromImage(
       if (allergen.toLowerCase().includes(allergyLower) || allergyLower.includes(allergen.toLowerCase())) {
         allergenAlerts.push(`Allergen Alert: Contains ${allergen}, matching your registered profile allergy (${allergy}).`);
       }
+    }
+  }
+
+  // Cross-reference against clinical diet plan forbidden items
+  for (const forbidden of forbiddenFoods) {
+    const fLower = forbidden.toLowerCase().trim();
+    if (!fLower) continue;
+    const matchesDish = foodName.toLowerCase().includes(fLower);
+    const matchesIngredient = ingredients.some((ing) => ing.toLowerCase().includes(fLower));
+    if (matchesDish || matchesIngredient) {
+      allergenAlerts.push(`Diet Plan Restriction: Contains or matches "${forbidden}", which is restricted in your uploaded clinical diet plan.`);
     }
   }
 

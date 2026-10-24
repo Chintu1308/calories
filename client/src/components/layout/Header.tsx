@@ -99,19 +99,14 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-        
-
-          {onOpenAIScan && (
-            <Button
-              variant="secondary"
-              size="sm"
-              leftIcon={<Icon name="ai-scan" size={14} />}
-              onClick={onOpenAIScan}
-              title="Scan Meal Image with AI"
-            >
-              Scan Meal
-            </Button>
-          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            leftIcon={<Icon name="camera" size={14} />}
+            onClick={onOpenAIScan}
+          >
+            AI Scan
+          </Button>
 
           <Button
             variant="primary"

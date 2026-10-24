@@ -71,6 +71,32 @@ export interface MicronutrientReportResponse {
   totalDistinctNutrients: number;
 }
 
+export interface DietInstructionItem {
+  _id: string;
+  userId: string;
+  fileName: string;
+  fileSizeBytes: number;
+  mimeType: string;
+  summary: string;
+  dietaryRules: string[];
+  forbiddenFoods: string[];
+  recommendedFoods: string[];
+  targetCaloriesKcal?: number;
+  targetProteinGrams?: number;
+  targetCarbsGrams?: number;
+  targetFatGrams?: number;
+  mealTimingNotes: string[];
+  clinicalObservations?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DietPdfUploadResponse {
+  message: string;
+  instruction: DietInstructionItem;
+}
+
 export interface AiExtractionResponse {
   proposal: {
     foodName: string;
@@ -341,6 +367,37 @@ export const apiClient = {
     return request<AiExtractionResponse>('/ai/extract', {
       method: 'POST',
       body: formData,
+    });
+  },
+
+  /**
+   * Uploads a doctor/dietitian diet plan PDF, feeds it to AI, and saves instructions to MongoDB.
+   * @param file The PDF document selected by the user.
+   */
+  async uploadDietPlanPdf(file: File): Promise<DietPdfUploadResponse> {
+    const formData = new FormData();
+    formData.append('pdf', file);
+
+    return request<DietPdfUploadResponse>('/ai/diet-pdf', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
+  /**
+   * Retrieves all active clinical diet instructions stored in MongoDB for the current user.
+   */
+  async getDietInstructions(): Promise<{ instructions: DietInstructionItem[] }> {
+    return request<{ instructions: DietInstructionItem[] }>('/ai/diet-instructions');
+  },
+
+  /**
+   * Removes a stored diet instruction set from MongoDB.
+   * @param id The instruction document ID.
+   */
+  async deleteDietInstruction(id: string): Promise<{ message: string; id: string }> {
+    return request<{ message: string; id: string }>(`/ai/diet-instructions/${id}`, {
+      method: 'DELETE',
     });
   },
 };
