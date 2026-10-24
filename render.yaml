@@ -5,8 +5,9 @@ services:
     env: node
     plan: free
     region: oregon
-    buildCommand: npm install --prefix server && npm run build --prefix server
-    startCommand: npm start --prefix server
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
@@ -31,8 +32,9 @@ services:
   # Frontend Static Site
   - type: static
     name: calories-client
-    buildCommand: npm install --prefix client && npm run build --prefix client
-    staticPublishPath: client/dist
+    rootDir: client
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
     routes:
       - type: rewrite
         source: /*
