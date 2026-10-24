@@ -14,6 +14,7 @@ export interface AddMealModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultCategory?: MealType;
+  defaultDateString?: string;
   onSaveMeal: (newMeal: MealItem) => void;
 }
 
@@ -23,7 +24,18 @@ function generateMealId(prefix: string): string {
   return `${prefix}_${Date.now()}`;
 }
 
-function getIsoTimestamp(): string {
+function getIsoTimestamp(dateString?: string): string {
+  if (!dateString) return new Date().toISOString();
+  try {
+    const parts = dateString.split('-').map(Number);
+    if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+      const now = new Date();
+      const target = new Date(parts[0], parts[1] - 1, parts[2], now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+      return target.toISOString();
+    }
+  } catch {
+    // fallback
+  }
   return new Date().toISOString();
 }
 
@@ -31,6 +43,7 @@ export const AddMealModal: React.FC<AddMealModalProps> = ({
   isOpen,
   onClose,
   defaultCategory = 'Breakfast',
+  defaultDateString,
   onSaveMeal,
 }) => {
   const [method, setMethod] = useState<LogMealMethod>('choice');
@@ -110,7 +123,7 @@ export const AddMealModal: React.FC<AddMealModalProps> = ({
       userId: '',
       foodName: foodName.trim(),
       mealType: selectedCategory,
-      eatenAt: getIsoTimestamp(),
+      eatenAt: getIsoTimestamp(defaultDateString),
       quantity: {
         amount: Number(quantity) || 1,
         unit: unit || 'serving',
@@ -152,7 +165,7 @@ export const AddMealModal: React.FC<AddMealModalProps> = ({
       userId: '',
       foodName: foodName.trim(),
       mealType: selectedCategory,
-      eatenAt: getIsoTimestamp(),
+      eatenAt: getIsoTimestamp(defaultDateString),
       quantity: {
         amount: 1,
         unit: 'serving',

@@ -139,6 +139,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
             <MealTimeline
               meals={displayedMeals}
               isLoading={isLoading}
+              dateLabel={currentDateLabel}
               onAddMeal={onAddMeal}
               onOpenAIScan={onOpenAIScan}
             />

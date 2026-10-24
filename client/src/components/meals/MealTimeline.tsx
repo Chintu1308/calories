@@ -6,6 +6,7 @@ import type { MealItem, MealType } from '../../types/nutrition.js';
 export interface MealTimelineProps {
   meals: MealItem[];
   isLoading?: boolean;
+  dateLabel?: string;
   onAddMeal: (category: MealType) => void;
   onOpenAIScan: () => void;
 }
@@ -13,6 +14,7 @@ export interface MealTimelineProps {
 export const MealTimeline: React.FC<MealTimelineProps> = ({
   meals,
   isLoading = false,
+  dateLabel,
   onAddMeal,
   onOpenAIScan,
 }) => {
@@ -71,7 +73,7 @@ export const MealTimeline: React.FC<MealTimelineProps> = ({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
         <div>
-          <h2 className="calories-section-title">Today's Meal Timeline</h2>
+          <h2 className="calories-section-title">{dateLabel ? `${dateLabel} Timeline` : "Daily Meal Timeline"}</h2>
           <p className="calories-section-subtitle">
             {meals.length} {meals.length === 1 ? 'entry' : 'entries'} logged · Total: {totalCalories.toLocaleString()} kcal
           </p>

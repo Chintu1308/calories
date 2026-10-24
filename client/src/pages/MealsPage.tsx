@@ -20,6 +20,30 @@ export interface MealsPageProps {
   onOpenAIScan: () => void;
 }
 
+function checkMealDateFilter(eatenAt: string, filter: string): boolean {
+  if (filter === 'all') return true;
+  const mealDate = new Date(eatenAt);
+  const now = new Date();
+  if (filter === 'today') {
+    return (
+      mealDate.getFullYear() === now.getFullYear() &&
+      mealDate.getMonth() === now.getMonth() &&
+      mealDate.getDate() === now.getDate()
+    );
+  }
+  if (filter === 'week') {
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    return mealDate >= sevenDaysAgo;
+  }
+  if (filter === 'month') {
+    return (
+      mealDate.getFullYear() === now.getFullYear() &&
+      mealDate.getMonth() === now.getMonth()
+    );
+  }
+  return true;
+}
+
 export const MealsPage: React.FC<MealsPageProps> = ({
   meals,
   onOpenAddMeal,
@@ -32,12 +56,15 @@ export const MealsPage: React.FC<MealsPageProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // Filter meals based on search and category
+  // Filter meals based on search, category, and date range
   const filteredMeals = meals.filter((meal) => {
-    const matchesSearch = meal.foodName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch =
+      meal.foodName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (meal.notes && meal.notes.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = selectedCategory === 'All' || meal.mealType === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesDate = checkMealDateFilter(meal.eatenAt, dateFilter);
+
+    return matchesSearch && matchesCategory && matchesDate;
   });
 
   // Calculate pagination
@@ -159,7 +186,7 @@ export const MealsPage: React.FC<MealsPageProps> = ({
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
                 options={[
-                  { value: 'today', label: 'Today (Oct 24)' },
+                  { value: 'today', label: 'Today' },
                   { value: 'week', label: 'Last 7 Days' },
                   { value: 'month', label: 'This Month' },
                   { value: 'all', label: 'All Recorded Time' },
@@ -207,7 +234,7 @@ export const MealsPage: React.FC<MealsPageProps> = ({
                 </thead>
                 <tbody>
                   {paginatedMeals.map((meal) => (
-                    <tr key={meal.id}>
+                    <tr key={meal.id || (meal as any)._id}>
                       <td>
                         <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{meal.foodName}</div>
                         {meal.notes && <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>{meal.notes}</div>}
@@ -237,7 +264,7 @@ export const MealsPage: React.FC<MealsPageProps> = ({
                           variant="ghost"
                           size="sm"
                           style={{ color: 'var(--color-error-red)', padding: '2px 8px' }}
-                          onClick={() => onDeleteMeal(meal.id)}
+                          onClick={() => onDeleteMeal(meal.id || (meal as any)._id)}
                           aria-label={`Delete ${meal.foodName}`}
                         >
                           ✕ Delete

@@ -132,9 +132,13 @@ const mealSchema = new Schema<IMealDocument>(
   {
     timestamps: true,
     toJSON: {
+      virtuals: true,
       transform(_doc, ret) {
         const { __v: _v, ...safe } = ret;
-        return safe;
+        return {
+          ...safe,
+          id: ret._id ? ret._id.toString() : '',
+        };
       },
     },
   }

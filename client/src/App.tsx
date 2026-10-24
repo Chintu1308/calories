@@ -27,6 +27,52 @@ const DEFAULT_INITIAL_GOAL: DailyGoal = {
   title: 'Daily Nutrition Target',
 };
 
+function getLocalDateString(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getMealLocalDateString(eatenAt?: string | Date): string {
+  if (!eatenAt) return '';
+  try {
+    const d = new Date(eatenAt);
+    if (isNaN(d.getTime())) return '';
+    return getLocalDateString(d);
+  } catch {
+    return '';
+  }
+}
+
+function formatDisplayDate(offset: number): string {
+  const target = new Date();
+  target.setDate(target.getDate() - offset);
+
+  const formatted = target.toLocaleDateString('en-US', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  if (offset === 0) {
+    return `Today (${formatted})`;
+  }
+  if (offset === 1) {
+    return `Yesterday (${formatted})`;
+  }
+  return formatted;
+}
+
+function computeDateBounds(offset: number): { selectedDateString: string; todayString: string } {
+  const selectedDateObj = new Date();
+  selectedDateObj.setDate(selectedDateObj.getDate() - offset);
+  const selectedDateString = getLocalDateString(selectedDateObj);
+  const todayString = getLocalDateString(new Date());
+  return { selectedDateString, todayString };
+}
+
 export const App: React.FC = () => {
   // Authentication State
   const [token, setToken] = useState<string | null>(() => getStoredToken());
@@ -44,7 +90,7 @@ export const App: React.FC = () => {
   // Navigation & State Management
   const [activeTab, setActiveTab] = useState<NavTabId>('dashboard');
   const [viewState, setViewState] = useState<DashboardViewState>('normal');
-  const [currentDateIndex, setCurrentDateIndex] = useState<number>(0);
+  const [selectedDateOffset, setSelectedDateOffset] = useState<number>(0);
 
   // Error boundary state: renders error screen only when an actual error occurs
   const [activeError, setActiveError] = useState<{
@@ -58,7 +104,12 @@ export const App: React.FC = () => {
       const saved = localStorage.getItem('calories_meals');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.map((m: any) => ({
+            ...m,
+            id: m.id || m._id || (typeof m._id === 'object' ? String(m._id) : `meal_${Date.now()}`),
+          }));
+        }
       }
       return [];
     } catch {
@@ -130,54 +181,64 @@ export const App: React.FC = () => {
   const [authModalMode, setAuthModalMode] = useState<AuthModalMode>('edit_profile');
 
   // Dynamic calculations from meals
-  const consumedCalories = meals.reduce((acc, m) => acc + m.nutrition.caloriesKcal, 0);
-  const consumedProtein = meals.reduce((acc, m) => acc + m.nutrition.proteinG, 0);
-  const consumedCarbs = meals.reduce((acc, m) => acc + m.nutrition.carbsG, 0);
-  const consumedFat = meals.reduce((acc, m) => acc + m.nutrition.fatG, 0);
+  const currentDateLabel = formatDisplayDate(selectedDateOffset);
 
-  const remainingCalories = Math.max(0, goal.dailyCaloriesKcal - consumedCalories);
-  const remainingProtein = Math.max(0, goal.proteinGrams - consumedProtein);
-  const remainingCarbs = Math.max(0, goal.carbohydrateGrams - consumedCarbs);
-  const remainingFat = Math.max(0, goal.fatGrams - consumedFat);
+  // Selected date bounds for dashboard filtering
+  const { selectedDateString, todayString } = React.useMemo(
+    () => computeDateBounds(selectedDateOffset),
+    [selectedDateOffset]
+  );
+
+  // Filter meals for the selected date on Dashboard
+  const selectedDayMeals = meals.filter(
+    (m) => getMealLocalDateString(m.eatenAt) === selectedDateString
+  );
+
+  // Filter meals for today (for remaining budget in goals & AI scanner)
+  const todayMeals = meals.filter(
+    (m) => getMealLocalDateString(m.eatenAt) === todayString
+  );
+
+  const selectedDayCalories = selectedDayMeals.reduce((acc, m) => acc + (m.nutrition?.caloriesKcal || 0), 0);
+  const selectedDayProtein = selectedDayMeals.reduce((acc, m) => acc + (m.nutrition?.proteinG || 0), 0);
+  const selectedDayCarbs = selectedDayMeals.reduce((acc, m) => acc + (m.nutrition?.carbsG || 0), 0);
+  const selectedDayFat = selectedDayMeals.reduce((acc, m) => acc + (m.nutrition?.fatG || 0), 0);
+
+  const todayCalories = todayMeals.reduce((acc, m) => acc + (m.nutrition?.caloriesKcal || 0), 0);
+  const todayProtein = todayMeals.reduce((acc, m) => acc + (m.nutrition?.proteinG || 0), 0);
+  const todayCarbs = todayMeals.reduce((acc, m) => acc + (m.nutrition?.carbsG || 0), 0);
+  const todayFat = todayMeals.reduce((acc, m) => acc + (m.nutrition?.fatG || 0), 0);
+
+  const remainingCalories = Math.max(0, goal.dailyCaloriesKcal - todayCalories);
+  const remainingProtein = Math.max(0, goal.proteinGrams - todayProtein);
+  const remainingCarbs = Math.max(0, goal.carbohydrateGrams - todayCarbs);
+  const remainingFat = Math.max(0, goal.fatGrams - todayFat);
 
   const daySummary: DayNutritionalSummary = {
-    consumedCalories,
+    consumedCalories: selectedDayCalories,
     targetCalories: goal.dailyCaloriesKcal,
-    consumedProtein,
+    consumedProtein: selectedDayProtein,
     targetProtein: goal.proteinGrams,
-    consumedCarbs,
+    consumedCarbs: selectedDayCarbs,
     targetCarbs: goal.carbohydrateGrams,
-    consumedFat,
+    consumedFat: selectedDayFat,
     targetFat: goal.fatGrams,
-    waterIntakeMl: 2250,
+    waterIntakeMl: selectedDateOffset === 0 ? 2250 : 2500,
     targetWaterMl: 3000,
     currentWeightKg: userProfile?.currentWeightKg || 74.2,
     targetWeightKg: userProfile?.targetWeightKg || goal.targetWeight || 70.0,
   };
 
-  // Date labels
-  const dateLabels = [
-    'Saturday, 24 October 2026',
-    'Friday, 23 October 2026',
-    'Thursday, 22 October 2026',
-    'Wednesday, 21 October 2026',
-  ];
-  const currentDateLabel = dateLabels[currentDateIndex] || 'Today';
-
   const handlePrevDay = () => {
-    if (currentDateIndex < dateLabels.length - 1) {
-      setCurrentDateIndex((prev) => prev + 1);
-    }
+    setSelectedDateOffset((prev) => prev + 1);
   };
 
   const handleNextDay = () => {
-    if (currentDateIndex > 0) {
-      setCurrentDateIndex((prev) => prev - 1);
-    }
+    setSelectedDateOffset((prev) => Math.max(0, prev - 1));
   };
 
   const handleToday = () => {
-    setCurrentDateIndex(0);
+    setSelectedDateOffset(0);
   };
 
   const handleOpenAddMeal = (category: MealType = 'Breakfast') => {
@@ -234,7 +295,11 @@ export const App: React.FC = () => {
           setGoal(goalRes.value.goal);
         }
         if (mealsRes.status === 'fulfilled' && mealsRes.value?.meals) {
-          setMeals(mealsRes.value.meals);
+          const normalized = mealsRes.value.meals.map((m: any) => ({
+            ...m,
+            id: m.id || m._id || (typeof m._id === 'object' ? String(m._id) : `meal_${Date.now()}`),
+          }));
+          setMeals(normalized);
         }
       } catch (err) {
         console.warn('[Calories Client] Backend sync offline notice:', err);
@@ -277,7 +342,7 @@ export const App: React.FC = () => {
   }, []);
 
   const handleDeleteMeal = async (mealId: string) => {
-    setMeals((prev) => prev.filter((m) => m.id !== mealId));
+    setMeals((prev) => prev.filter((m) => m.id !== mealId && (m as any)._id !== mealId));
     try {
       await apiClient.deleteMeal(mealId);
     } catch (err: unknown) {
@@ -295,10 +360,22 @@ export const App: React.FC = () => {
   };
 
   const handleSaveMeal = async (newMeal: MealItem) => {
+    // Optimistically add to state
     setMeals((prev) => [newMeal, ...prev]);
     try {
-      await apiClient.createMeal(newMeal);
+      const res = await apiClient.createMeal(newMeal);
+      if (res?.meal) {
+        // Reconcile client meal with backend-persisted meal
+        setMeals((prev) =>
+          prev.map((m) =>
+            m.id === newMeal.id
+              ? { ...res.meal, id: res.meal.id || (res.meal as any)._id || newMeal.id }
+              : m
+          )
+        );
+      }
     } catch (err: unknown) {
+      console.warn('[Calories] Failed to save meal to backend:', err);
       if (err && typeof err === 'object' && 'status' in err) {
         const status = Number((err as { status: number }).status);
         if (status === 401) {
@@ -426,7 +503,7 @@ export const App: React.FC = () => {
           onNextDay={handleNextDay}
           onToday={handleToday}
           summary={daySummary}
-          meals={meals}
+          meals={selectedDayMeals}
           weeklyTrend={weeklyTrend}
           onAddMeal={handleOpenAddMeal}
           onOpenAIScan={() => setActiveTab('ai-scan')}
@@ -461,10 +538,10 @@ export const App: React.FC = () => {
                 currentGoal={goal}
                 onSaveGoal={handleSaveGoal}
                 currentWeightKg={userProfile?.currentWeightKg}
-                consumedCalories={consumedCalories}
-                consumedProtein={consumedProtein}
-                consumedCarbs={consumedCarbs}
-                consumedFat={consumedFat}
+                consumedCalories={todayCalories}
+                consumedProtein={todayProtein}
+                consumedCarbs={todayCarbs}
+                consumedFat={todayFat}
                 onQuickLogMeal={handleSaveMeal}
               />
             )}
@@ -480,9 +557,7 @@ export const App: React.FC = () => {
 
             {activeTab === 'ai-scan' && (
               <AIScanPage
-                onCommitMeal={(newMeal) => {
-                  setMeals((prev) => [newMeal, ...prev]);
-                }}
+                onCommitMeal={handleSaveMeal}
                 onNavigateJournal={() => setActiveTab('meals')}
                 remainingCalories={remainingCalories}
                 remainingProtein={remainingProtein}
@@ -542,6 +617,7 @@ export const App: React.FC = () => {
         isOpen={isAddMealOpen}
         onClose={() => setIsAddMealOpen(false)}
         defaultCategory={selectedCategory}
+        defaultDateString={selectedDateString}
         onSaveMeal={handleSaveMeal}
       />
 

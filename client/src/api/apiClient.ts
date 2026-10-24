@@ -326,18 +326,31 @@ export const apiClient = {
     if (params.endDate) query.set('endDate', params.endDate);
 
     const qs = query.toString();
-    return request<PaginatedMealsResponse>(`/meals${qs ? `?${qs}` : ''}`);
+    const res = await request<PaginatedMealsResponse>(`/meals${qs ? `?${qs}` : ''}`);
+    const normalizedMeals: MealItem[] = (res.meals || []).map((m: any) => ({
+      ...m,
+      id: m.id || m._id || (typeof m._id === 'object' ? String(m._id) : `meal_${Date.now()}`),
+    }));
+    return {
+      ...res,
+      meals: normalizedMeals,
+    };
   },
 
   /**
    * Creates and persists a new meal entry scoped strictly to the current user.
    * @param meal Meal data to record.
    */
-  async createMeal(meal: Omit<MealItem, 'id'>): Promise<{ meal: MealItem }> {
-    return request<{ meal: MealItem }>('/meals', {
+  async createMeal(meal: Omit<MealItem, 'id'> | MealItem): Promise<{ meal: MealItem }> {
+    const res = await request<{ meal: any }>('/meals', {
       method: 'POST',
       body: JSON.stringify(meal),
     });
+    const normalizedMeal: MealItem = {
+      ...res.meal,
+      id: res.meal.id || res.meal._id || ('id' in meal ? (meal as MealItem).id : `meal_${Date.now()}`),
+    };
+    return { meal: normalizedMeal };
   },
 
   /**

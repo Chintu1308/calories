@@ -82,7 +82,7 @@ export const MealCategoryCard: React.FC<MealCategoryCardProps> = ({
         ) : (
           <div className="calories-meal-items-list">
             {meals.map((meal) => (
-              <div key={meal.id} className="calories-meal-item-row">
+              <div key={meal.id || (meal as any)._id} className="calories-meal-item-row">
                 <div className="calories-meal-item-main">
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
                     <span className="calories-meal-name">{meal.foodName}</span>

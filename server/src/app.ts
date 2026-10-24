@@ -28,8 +28,11 @@ app.use(
 
       const isAllowedExplicitly = allowedOrigins.includes(origin) || allowedOrigins.includes('*');
       const isVercelDomain = /^https:\/\/[a-zA-Z0-9_.-]+\.vercel\.app$/.test(origin);
+      const isBhhcDomain = /^https:\/\/[a-zA-Z0-9_.-]*bhhc\.me$/.test(origin);
+      const isOnRenderDomain = /^https:\/\/[a-zA-Z0-9_.-]+\.onrender\.com$/.test(origin);
+      const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
 
-      if (isAllowedExplicitly || isVercelDomain) {
+      if (isAllowedExplicitly || isVercelDomain || isBhhcDomain || isOnRenderDomain || isLocalhost) {
         callback(null, true);
       } else {
         callback(new Error(`Origin ${origin} not allowed by CORS`));
