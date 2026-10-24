@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 64" width="280" height="64" fill="none" role="img" aria-label="Calories Full Logo">
+  <!-- Brand Icon -->
+  <g transform="translate(4, 8) scale(0.75)">
+    <rect width="64" height="64" rx="16" fill="#152238" />
+    <circle cx="32" cy="32" r="22" fill="#285B46" />
+    <path d="M32 16C32 16 45 23 45 35C45 43 39 48 32 48C25 48 19 43 19 35C19 23 32 16 32 16Z" fill="#BFD8C2" />
+    <path d="M32 16C32 16 43 25 40 37C36 32 32 28 26 26C21 24 19 35 19 35C19 23 32 16 32 16Z" fill="#285B46" />
+    <circle cx="32" cy="33" r="4.5" fill="#FAF9F6" />
+    <circle cx="32" cy="33" r="2" fill="#152238" />
+  </g>
+  <!-- Wordmark -->
+  <text x="64" y="33" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="24" font-weight="700" fill="#152238" letter-spacing="-0.5">Calories</text>
+  <circle cx="164" cy="20" r="3" fill="#285B46" />
+  <!-- Tagline -->
+  <text x="64" y="49" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11" font-weight="500" fill="#6B7280" letter-spacing="0.2">Your nutrition, made clearer.</text>
+</svg>

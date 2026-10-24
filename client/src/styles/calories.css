@@ -1,22 +1,67 @@
-/* Calories Design Tokens — v1
-   Premium Editorial Health-Tech
-   Use these tokens as the single source of truth for the UI.
-*/
+/* ==========================================================================
+   Calories Design System — Tokens & Global Base
+   Aesthetic: Premium Editorial Health-Tech
+   Single Source of Truth for Colors, Typography, Spacing, and Component States
+   ========================================================================== */
+
 :root {
   color-scheme: light;
+
+  /* Primary Brand Palette */
   --color-ink-navy: #152238;
   --color-forest-green: #285B46;
+  --color-forest-hover: #1E4736;
   --color-sage-green: #BFD8C2;
+  --color-sage-soft: #E8F2EA;
   --color-warm-ivory: #FAF9F6;
   --color-white: #FFFFFF;
   --color-soft-sand: #EDE5D8;
+  --color-sand-soft: #F6F2EC;
   --color-muted-slate: #6B7280;
+  --color-slate-light: #9CA3AF;
   --color-amber: #C88932;
+  --color-amber-soft: #FBF3E7;
   --color-error-red: #B84444;
+  --color-error-soft: #F9EAEA;
 
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+  /* Semantic Mappings */
+  --text-primary: var(--color-ink-navy);
+  --text-secondary: var(--color-muted-slate);
+  --text-inverse: var(--color-white);
+  --surface-page: var(--color-warm-ivory);
+  --surface-card: var(--color-white);
+  --surface-subtle: var(--color-soft-sand);
+  --surface-soft: var(--color-sand-soft);
+  --border-light: rgba(21, 34, 56, 0.08);
+  --border-medium: rgba(21, 34, 56, 0.16);
+  --action-primary: var(--color-forest-green);
+  --action-hover: var(--color-forest-hover);
+  --focus-ring: 0 0 0 3px rgba(40, 91, 70, 0.25);
 
+  /* Typography Scale */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
+  --text-4xl: 36px;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  /* Spacing Hierarchy */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -28,22 +73,376 @@
   --space-12: 48px;
   --space-16: 64px;
 
+  /* Border Radii */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 18px;
   --radius-xl: 24px;
-  --shadow-card: 0 8px 24px rgba(21, 34, 56, 0.06);
+  --radius-full: 9999px;
 
-  --text-primary: var(--color-ink-navy);
-  --text-secondary: var(--color-muted-slate);
-  --surface-page: var(--color-warm-ivory);
-  --surface-card: var(--color-white);
-  --action-primary: var(--color-forest-green);
-  --focus-ring: 0 0 0 3px rgba(40, 91, 70, 0.22);
+  /* Restrained Shadows */
+  --shadow-sm: 0 2px 6px rgba(21, 34, 56, 0.04);
+  --shadow-card: 0 8px 24px rgba(21, 34, 56, 0.06);
+  --shadow-elevated: 0 16px 36px rgba(21, 34, 56, 0.09);
+  --shadow-dropdown: 0 12px 28px rgba(21, 34, 56, 0.12);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-* { box-sizing: border-box; }
-html { font-family: var(--font-sans); color: var(--text-primary); }
-body { margin: 0; background: var(--surface-page); }
-button, input, select, textarea { font: inherit; }
-:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+/* Reduced Motion Preference for Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Base Resets */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--surface-page);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background-color: var(--surface-page);
+  color: var(--text-primary);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+}
+
+p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Accessible Focus Ring */
+:focus-visible {
+  outline: 2px solid var(--action-primary);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Reusable Component Styles
+   ========================================================================== */
+
+/* Button Primitives */
+.calories-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-md);
+  font-weight: var(--weight-medium);
+  font-size: var(--text-sm);
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.calories-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.calories-btn--primary {
+  background-color: var(--action-primary);
+  color: var(--text-inverse);
+}
+.calories-btn--primary:hover:not(:disabled) {
+  background-color: var(--action-hover);
+}
+
+.calories-btn--secondary {
+  background-color: var(--color-sand-soft);
+  color: var(--color-ink-navy);
+  border-color: var(--border-medium);
+}
+.calories-btn--secondary:hover:not(:disabled) {
+  background-color: var(--color-soft-sand);
+}
+
+.calories-btn--outline {
+  background-color: transparent;
+  color: var(--action-primary);
+  border-color: var(--action-primary);
+}
+.calories-btn--outline:hover:not(:disabled) {
+  background-color: var(--color-sage-soft);
+}
+
+.calories-btn--destructive {
+  background-color: var(--color-error-red);
+  color: var(--text-inverse);
+}
+.calories-btn--destructive:hover:not(:disabled) {
+  background-color: #9b3636;
+}
+
+.calories-btn--ghost {
+  background-color: transparent;
+  color: var(--text-secondary);
+}
+.calories-btn--ghost:hover:not(:disabled) {
+  background-color: var(--color-sand-soft);
+  color: var(--text-primary);
+}
+
+/* Button Sizes */
+.calories-btn--sm {
+  height: 32px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-xs);
+  border-radius: var(--radius-sm);
+}
+.calories-btn--md {
+  height: 40px;
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
+}
+.calories-btn--lg {
+  height: 48px;
+  padding: 0 var(--space-6);
+  font-size: var(--text-base);
+  border-radius: var(--radius-lg);
+}
+
+/* Card Primitives */
+.calories-card {
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.calories-card--interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-elevated);
+}
+
+.calories-card-header {
+  padding: var(--space-5) var(--space-6) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.calories-card-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.calories-card-description {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.calories-card-content {
+  padding: var(--space-3) var(--space-6) var(--space-5);
+  flex: 1;
+}
+
+.calories-card-footer {
+  padding: var(--space-3) var(--space-6) var(--space-5);
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+/* Badge Primitives */
+.calories-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.calories-badge--default {
+  background-color: var(--color-sand-soft);
+  color: var(--color-ink-navy);
+  border: 1px solid var(--border-light);
+}
+
+.calories-badge--forest {
+  background-color: var(--color-sage-soft);
+  color: var(--color-forest-green);
+  border: 1px solid rgba(40, 91, 70, 0.2);
+}
+
+.calories-badge--sage {
+  background-color: var(--color-sage-green);
+  color: var(--color-ink-navy);
+}
+
+.calories-badge--amber {
+  background-color: var(--color-amber-soft);
+  color: #925f19;
+  border: 1px solid rgba(200, 137, 50, 0.25);
+}
+
+.calories-badge--destructive {
+  background-color: var(--color-error-soft);
+  color: var(--color-error-red);
+  border: 1px solid rgba(184, 68, 68, 0.25);
+}
+
+.calories-badge--neutral {
+  background-color: var(--color-sand-soft);
+  color: var(--color-muted-slate);
+  border: 1px solid var(--border-light);
+}
+
+/* Progress Bar Primitives */
+.calories-progress-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.calories-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.calories-progress-title {
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+.calories-progress-stats {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-medium);
+}
+
+.calories-progress-track {
+  width: 100%;
+  height: 8px;
+  background-color: var(--color-sand-soft);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  position: relative;
+}
+
+.calories-progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width var(--transition-normal);
+}
+
+.calories-progress-fill--forest {
+  background-color: var(--color-forest-green);
+}
+
+.calories-progress-fill--sage {
+  background-color: var(--color-sage-green);
+}
+
+.calories-progress-fill--amber {
+  background-color: var(--color-amber);
+}
+
+.calories-progress-fill--destructive {
+  background-color: var(--color-error-red);
+}
+
+/* Form Input Primitives */
+.calories-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.calories-form-label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.calories-required-indicator {
+  color: var(--color-error-red);
+}
+
+.calories-input, .calories-select, .calories-textarea {
+  width: 100%;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  background-color: var(--surface-card);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.calories-input:hover, .calories-select:hover, .calories-textarea:hover {
+  border-color: rgba(21, 34, 56, 0.3);
+}
+
+.calories-input:focus, .calories-select:focus, .calories-textarea:focus {
+  outline: none;
+  border-color: var(--action-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.calories-input--error, .calories-select--error, .calories-textarea--error {
+  border-color: var(--color-error-red);
+}
+
+.calories-form-hint {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.calories-form-error {
+  font-size: var(--text-xs);
+  color: var(--color-error-red);
+  font-weight: var(--weight-medium);
+}
