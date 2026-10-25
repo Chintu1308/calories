@@ -78,8 +78,7 @@ const nutritionSchema = new Schema<INutritionSubdoc>(
 const mealSchema = new Schema<IMealDocument>(
   {
     userId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
+      type: Schema.Types.Mixed,
       required: true,
       index: true,
     },

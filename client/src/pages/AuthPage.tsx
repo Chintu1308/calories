@@ -126,6 +126,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
         allergies: res.user.allergies || [],
         supplements: mappedSupplements,
         primaryGoal: (res.user.primaryGoal as UserProfile['primaryGoal']) || 'fat_loss',
+        termsAccepted: res.user.termsAccepted,
+        termsAcceptedAt: res.user.termsAcceptedAt,
+        supabaseId: res.user.supabaseId,
       };
 
       onAuthSuccess(profile, res.token);
@@ -192,6 +195,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
         allergies: selectedAllergies,
         supplements,
         primaryGoal,
+        termsAccepted: res.user.termsAccepted,
+        termsAcceptedAt: res.user.termsAcceptedAt,
+        supabaseId: res.user.supabaseId,
       };
 
       onAuthSuccess(profile, res.token);

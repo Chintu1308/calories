@@ -1,6 +1,5 @@
-import mongoose from 'mongoose';
 import { env } from '../config/env.js';
-import { User } from '../models/User.js';
+import { findUserByAuthId } from '../models/User.js';
 import { Goal } from '../models/Goal.js';
 import { Meal } from '../models/Meal.js';
 import { DietInstruction } from '../models/DietInstruction.js';
@@ -209,10 +208,8 @@ export async function processNutritionChat(
   conversationHistory: ChatMessage[] = [],
   _clientDate?: string
 ): Promise<NutritionChatResponse> {
-  const userObjectId = new mongoose.Types.ObjectId(userId);
-
   // 1. Fetch user profile
-  const user = await User.findById(userId);
+  const user = await findUserByAuthId(userId);
   const userName = user?.name || 'Friend';
   const userAllergies = user?.allergies || [];
 
@@ -228,7 +225,7 @@ export async function processNutritionChat(
   startOfToday.setUTCHours(0, 0, 0, 0);
 
   const todayMeals = await Meal.find({
-    userId: userObjectId,
+    userId,
     eatenAt: { $gte: startOfToday },
   }).sort({ eatenAt: 1 });
 

@@ -17,7 +17,6 @@ import { apiClient, type DietInstructionItem } from '../api/apiClient.js';
 import {
   getNotificationPermission,
   requestNotificationPermission,
-  sendTestNotification,
   getReminderPreferences,
   setReminderPreferences,
   type ReminderPreferences,
@@ -65,99 +64,30 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [reminderPrefs, setReminderPrefsState] = useState<ReminderPreferences>(() =>
     getReminderPreferences()
   );
-  const [testSuccessMessage, setTestSuccessMessage] = useState('');
 
   const handleRequestPermission = async () => {
     const granted = await requestNotificationPermission();
     setNotificationPermission(granted ? 'granted' : 'denied');
   };
 
-  const handleSendTest = () => {
-    const sent = sendTestNotification();
-    if (sent) {
-      setTestSuccessMessage('Test notification dispatched! Check your desktop/browser.');
-      setTimeout(() => setTestSuccessMessage(''), 4000);
-    }
-  };
-
-  const handleTogglePref = (key: keyof ReminderPreferences) => {
+  const handleTogglePref = async (key: keyof ReminderPreferences) => {
     const updated = {
       ...reminderPrefs,
       [key]: !reminderPrefs[key],
     };
     setReminderPrefsState(updated);
     setReminderPreferences(updated);
-  };
 
-  const [healthStatus, setHealthStatus] = useState<{
-    status: string;
-    version: string;
-    service: string;
-    latencyMs: number;
-  } | null>(null);
-  const [isCheckingHealth, setIsCheckingHealth] = useState(false);
+    // Auto-prompt permission if enabling and permission not yet granted
+    if (updated[key] && notificationPermission !== 'granted') {
+      const granted = await requestNotificationPermission();
+      setNotificationPermission(granted ? 'granted' : 'denied');
+    }
+  };
 
   // Compute BMI
   const heightM = userProfile.heightCm / 100;
   const bmi = heightM > 0 ? (userProfile.currentWeightKg / (heightM * heightM)).toFixed(1) : '23.4';
-
-  const checkBackendHealth = async () => {
-    setIsCheckingHealth(true);
-    const start = performance.now();
-    try {
-      const res = await fetch('/api/v1/health');
-      const elapsed = Math.round(performance.now() - start);
-      if (res.ok) {
-        const data = await res.json();
-        setHealthStatus({
-          status: data.status || 'ok',
-          version: data.version || '0.1.0',
-          service: data.service || 'calories-server',
-          latencyMs: elapsed,
-        });
-      } else {
-        setHealthStatus({ status: 'unreachable', version: 'unknown', service: 'offline', latencyMs: elapsed });
-      }
-    } catch {
-      const elapsed = Math.round(performance.now() - start);
-      setHealthStatus({ status: 'offline', version: '0.1.0', service: 'offline', latencyMs: elapsed });
-    } finally {
-      setIsCheckingHealth(false);
-    }
-  };
-
-  useEffect(() => {
-    let isMounted = true;
-    const runInitialCheck = async () => {
-      const start = performance.now();
-      try {
-        const res = await fetch('/api/v1/health');
-        const elapsed = Math.round(performance.now() - start);
-        if (isMounted) {
-          if (res.ok) {
-            const data = await res.json();
-            setHealthStatus({
-              status: data.status || 'ok',
-              version: data.version || '0.1.0',
-              service: data.service || 'calories-server',
-              latencyMs: elapsed,
-            });
-          } else {
-            setHealthStatus({ status: 'unreachable', version: 'unknown', service: 'offline', latencyMs: elapsed });
-          }
-        }
-      } catch {
-        const elapsed = Math.round(performance.now() - start);
-        if (isMounted) {
-          setHealthStatus({ status: 'offline', version: '0.1.0', service: 'offline', latencyMs: elapsed });
-        }
-      }
-    };
-    runInitialCheck();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   // Stored Diet Plan / Prescription PDFs from MongoDB
   const [dietInstructions, setDietInstructions] = useState<DietInstructionItem[]>([]);
@@ -680,12 +610,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
           <CardContent>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {testSuccessMessage && (
-                <div style={{ padding: '8px 12px', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--color-sage-soft)', color: 'var(--color-forest-green)', fontSize: 'var(--text-xs)', fontWeight: 600 }}>
-                  {testSuccessMessage}
-                </div>
-              )}
-
               {notificationPermission !== 'granted' ? (
                 <div style={{ padding: '12px', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--color-sand-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
@@ -728,41 +652,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   </label>
                 </div>
               )}
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
-                <Button variant="outline" size="sm" onClick={handleSendTest}>
-                  Send Test Notification
-                </Button>
-              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Data Portability & Health Ping */}
+        {/* Data Export & Reports */}
         <Card>
           <CardHeader>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Icon name="reports" size={20} />
-              <CardTitle>Data Export &amp; Telemetry</CardTitle>
+              <CardTitle>Data Export &amp; Reports</CardTitle>
             </div>
-            <CardDescription>Export complete health reports or check backend service health</CardDescription>
+            <CardDescription>Export your comprehensive nutrition and progress reports</CardDescription>
           </CardHeader>
 
           <CardContent>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Telemetry Ping */}
-              <div style={{ background: 'var(--color-sand-soft)', padding: '12px', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Backend Service Status:</div>
-                  <strong style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: healthStatus?.status === 'ok' ? 'var(--color-forest-green)' : 'var(--color-amber)' }}>
-                    {healthStatus ? `${healthStatus.status.toUpperCase()} (${healthStatus.latencyMs}ms)` : 'Checking...'}
-                  </strong>
-                </div>
-                <Button variant="ghost" size="sm" onClick={checkBackendHealth} isLoading={isCheckingHealth}>
-                  Ping Server
-                </Button>
-              </div>
-
               {/* PDF & JSON Export Actions */}
               <div style={{ display: 'flex', gap: '10px' }}>
                 {onExportPdf && (

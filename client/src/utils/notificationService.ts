@@ -58,6 +58,19 @@ export function setReminderPreferences(prefs: ReminderPreferences): void {
 }
 
 export function sendBrowserNotification(title: string, options?: NotificationOptions): Notification | null {
+  // Always emit an in-app notification event so reminders work reliably across all environments
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('calories:notification', {
+        detail: {
+          title,
+          body: options?.body || '',
+          tag: options?.tag,
+        },
+      })
+    );
+  }
+
   if (!isNotificationSupported() || Notification.permission !== 'granted') {
     return null;
   }
@@ -133,10 +146,6 @@ export interface CheckRemindersParams {
  * Fires a single appropriate notification if an item was missed and hasn't been notified today.
  */
 export function checkAndSendMissedReminders(params: CheckRemindersParams): void {
-  if (!isNotificationSupported() || Notification.permission !== 'granted') {
-    return;
-  }
-
   const prefs = getReminderPreferences();
   if (!prefs.enabled) return;
 

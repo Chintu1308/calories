@@ -446,7 +446,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
             leftIcon={<Icon name="plus" size={16} />}
             onClick={() => setIsAddGoalModalOpen(true)}
           >
-            + Add New Goal
+            Add New Goal
           </Button>
         </div>
       </div>

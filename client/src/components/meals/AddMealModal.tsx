@@ -220,7 +220,7 @@ const AddMealForm: React.FC<AddMealModalProps> = ({
                   ? 'Edit Meal Entry'
                   : entryMode === 'ai'
                   ? 'Log Meal with AI Image'
-                  : 'Log Meal — Enter Values'}
+                  : 'Log Meal - Enter Values'}
               </h3>
               <p style={{ margin: '2px 0 0', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
                 {isEditing

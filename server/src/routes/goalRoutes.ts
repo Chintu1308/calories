@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import mongoose from 'mongoose';
 import { Goal } from '../models/Goal.js';
-import { User } from '../models/User.js';
+import { User, findUserByAuthId } from '../models/User.js';
 import { Meal } from '../models/Meal.js';
 import { DietInstruction } from '../models/DietInstruction.js';
 import { generateSmartRecommendations } from '../services/recommendationEngine.js';
@@ -41,7 +41,7 @@ goalRouter.get(
     if (!goal) {
       // Auto-heal: If user exists in DB, calculate and seed active goal based on their profile
       try {
-        const user = await User.findById(req.user.userId);
+        const user = await findUserByAuthId(req.user.userId, req.user.email);
         if (user) {
           const weightKg = user.currentWeightKg || 70;
           const heightCm = user.heightCm || 175;
@@ -136,8 +136,8 @@ goalRouter.put(
     // Keep user profile in sync with updated goal targets in MongoDB
     let updatedUser;
     if (validated.targetWeight !== undefined || validated.targetWeeks !== undefined) {
-      updatedUser = await User.findByIdAndUpdate(
-        req.user.userId,
+      updatedUser = await User.findOneAndUpdate(
+        { $or: [{ supabaseId: req.user.userId }, ...(mongoose.Types.ObjectId.isValid(req.user.userId) ? [{ _id: req.user.userId }] : [])] },
         {
           $set: {
             ...(validated.targetWeight !== undefined ? { targetWeightKg: validated.targetWeight } : {}),
@@ -189,8 +189,8 @@ goalRouter.post(
     // Keep user profile in sync with updated goal targets in MongoDB
     let updatedUser;
     if (validated.targetWeight !== undefined || validated.targetWeeks !== undefined) {
-      updatedUser = await User.findByIdAndUpdate(
-        req.user.userId,
+      updatedUser = await User.findOneAndUpdate(
+        { $or: [{ supabaseId: req.user.userId }, ...(mongoose.Types.ObjectId.isValid(req.user.userId) ? [{ _id: req.user.userId }] : [])] },
         {
           $set: {
             ...(validated.targetWeight !== undefined ? { targetWeightKg: validated.targetWeight } : {}),
@@ -240,8 +240,7 @@ goalRouter.get(
       throw AppError.unauthorized();
     }
 
-    const userObjectId = new mongoose.Types.ObjectId(req.user.userId);
-    const user = await User.findById(req.user.userId);
+    const user = await findUserByAuthId(req.user.userId, req.user.email);
 
     // 1. Fetch active nutrition goal (or auto-seed if none)
     let goal = await Goal.findOne({
@@ -286,7 +285,7 @@ goalRouter.get(
     const todayMeals = await Meal.aggregate([
       {
         $match: {
-          userId: userObjectId,
+          userId: req.user.userId,
           eatenAt: { $gte: startOfToday },
         },
       },

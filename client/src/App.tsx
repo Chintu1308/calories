@@ -10,6 +10,7 @@ import { AuthPage } from './pages/AuthPage.js';
 import { ErrorPage, type HttpErrorCode } from './components/errors/ErrorPage.js';
 import { AddMealModal } from './components/meals/AddMealModal.js';
 import { AuthOnboardingModal, type AuthModalMode } from './components/auth/AuthOnboardingModal.js';
+import { TermsPrivacyModal } from './components/auth/TermsPrivacyModal.js';
 import { NutritionChatAssistant } from './components/chat/NutritionChatAssistant.js';
 import { CaloriesLogo, CaloriesTagline } from './components/ui/index.js';
 import type { MealItem, MealType, DailyGoal, DayNutritionalSummary, UserProfile, SupplementItem, WaterLogEntry, SupplementLogEntry } from './types/nutrition.js';
@@ -60,6 +61,9 @@ function mapApiUserToProfile(u: any, prev?: UserProfile | null): UserProfile {
     allergies: u.allergies || prev?.allergies || [],
     supplements: mappedSupplements.length > 0 ? mappedSupplements : prev?.supplements || [],
     primaryGoal: (u.primaryGoal as UserProfile['primaryGoal']) || prev?.primaryGoal || 'fat_loss',
+    termsAccepted: !!(u.termsAccepted ?? prev?.termsAccepted),
+    termsAcceptedAt: u.termsAcceptedAt || prev?.termsAcceptedAt || undefined,
+    supabaseId: u.supabaseId || prev?.supabaseId || undefined,
   };
 }
 
@@ -139,6 +143,27 @@ export const App: React.FC = () => {
     code: HttpErrorCode;
     message?: string;
   } | null>(null);
+
+  // In-app notification toast state (ensures reminders are never missed)
+  const [inAppToast, setInAppToast] = useState<{ title: string; body: string } | null>(null);
+
+  useEffect(() => {
+    const handleInAppNotif = (e: Event) => {
+      const customEvent = e as CustomEvent<{ title: string; body: string }>;
+      if (customEvent.detail) {
+        setInAppToast({
+          title: customEvent.detail.title,
+          body: customEvent.detail.body,
+        });
+        setTimeout(() => {
+          setInAppToast((current) => (current?.title === customEvent.detail.title ? null : current));
+        }, 6000);
+      }
+    };
+
+    window.addEventListener('calories:notification', handleInAppNotif);
+    return () => window.removeEventListener('calories:notification', handleInAppNotif);
+  }, []);
 
   // Real meal entries state (hydrated from localStorage or MongoDB backend)
   const [meals, setMeals] = useState<MealItem[]>(() => {
@@ -949,6 +974,72 @@ export const App: React.FC = () => {
           onLogWater={handleLogWater}
           onLogMeal={handleSaveMeal}
         />
+      )}
+
+      {/* MANDATORY TERMS & PRIVACY CONSENT GATE */}
+      {isAuthenticated && userProfile && !userProfile.termsAccepted && (
+        <TermsPrivacyModal
+          isOpen={true}
+          userName={userProfile.name}
+          onAccepted={(termsAcceptedAt) => {
+            setUserProfile((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    termsAccepted: true,
+                    termsAcceptedAt,
+                  }
+                : null
+            );
+          }}
+        />
+      )}
+
+      {/* IN-APP NOTIFICATION TOAST ALERT */}
+      {inAppToast && (
+        <div
+          role="alert"
+          style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            zIndex: 999999,
+            backgroundColor: '#152238',
+            color: '#FAF9F6',
+            padding: '14px 18px',
+            borderRadius: '10px',
+            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.35)',
+            border: '1px solid #285B46',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            maxWidth: '380px',
+          }}
+        >
+          <div style={{ fontSize: '20px' }}>🔔</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: '13px', color: '#BFD8C2' }}>
+              {inAppToast.title}
+            </div>
+            <div style={{ fontSize: '12px', color: '#EDE5D8', marginTop: '2px', lineHeight: 1.4 }}>
+              {inAppToast.body}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setInAppToast(null)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#A0AEC0',
+              cursor: 'pointer',
+              fontSize: '16px',
+              padding: '2px 6px',
+            }}
+          >
+            ✕
+          </button>
+        </div>
       )}
     </>
   );

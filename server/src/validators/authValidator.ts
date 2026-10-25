@@ -19,6 +19,7 @@ export const registerSchema = z.object({
   allergies: z.array(z.string().trim()).default([]),
   supplements: z.array(supplementInputSchema).default([]),
   primaryGoal: z.enum(['fat_loss', 'muscle_gain', 'maintenance', 'athletic']).default('fat_loss'),
+  termsAccepted: z.boolean().optional().default(false),
 });
 
 export const loginSchema = z.object({

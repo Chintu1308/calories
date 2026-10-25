@@ -21,6 +21,9 @@ export interface AuthResponse {
     allergies: string[];
     supplements: Array<{ id: string; name: string; dosage: string; timing: string; notes?: string }>;
     primaryGoal: string;
+    termsAccepted?: boolean;
+    termsAcceptedAt?: string;
+    supabaseId?: string;
   };
 }
 
@@ -541,6 +544,23 @@ export const apiClient = {
     return request<ChatNutritionResponse>('/ai/chat', {
       method: 'POST',
       body: JSON.stringify({ message, conversationHistory, clientDate }),
+    });
+  },
+
+  /**
+   * Accepts Terms & Conditions and Privacy Policy.
+   * Records acceptance status and date/time in Supabase Auth user_metadata.
+   */
+  async acceptTerms(): Promise<{
+    success: boolean;
+    message: string;
+    termsAccepted: boolean;
+    termsAcceptedAt: string;
+    storedInSupabase: boolean;
+  }> {
+    return request('/auth/accept-terms', {
+      method: 'POST',
+      body: JSON.stringify({ termsAccepted: true }),
     });
   },
 

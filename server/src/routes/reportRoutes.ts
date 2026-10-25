@@ -12,6 +12,13 @@ export const reportRouter = Router();
 // Protect all report endpoints with verified JWT authentication
 reportRouter.use(authenticate);
 
+function getUserIdMatch(userId: string) {
+  if (mongoose.Types.ObjectId.isValid(userId)) {
+    return { $in: [userId, new mongoose.Types.ObjectId(userId)] };
+  }
+  return userId;
+}
+
 const dateRangeQuerySchema = z.object({
   start: z.string().optional(),
   end: z.string().optional(),
@@ -47,8 +54,6 @@ reportRouter.get(
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + 7);
 
-    const userObjectId = new mongoose.Types.ObjectId(req.user.userId);
-
     // Fetch user's active goal
     const activeGoal = await Goal.findOne({ userId: req.user.userId, isActive: true });
     const targetCalories = activeGoal ? activeGoal.dailyCaloriesKcal : 2000;
@@ -57,7 +62,7 @@ reportRouter.get(
     const dailyAggregates = await Meal.aggregate([
       {
         $match: {
-          userId: userObjectId,
+          userId: getUserIdMatch(req.user.userId),
           eatenAt: { $gte: startDate, $lt: endDate },
         },
       },
@@ -119,7 +124,7 @@ reportRouter.get(
     const { start, end, groupBy } = macroQuerySchema.parse(req.query);
 
     const filter: Record<string, unknown> = {
-      userId: new mongoose.Types.ObjectId(req.user.userId),
+      userId: getUserIdMatch(req.user.userId),
     };
 
     if (start || end) {
@@ -257,7 +262,7 @@ reportRouter.get(
     const activeGoal = await Goal.findOne({ userId: req.user.userId, isActive: true });
 
     const filter: Record<string, unknown> = {
-      userId: new mongoose.Types.ObjectId(req.user.userId),
+      userId: getUserIdMatch(req.user.userId),
     };
 
     if (start || end) {

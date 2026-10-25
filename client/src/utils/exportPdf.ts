@@ -74,7 +74,7 @@ export function exportNutritionReportPdf(options: ExportPdfOptions): void {
     <html lang="en">
     <head>
       <meta charset="UTF-8">
-      <title>Calories Clinical Nutrition Report — ${userProfile.name}</title>
+      <title>Calories Clinical Nutrition Report - ${userProfile.name}</title>
       <style>
         @page {
           size: A4;
@@ -286,7 +286,7 @@ export function exportNutritionReportPdf(options: ExportPdfOptions): void {
       </div>
 
       <!-- Adherence Trend Chart -->
-      <div class="section-title">${dateRangeLabel} — Calorie Adherence vs. Budget</div>
+      <div class="section-title">${dateRangeLabel} - Calorie Adherence vs. Budget</div>
       <div class="chart-box">
         <svg viewBox="0 0 ${svgWidth} 190" style="width: 100%; height: 160px; overflow: visible;">
           <!-- Target dashed line -->

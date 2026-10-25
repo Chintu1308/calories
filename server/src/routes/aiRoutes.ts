@@ -1,7 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import multer from 'multer';
 import mongoose from 'mongoose';
-import { User } from '../models/User.js';
+import { findUserByAuthId } from '../models/User.js';
 import { Goal } from '../models/Goal.js';
 import { Meal } from '../models/Meal.js';
 import { DietInstruction } from '../models/DietInstruction.js';
@@ -81,10 +81,8 @@ aiRouter.post(
       throw AppError.badRequest('Missing image file. Please upload a photo of your meal or food label.');
     }
 
-    const userObjectId = new mongoose.Types.ObjectId(req.user.userId);
-
     // 1. Fetch user allergies and biometric preferences
-    const user = await User.findById(req.user.userId);
+    const user = await findUserByAuthId(req.user.userId, req.user.email);
     const userAllergies = user?.allergies || [];
 
     // 2. Fetch active nutritional goal
@@ -101,7 +99,7 @@ aiRouter.post(
     const todayMeals = await Meal.aggregate([
       {
         $match: {
-          userId: userObjectId,
+          userId: req.user.userId,
           eatenAt: { $gte: startOfToday },
         },
       },

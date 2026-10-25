@@ -19,8 +19,7 @@ export interface IGoalDocument extends Document {
 const goalSchema = new Schema<IGoalDocument>(
   {
     userId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
+      type: Schema.Types.Mixed,
       required: true,
       index: true,
     },

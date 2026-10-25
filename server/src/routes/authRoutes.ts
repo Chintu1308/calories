@@ -1,7 +1,13 @@
 import { Router, type Request, type Response } from 'express';
-import { User } from '../models/User.js';
+import mongoose from 'mongoose';
+import { User, type IUserDocument } from '../models/User.js';
 import { Goal } from '../models/Goal.js';
-import { supabase, isSupabaseConfigured } from '../config/supabase.js';
+import {
+  supabase,
+  isSupabaseConfigured,
+  getSupabaseUserById,
+  updateSupabaseUserTerms,
+} from '../config/supabase.js';
 import { env } from '../config/env.js';
 import { hashPassword, verifyPassword, generateToken } from '../utils/security.js';
 import { registerSchema, loginSchema, updateProfileSchema } from '../validators/authValidator.js';
@@ -12,64 +18,148 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 export const authRouter = Router();
 
 /**
+ * Finds user document in MongoDB by Supabase ID, MongoDB ObjectId, or email.
+ */
+async function findUserByAuthId(userId: string, email?: string): Promise<IUserDocument | null> {
+  // 1. Query by supabaseId
+  let user = await User.findOne({ supabaseId: userId });
+  if (user) return user;
+
+  // 2. Query by MongoDB _id if it's a valid 24-hex ObjectId
+  if (mongoose.Types.ObjectId.isValid(userId)) {
+    user = await User.findById(userId);
+    if (user) return user;
+  }
+
+  // 3. Fallback to email mapping
+  if (email) {
+    user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (user) {
+      if (!user.supabaseId && userId) {
+        user.supabaseId = userId;
+        await user.save();
+      }
+      return user;
+    }
+  }
+
+  return null;
+}
+
+/**
  * POST /api/v1/auth/register
- * Registers a new user account with bcrypt password hashing (10 salt rounds).
- * Validates registration schema, prevents duplicate emails, and returns a signed session JWT.
- * Also synchronizes account to Supabase Auth if cloud credentials are provided,
- * and automatically seeds an initial personalized nutrition Goal in MongoDB.
- *
- * @returns HTTP 201 with `{ token, user }`
- * @throws 400 Bad Request if validation fails
- * @throws 409 Conflict if email is already registered
+ * Registers user with Supabase Auth as the primary identity provider,
+ * and maps physical biometrics / dietary preferences in MongoDB under the Supabase ID.
+ * If termsAccepted is provided, persists status and timestamp directly in Supabase user_metadata.
  */
 authRouter.post(
   '/register',
   asyncHandler(async (req: Request, res: Response) => {
     const validated = registerSchema.parse(req.body);
+    const nowIso = new Date().toISOString();
 
-    const existing = await User.findOne({ email: validated.email });
-    if (existing) {
-      throw AppError.conflict('An account with this email address already exists');
-    }
+    let supabaseUserId: string | null = null;
+    let termsAccepted = !!validated.termsAccepted;
+    let termsAcceptedAt: string | undefined = termsAccepted ? nowIso : undefined;
 
-    // 1. Sync to Supabase Auth if configured
+    // 1. Create or sync to Supabase Auth if configured
     if (isSupabaseConfigured() && supabase) {
       try {
         if (env.SUPABASE_SERVICE_ROLE_KEY) {
-          await supabase.auth.admin.createUser({
+          const { data: supaCreate, error: supaErr } = await supabase.auth.admin.createUser({
             email: validated.email,
             password: validated.password,
             email_confirm: true,
-            user_metadata: { name: validated.name },
+            user_metadata: {
+              name: validated.name,
+              termsAccepted,
+              termsAcceptedAt,
+            },
           });
+
+          if (supaErr) {
+            // If already registered in Supabase, sign in to retrieve ID
+            const { data: supaLogin } = await supabase.auth.signInWithPassword({
+              email: validated.email,
+              password: validated.password,
+            });
+            if (supaLogin?.user) {
+              supabaseUserId = supaLogin.user.id;
+            } else {
+              throw AppError.conflict(supaErr.message || 'An account with this email already exists in Supabase');
+            }
+          } else if (supaCreate.user) {
+            supabaseUserId = supaCreate.user.id;
+          }
         } else {
-          await supabase.auth.signUp({
+          const { data: supaSign, error: signErr } = await supabase.auth.signUp({
             email: validated.email,
             password: validated.password,
             options: {
-              data: { name: validated.name },
+              data: {
+                name: validated.name,
+                termsAccepted,
+                termsAcceptedAt,
+              },
             },
           });
+          if (signErr) {
+            throw AppError.conflict(signErr.message || 'Registration error');
+          }
+          if (supaSign.user) {
+            supabaseUserId = supaSign.user.id;
+          }
         }
-      } catch (supaErr: unknown) {
-        console.warn('[Supabase Auth Sync] Notice during user creation:', supaErr);
+      } catch (err: unknown) {
+        if (err instanceof AppError) throw err;
+        console.warn('[Supabase Auth Register] Notice during user creation:', err);
       }
     }
 
-    const passwordHash = await hashPassword(validated.password);
+    // Check existing MongoDB profile
+    const existing = await User.findOne({ email: validated.email });
+    if (existing && !supabaseUserId) {
+      throw AppError.conflict('An account with this email address already exists');
+    }
 
-    const user = await User.create({
-      email: validated.email,
-      passwordHash,
-      name: validated.name,
-      heightCm: validated.heightCm,
-      currentWeightKg: validated.currentWeightKg,
-      targetWeightKg: validated.targetWeightKg,
-      targetWeeks: validated.targetWeeks,
-      allergies: validated.allergies,
-      supplements: validated.supplements,
-      primaryGoal: validated.primaryGoal,
-    });
+    // Only hash password if running in offline mode without Supabase
+    const passwordHash = !isSupabaseConfigured() ? await hashPassword(validated.password) : undefined;
+
+    let user = existing;
+    if (user) {
+      user.supabaseId = supabaseUserId || user.supabaseId;
+      user.name = validated.name;
+      user.heightCm = validated.heightCm;
+      user.currentWeightKg = validated.currentWeightKg;
+      user.targetWeightKg = validated.targetWeightKg;
+      user.targetWeeks = validated.targetWeeks;
+      user.allergies = validated.allergies;
+      user.supplements = validated.supplements as any;
+      user.primaryGoal = validated.primaryGoal;
+      if (termsAccepted) {
+        user.termsAccepted = true;
+        user.termsAcceptedAt = new Date(nowIso);
+      }
+      await user.save();
+    } else {
+      user = await User.create({
+        supabaseId: supabaseUserId || undefined,
+        email: validated.email,
+        passwordHash,
+        name: validated.name,
+        heightCm: validated.heightCm,
+        currentWeightKg: validated.currentWeightKg,
+        targetWeightKg: validated.targetWeightKg,
+        targetWeeks: validated.targetWeeks,
+        allergies: validated.allergies,
+        supplements: validated.supplements,
+        primaryGoal: validated.primaryGoal,
+        termsAccepted,
+        termsAcceptedAt: termsAccepted ? new Date(nowIso) : undefined,
+      });
+    }
+
+    const effectiveUserId = supabaseUserId || user._id.toString();
 
     // 2. Automatically compute and persist initial active Goal from biometrics
     try {
@@ -101,7 +191,7 @@ authRouter.post(
       goalDate.setDate(goalDate.getDate() + (validated.targetWeeks || 8) * 7);
 
       await Goal.create({
-        userId: user._id,
+        userId: effectiveUserId,
         title: `${(validated.primaryGoal || 'fat_loss').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())} Target`,
         dailyCaloriesKcal: calorieTarget,
         proteinGrams: proteinTarget,
@@ -118,73 +208,165 @@ authRouter.post(
     }
 
     const token = generateToken({
-      userId: user._id.toString(),
+      userId: effectiveUserId,
       email: user.email,
     });
 
+    const userObj: any = user.toJSON();
+    userObj._id = effectiveUserId;
+    (userObj as any).id = effectiveUserId;
+    (userObj as any).termsAccepted = termsAccepted;
+    (userObj as any).termsAcceptedAt = termsAcceptedAt;
+
     res.status(201).json({
       token,
-      user: user.toJSON(),
+      user: userObj,
     });
   })
 );
 
 /**
  * POST /api/v1/auth/login
- * Authenticates user credentials using constant-time bcrypt verification.
- * Issues a signed HMAC-SHA256 JWT access token upon successful authentication.
- *
- * @returns HTTP 200 with `{ token, user }`
- * @throws 401 Unauthorized on invalid email or password
+ * Authenticates user credentials via Supabase Auth when configured,
+ * retrieves user details and terms status from Supabase, and maps to MongoDB biometrics.
  */
 authRouter.post(
   '/login',
   asyncHandler(async (req: Request, res: Response) => {
     const validated = loginSchema.parse(req.body);
 
-    const user = await User.findOne({ email: validated.email }).select('+passwordHash');
-    if (!user) {
-      throw AppError.unauthorized('Invalid email or password credentials');
-    }
+    let supabaseUserId: string | null = null;
+    let supabaseUserMeta: any = null;
 
-    const isMatch = await verifyPassword(validated.password, user.passwordHash);
-    if (!isMatch) {
-      throw AppError.unauthorized('Invalid email or password credentials');
-    }
-
-    // Sync user to Supabase Auth if not already registered in Supabase
-    if (isSupabaseConfigured() && supabase && env.SUPABASE_SERVICE_ROLE_KEY) {
+    // 1. Authenticate via Supabase Auth if configured
+    if (isSupabaseConfigured() && supabase) {
       try {
-        await supabase.auth.admin.createUser({
-          email: user.email,
+        const { data: supaAuth, error: supaErr } = await supabase.auth.signInWithPassword({
+          email: validated.email,
           password: validated.password,
-          email_confirm: true,
-          user_metadata: { name: user.name },
         });
-      } catch {
-        // User already in Supabase or harmless notice - ignore
+
+        if (supaErr) {
+          throw AppError.unauthorized('Invalid email or password credentials');
+        }
+
+        if (supaAuth?.user) {
+          supabaseUserId = supaAuth.user.id;
+          supabaseUserMeta = supaAuth.user.user_metadata || {};
+        }
+      } catch (err: unknown) {
+        if (err instanceof AppError) throw err;
+        console.warn('[Supabase Login] Notice during authentication:', err);
       }
     }
 
+    // 2. Lookup or create corresponding profile in MongoDB
+    let user = await User.findOne({
+      $or: [
+        ...(supabaseUserId ? [{ supabaseId: supabaseUserId }] : []),
+        { email: validated.email },
+      ],
+    }).select('+passwordHash');
+
+    // If offline mode without Supabase, verify password hash in MongoDB
+    if (!supabaseUserId) {
+      if (!user || !user.passwordHash) {
+        throw AppError.unauthorized('Invalid email or password credentials');
+      }
+      const isMatch = await verifyPassword(validated.password, user.passwordHash);
+      if (!isMatch) {
+        throw AppError.unauthorized('Invalid email or password credentials');
+      }
+    } else if (!user) {
+      // User authenticated in Supabase but no biometric profile exists yet in MongoDB: create baseline
+      user = await User.create({
+        supabaseId: supabaseUserId || undefined,
+        email: validated.email,
+        name: supabaseUserMeta?.name || validated.email.split('@')[0],
+        heightCm: 175,
+        currentWeightKg: 75,
+        targetWeightKg: 70,
+        targetWeeks: 8,
+        allergies: [],
+        supplements: [],
+        primaryGoal: 'fat_loss',
+        termsAccepted: !!supabaseUserMeta?.termsAccepted,
+        termsAcceptedAt: supabaseUserMeta?.termsAcceptedAt ? new Date(supabaseUserMeta.termsAcceptedAt) : undefined,
+      });
+    } else if (supabaseUserId && !user.supabaseId) {
+      user.supabaseId = supabaseUserId;
+      await user.save();
+    }
+
+    const effectiveUserId = supabaseUserId || user!._id.toString();
+
+    const termsAccepted = supabaseUserMeta?.termsAccepted ?? user?.termsAccepted ?? false;
+    const termsAcceptedAt = supabaseUserMeta?.termsAcceptedAt || user?.termsAcceptedAt?.toISOString() || null;
+
     const token = generateToken({
-      userId: user._id.toString(),
-      email: user.email,
+      userId: effectiveUserId,
+      email: validated.email,
     });
+
+    const userObj: any = user!.toJSON();
+    userObj._id = effectiveUserId;
+    (userObj as any).id = effectiveUserId;
+    (userObj as any).name = supabaseUserMeta?.name || userObj.name;
+    (userObj as any).termsAccepted = termsAccepted;
+    (userObj as any).termsAcceptedAt = termsAcceptedAt;
 
     res.status(200).json({
       token,
-      user: user.toJSON(),
+      user: userObj,
+    });
+  })
+);
+
+/**
+ * POST /api/v1/auth/accept-terms
+ * Records acceptance of Terms & Conditions and Privacy Policy.
+ * Stores acceptance status and exact date/time in Supabase Auth user_metadata,
+ * and updates the mapped profile in MongoDB.
+ */
+authRouter.post(
+  '/accept-terms',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw AppError.unauthorized();
+    }
+
+    const nowIso = new Date().toISOString();
+    let supabaseSuccess = false;
+
+    // 1. Update status and timestamp in Supabase Auth user_metadata
+    if (isSupabaseConfigured()) {
+      supabaseSuccess = await updateSupabaseUserTerms(req.user.userId, true, nowIso);
+    }
+
+    // 2. Synchronize mapped MongoDB profile
+    const user = await findUserByAuthId(req.user.userId, req.user.email);
+    if (user) {
+      user.termsAccepted = true;
+      user.termsAcceptedAt = new Date(nowIso);
+      await user.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Terms & Conditions and Privacy Policy accepted successfully',
+      termsAccepted: true,
+      termsAcceptedAt: nowIso,
+      storedInSupabase: supabaseSuccess,
     });
   })
 );
 
 /**
  * GET /api/v1/auth/me
- * Retrieves current authenticated user profile using token from Authorization header.
- *
- * @returns HTTP 200 with user profile JSON
- * @throws 401 Unauthorized if token is missing, invalid, or expired
- * @throws 404 Not Found if user record no longer exists
+ * Retrieves current authenticated user profile.
+ * Reads master identity details and terms acceptance from Supabase Auth,
+ * and merges with physical biometrics stored in MongoDB.
  */
 authRouter.get(
   '/me',
@@ -194,25 +376,54 @@ authRouter.get(
       throw AppError.unauthorized();
     }
 
-    const user = await User.findById(req.user.userId);
+    let supaUser = null;
+    if (isSupabaseConfigured()) {
+      supaUser = await getSupabaseUserById(req.user.userId);
+    }
+
+    let user = await findUserByAuthId(req.user.userId, req.user.email);
+
+    // If user exists in Supabase but not yet in MongoDB, create baseline profile mapped to Supabase ID
     if (!user) {
-      throw AppError.notFound('User profile not found');
+      user = await User.create({
+        supabaseId: req.user.userId,
+        email: req.user.email || supaUser?.email || 'user@calories.app',
+        name: supaUser?.user_metadata?.name || 'Calories User',
+        heightCm: 175,
+        currentWeightKg: 75,
+        targetWeightKg: 70,
+        targetWeeks: 8,
+        allergies: [],
+        supplements: [],
+        primaryGoal: 'fat_loss',
+        termsAccepted: !!supaUser?.user_metadata?.termsAccepted,
+        termsAcceptedAt: supaUser?.user_metadata?.termsAcceptedAt ? new Date(supaUser.user_metadata.termsAcceptedAt) : undefined,
+      });
+    }
+
+    const userObj: any = user.toJSON();
+    userObj._id = req.user.userId;
+    (userObj as any).id = req.user.userId;
+
+    if (supaUser) {
+      userObj.email = supaUser.email || userObj.email;
+      if (supaUser.user_metadata?.name) {
+        userObj.name = supaUser.user_metadata.name;
+      }
+      (userObj as any).termsAccepted = !!supaUser.user_metadata?.termsAccepted;
+      (userObj as any).termsAcceptedAt = supaUser.user_metadata?.termsAcceptedAt || null;
     }
 
     res.status(200).json({
-      user: user.toJSON(),
+      user: userObj,
     });
   })
 );
 
 /**
  * PUT /api/v1/auth/profile
- * Updates authenticated user profile details (height, weight, targetWeightKg, targetWeeks,
- * primaryGoal, allergies, supplements) in MongoDB and synchronizes the active Goal.
- *
- * @returns HTTP 200 with `{ user, goal }`
- * @throws 401 Unauthorized if unauthenticated
- * @throws 404 Not Found if user record does not exist
+ * Updates authenticated user profile biometrics in MongoDB.
+ * If name changes, updates Supabase Auth user_metadata as well.
  */
 authRouter.put(
   '/profile',
@@ -224,12 +435,28 @@ authRouter.put(
 
     const validated = updateProfileSchema.parse(req.body);
 
-    const user = await User.findById(req.user.userId);
+    let user = await findUserByAuthId(req.user.userId, req.user.email);
     if (!user) {
       throw AppError.notFound('User profile not found');
     }
 
-    // 1. Update user fields
+    // 1. If name changed, synchronize to Supabase
+    if (validated.name && isSupabaseConfigured() && supabase && env.SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        const supaUser = await getSupabaseUserById(req.user.userId);
+        const existingMeta = supaUser?.user_metadata || {};
+        await supabase.auth.admin.updateUserById(req.user.userId, {
+          user_metadata: {
+            ...existingMeta,
+            name: validated.name,
+          },
+        });
+      } catch (supaErr) {
+        console.warn('[Supabase Profile Sync] Failed to update user_metadata:', supaErr);
+      }
+    }
+
+    // 2. Update user fields in MongoDB
     if (validated.name !== undefined) user.name = validated.name;
     if (validated.heightCm !== undefined) user.heightCm = validated.heightCm;
     if (validated.currentWeightKg !== undefined) user.currentWeightKg = validated.currentWeightKg;
@@ -241,7 +468,7 @@ authRouter.put(
 
     await user.save();
 
-    // 2. Synchronize active Goal in MongoDB
+    // 3. Synchronize active Goal in MongoDB
     let activeGoal = await Goal.findOne({ userId: req.user.userId, isActive: true });
 
     const weightKg = user.currentWeightKg || 70;
@@ -274,7 +501,8 @@ authRouter.put(
     const goalTitle = `${(user.primaryGoal || 'fat_loss').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())} Target`;
 
     if (activeGoal) {
-      const shouldRecalculateMacros = validated.primaryGoal !== undefined ||
+      const shouldRecalculateMacros =
+        validated.primaryGoal !== undefined ||
         validated.currentWeightKg !== undefined ||
         validated.heightCm !== undefined;
 
@@ -293,7 +521,7 @@ authRouter.put(
       await activeGoal.save();
     } else {
       activeGoal = await Goal.create({
-        userId: user._id,
+        userId: req.user.userId,
         title: goalTitle,
         dailyCaloriesKcal: calorieTarget,
         proteinGrams: proteinTarget,
@@ -307,9 +535,13 @@ authRouter.put(
       });
     }
 
+    const userObj: any = user.toJSON();
+    userObj._id = req.user.userId;
+    (userObj as any).id = req.user.userId;
+
     res.status(200).json({
-      message: 'Profile and goals synchronized successfully in MongoDB',
-      user: user.toJSON(),
+      message: 'Profile and goals synchronized successfully',
+      user: userObj,
       goal: activeGoal ? activeGoal.toJSON() : null,
     });
   })

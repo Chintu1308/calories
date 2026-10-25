@@ -378,9 +378,9 @@ export const NutritionChatAssistant: React.FC<NutritionChatAssistantProps> = ({
         role: 'assistant',
         content: `You have **${cNeeded} kcal** and **${pNeeded}g of protein** remaining to hit your targets today.\n\n` +
           `**Top meal ideas to hit your targets:**\n` +
-          `1. **Herb Grilled Chicken Breast or Tempeh Bowl (180g)** with roasted broccoli and quinoa — *~420 kcal, 38g protein, 32g carbs, 12g fat*\n\n` +
-          `2. **Pan-Seared White Fish or Extra-Firm Tofu** with garlic sautéed green beans and a sweet potato — *~380 kcal, 34g protein, 28g carbs, 9g fat*\n\n` +
-          `3. **Egg White & Veggie Frittata** with baby spinach, bell peppers, and feta — *~310 kcal, 29g protein, 14g carbs, 11g fat*\n\n` +
+          `1. **Herb Grilled Chicken Breast or Tempeh Bowl (180g)** with roasted broccoli and quinoa - *~420 kcal, 38g protein, 32g carbs, 12g fat*\n\n` +
+          `2. **Pan-Seared White Fish or Extra-Firm Tofu** with garlic sautéed green beans and a sweet potato - *~380 kcal, 34g protein, 28g carbs, 9g fat*\n\n` +
+          `3. **Egg White & Veggie Frittata** with baby spinach, bell peppers, and feta - *~310 kcal, 29g protein, 14g carbs, 11g fat*\n\n` +
           `Pair any of these with a tall glass of water to support digestion!`,
         timestamp: getCurrentTimeString(),
         suggestedPrompts: [
@@ -596,7 +596,7 @@ export const NutritionChatAssistant: React.FC<NutritionChatAssistantProps> = ({
                 title={isMinimized ? 'Expand' : 'Minimize'}
                 aria-label={isMinimized ? 'Expand' : 'Minimize'}
               >
-                {isMinimized ? '▢' : '—'}
+                {isMinimized ? '▢' : '-'}
               </button>
               <button
                 type="button"

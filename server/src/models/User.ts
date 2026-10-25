@@ -9,8 +9,9 @@ export interface ISupplementSubdoc {
 }
 
 export interface IUserDocument extends Document {
+  supabaseId?: string;
   email: string;
-  passwordHash: string;
+  passwordHash?: string;
   name: string;
   heightCm: number;
   currentWeightKg: number;
@@ -19,6 +20,8 @@ export interface IUserDocument extends Document {
   allergies: string[];
   supplements: ISupplementSubdoc[];
   primaryGoal: 'fat_loss' | 'muscle_gain' | 'maintenance' | 'athletic';
+  termsAccepted: boolean;
+  termsAcceptedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,6 +39,11 @@ const supplementSchema = new Schema<ISupplementSubdoc>(
 
 const userSchema = new Schema<IUserDocument>(
   {
+    supabaseId: {
+      type: String,
+      sparse: true,
+      index: true,
+    },
     email: {
       type: String,
       required: true,
@@ -46,7 +54,7 @@ const userSchema = new Schema<IUserDocument>(
     },
     passwordHash: {
       type: String,
-      required: true,
+      required: false, // Optional when Supabase Auth manages credentials
       select: false, // Never return password hash in queries by default
     },
     name: {
@@ -91,6 +99,13 @@ const userSchema = new Schema<IUserDocument>(
       enum: ['fat_loss', 'muscle_gain', 'maintenance', 'athletic'],
       default: 'fat_loss',
     },
+    termsAccepted: {
+      type: Boolean,
+      default: false,
+    },
+    termsAcceptedAt: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
@@ -106,3 +121,29 @@ const userSchema = new Schema<IUserDocument>(
 
 export const User: Model<IUserDocument> =
   mongoose.models.User || mongoose.model<IUserDocument>('User', userSchema);
+
+/**
+ * Finds user profile in MongoDB by Supabase UUID string, MongoDB ObjectId, or email.
+ */
+export async function findUserByAuthId(userId: string, email?: string): Promise<IUserDocument | null> {
+  let user = await User.findOne({ supabaseId: userId });
+  if (user) return user;
+
+  if (mongoose.Types.ObjectId.isValid(userId)) {
+    user = await User.findById(userId);
+    if (user) return user;
+  }
+
+  if (email) {
+    user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (user) {
+      if (!user.supabaseId && userId) {
+        user.supabaseId = userId;
+        await user.save();
+      }
+      return user;
+    }
+  }
+
+  return null;
+}

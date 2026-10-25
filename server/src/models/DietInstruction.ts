@@ -23,8 +23,7 @@ export interface IDietInstructionDocument extends Document {
 const dietInstructionSchema = new Schema<IDietInstructionDocument>(
   {
     userId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
+      type: Schema.Types.Mixed,
       required: true,
       index: true,
     },

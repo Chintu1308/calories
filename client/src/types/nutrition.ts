@@ -94,6 +94,9 @@ export interface UserProfile {
   supplements: SupplementItem[];
   activityLevel: 'sedentary' | 'light' | 'moderate' | 'very_active';
   primaryGoal: 'fat_loss' | 'muscle_gain' | 'maintenance' | 'athletic';
+  termsAccepted?: boolean;
+  termsAcceptedAt?: string;
+  supabaseId?: string;
 }
 
 export interface GoalProjectionPoint {
