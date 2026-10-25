@@ -10,6 +10,8 @@ export interface MealTimelineProps {
   isLoading?: boolean;
   dateLabel?: string;
   onAddMeal: (category: MealType) => void;
+  onEditMeal?: (meal: MealItem) => void;
+  onDeleteMeal?: (mealId: string) => void;
   onOpenAIScan: () => void;
   // Water Category & Tracking
   waterLogs?: WaterLogEntry[];
@@ -28,6 +30,8 @@ export const MealTimeline: React.FC<MealTimelineProps> = ({
   isLoading = false,
   dateLabel,
   onAddMeal,
+  onEditMeal,
+  onDeleteMeal,
   onOpenAIScan,
   waterLogs,
   targetWaterMl = 3000,
@@ -127,6 +131,8 @@ export const MealTimeline: React.FC<MealTimelineProps> = ({
                 category={cat}
                 meals={categoryMeals}
                 onAddMeal={onAddMeal}
+                onEditMeal={onEditMeal}
+                onDeleteMeal={onDeleteMeal}
               />
             );
           })}

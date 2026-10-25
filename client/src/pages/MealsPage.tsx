@@ -16,6 +16,7 @@ import type { MealItem, MealType } from '../types/nutrition.js';
 export interface MealsPageProps {
   meals: MealItem[];
   onOpenAddMeal: (category: MealType) => void;
+  onEditMeal?: (meal: MealItem) => void;
   onDeleteMeal: (mealId: string) => void;
   onOpenAIScan: () => void;
 }
@@ -47,6 +48,7 @@ function checkMealDateFilter(eatenAt: string, filter: string): boolean {
 export const MealsPage: React.FC<MealsPageProps> = ({
   meals,
   onOpenAddMeal,
+  onEditMeal,
   onDeleteMeal,
   onOpenAIScan,
 }) => {
@@ -260,15 +262,28 @@ export const MealsPage: React.FC<MealsPageProps> = ({
                         </Badge>
                       </td>
                       <td>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          style={{ color: 'var(--color-error-red)', padding: '2px 8px' }}
-                          onClick={() => onDeleteMeal(meal.id || (meal as any)._id)}
-                          aria-label={`Delete ${meal.foodName}`}
-                        >
-                          ✕ Delete
-                        </Button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {onEditMeal && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              style={{ color: 'var(--color-forest-green)', padding: '2px 8px' }}
+                              onClick={() => onEditMeal(meal)}
+                              aria-label={`Edit ${meal.foodName}`}
+                            >
+                              ✎ Edit
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            style={{ color: 'var(--color-error-red)', padding: '2px 8px' }}
+                            onClick={() => onDeleteMeal(meal.id || (meal as any)._id)}
+                            aria-label={`Delete ${meal.foodName}`}
+                          >
+                            ✕ Delete
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}

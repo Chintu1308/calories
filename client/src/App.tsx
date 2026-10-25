@@ -272,6 +272,7 @@ export const App: React.FC = () => {
 
   // Modal dialog states
   const [isAddMealOpen, setIsAddMealOpen] = useState(false);
+  const [editingMeal, setEditingMeal] = useState<MealItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<MealType>('Breakfast');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<AuthModalMode>('edit_profile');
@@ -355,7 +356,14 @@ export const App: React.FC = () => {
   };
 
   const handleOpenAddMeal = (category: MealType = 'Breakfast') => {
+    setEditingMeal(null);
     setSelectedCategory(category);
+    setIsAddMealOpen(true);
+  };
+
+  const handleOpenEditMeal = (meal: MealItem) => {
+    setEditingMeal(meal);
+    setSelectedCategory(meal.mealType);
     setIsAddMealOpen(true);
   };
 
@@ -523,6 +531,46 @@ export const App: React.FC = () => {
     try {
       await apiClient.deleteMeal(mealId);
     } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'status' in err) {
+        const status = Number((err as { status: number }).status);
+        if (status === 401) {
+          handleLogout();
+          return;
+        }
+        if ([400, 403, 404, 500, 503].includes(status)) {
+          setActiveError({ code: status as HttpErrorCode, message: (err as { message?: string }).message });
+        }
+      }
+    }
+  };
+
+  const handleUpdateMeal = async (mealId: string, updatedFields: Partial<MealItem>) => {
+    // Optimistically update state
+    setMeals((prev) =>
+      prev.map((m) =>
+        m.id === mealId || (m as any)._id === mealId
+          ? {
+              ...m,
+              ...updatedFields,
+              quantity: { ...m.quantity, ...(updatedFields.quantity || {}) },
+              nutrition: { ...m.nutrition, ...(updatedFields.nutrition || {}) },
+            }
+          : m
+      )
+    );
+    try {
+      const res = await apiClient.updateMeal(mealId, updatedFields);
+      if (res?.meal) {
+        setMeals((prev) =>
+          prev.map((m) =>
+            m.id === mealId || (m as any)._id === mealId
+              ? { ...res.meal, id: res.meal.id || (res.meal as any)._id || mealId }
+              : m
+          )
+        );
+      }
+    } catch (err: unknown) {
+      console.warn('[Calories] Failed to update meal on backend:', err);
       if (err && typeof err === 'object' && 'status' in err) {
         const status = Number((err as { status: number }).status);
         if (status === 401) {
@@ -729,6 +777,8 @@ export const App: React.FC = () => {
           meals={selectedDayMeals}
           weeklyTrend={weeklyTrend}
           onAddMeal={handleOpenAddMeal}
+          onEditMeal={handleOpenEditMeal}
+          onDeleteMeal={handleDeleteMeal}
           onOpenAIScan={() => setActiveTab('ai-scan')}
           userName={userProfile?.name || 'User'}
           onOpenAuthModal={() => handleOpenAuthModal('edit_profile')}
@@ -760,6 +810,7 @@ export const App: React.FC = () => {
               <MealsPage
                 meals={meals}
                 onOpenAddMeal={handleOpenAddMeal}
+                onEditMeal={handleOpenEditMeal}
                 onDeleteMeal={handleDeleteMeal}
                 onOpenAIScan={() => setActiveTab('ai-scan')}
               />
@@ -851,13 +902,18 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* DUAL OPTION ADD MEAL MODAL (Manual Entry vs Photo & Dish Name) */}
+      {/* DIRECT VALUES ADD / EDIT MEAL MODAL */}
       <AddMealModal
         isOpen={isAddMealOpen}
-        onClose={() => setIsAddMealOpen(false)}
+        onClose={() => {
+          setIsAddMealOpen(false);
+          setEditingMeal(null);
+        }}
         defaultCategory={selectedCategory}
         defaultDateString={selectedDateString}
+        initialMeal={editingMeal}
         onSaveMeal={handleSaveMeal}
+        onUpdateMeal={handleUpdateMeal}
       />
 
       {/* USER EDIT PROFILE MODAL */}

@@ -14,20 +14,25 @@ export interface MealCategoryCardProps {
   category: MealType;
   meals: MealItem[];
   onAddMeal: (category: MealType) => void;
+  onEditMeal?: (meal: MealItem) => void;
+  onDeleteMeal?: (mealId: string) => void;
 }
 
 export const MealCategoryCard: React.FC<MealCategoryCardProps> = ({
   category,
   meals,
   onAddMeal,
+  onEditMeal,
+  onDeleteMeal,
 }) => {
   // Compute subtotals for this category
-  const totalCalories = meals.reduce((acc, m) => acc + m.nutrition.caloriesKcal, 0);
-  const totalProtein = meals.reduce((acc, m) => acc + m.nutrition.proteinG, 0);
-  const totalCarbs = meals.reduce((acc, m) => acc + m.nutrition.carbsG, 0);
-  const totalFat = meals.reduce((acc, m) => acc + m.nutrition.fatG, 0);
+  const totalCalories = meals.reduce((acc, m) => acc + (m.nutrition?.caloriesKcal || 0), 0);
+  const totalProtein = meals.reduce((acc, m) => acc + (m.nutrition?.proteinG || 0), 0);
+  const totalCarbs = meals.reduce((acc, m) => acc + (m.nutrition?.carbsG || 0), 0);
+  const totalFat = meals.reduce((acc, m) => acc + (m.nutrition?.fatG || 0), 0);
 
-  const formatTime = (isoString: string) => {
+  const formatTime = (isoString?: string) => {
+    if (!isoString) return '';
     try {
       const date = new Date(isoString);
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -81,50 +86,94 @@ export const MealCategoryCard: React.FC<MealCategoryCardProps> = ({
           </div>
         ) : (
           <div className="calories-meal-items-list">
-            {meals.map((meal) => (
-              <div key={meal.id || (meal as any)._id} className="calories-meal-item-row">
-                <div className="calories-meal-item-main">
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
-                    <span className="calories-meal-name">{meal.foodName}</span>
-                    <span className="calories-meal-qty">
-                      {meal.quantity.amount} {meal.quantity.unit}
-                    </span>
-                    <span className="calories-meal-time">{formatTime(meal.eatenAt)}</span>
+            {meals.map((meal) => {
+              const mealId = meal.id || (meal as any)._id || '';
+              return (
+                <div key={mealId || meal.foodName} className="calories-meal-item-row">
+                  <div className="calories-meal-item-main">
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+                      <span className="calories-meal-name">{meal.foodName}</span>
+                      <span className="calories-meal-qty">
+                        {meal.quantity?.amount || 1} {meal.quantity?.unit || 'serving'}
+                      </span>
+                      <span className="calories-meal-time">{formatTime(meal.eatenAt)}</span>
+                    </div>
+
+                    {/* Notes & Micronutrients */}
+                    {(meal.notes || (meal.micronutrients && meal.micronutrients.length > 0)) && (
+                      <div className="calories-meal-meta-line">
+                        {meal.notes && <span className="calories-meal-note">{meal.notes}</span>}
+                        {meal.micronutrients && meal.micronutrients.length > 0 && (
+                          <div className="calories-micronutrient-pills">
+                            {meal.micronutrients.map((micro) => (
+                              <span key={micro.name} className="calories-micro-pill">
+                                {micro.name}: {micro.amount}{micro.unit}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Notes & Micronutrients */}
-                  {(meal.notes || (meal.micronutrients && meal.micronutrients.length > 0)) && (
-                    <div className="calories-meal-meta-line">
-                      {meal.notes && <span className="calories-meal-note">{meal.notes}</span>}
-                      {meal.micronutrients && meal.micronutrients.length > 0 && (
-                        <div className="calories-micronutrient-pills">
-                          {meal.micronutrients.map((micro) => (
-                            <span key={micro.name} className="calories-micro-pill">
-                              {micro.name}: {micro.amount}{micro.unit}
-                            </span>
-                          ))}
-                        </div>
+                  <div className="calories-meal-item-end">
+                    <div className="calories-meal-nutrition-pills">
+                      <span className="calories-meal-kcal">{meal.nutrition?.caloriesKcal || 0} kcal</span>
+                      <span className="calories-meal-macro-text">
+                        P: {meal.nutrition?.proteinG || 0}g · C: {meal.nutrition?.carbsG || 0}g · F: {meal.nutrition?.fatG || 0}g
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+                      <Badge
+                        variant={meal.source === 'ai' ? 'forest' : 'neutral'}
+                        style={{ fontSize: '10px', height: '20px' }}
+                      >
+                        {meal.source === 'ai' ? 'AI Extracted' : 'Manual'}
+                      </Badge>
+                      {onEditMeal && (
+                        <button
+                          type="button"
+                          onClick={() => onEditMeal(meal)}
+                          aria-label={`Edit ${meal.foodName}`}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--color-forest-green, #285B46)',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            padding: '2px 4px',
+                            borderRadius: '4px',
+                          }}
+                        >
+                          ✎ Edit
+                        </button>
+                      )}
+                      {onDeleteMeal && (
+                        <button
+                          type="button"
+                          onClick={() => onDeleteMeal(mealId)}
+                          aria-label={`Remove ${meal.foodName}`}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--color-error-red, #dc2626)',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            padding: '2px 4px',
+                            borderRadius: '4px',
+                          }}
+                        >
+                          ✕ Remove
+                        </button>
                       )}
                     </div>
-                  )}
-                </div>
-
-                <div className="calories-meal-item-end">
-                  <div className="calories-meal-nutrition-pills">
-                    <span className="calories-meal-kcal">{meal.nutrition.caloriesKcal} kcal</span>
-                    <span className="calories-meal-macro-text">
-                      P: {meal.nutrition.proteinG}g · C: {meal.nutrition.carbsG}g · F: {meal.nutrition.fatG}g
-                    </span>
                   </div>
-                  <Badge
-                    variant={meal.source === 'ai' ? 'forest' : 'neutral'}
-                    style={{ fontSize: '10px', height: '20px' }}
-                  >
-                    {meal.source === 'ai' ? 'AI Extracted' : 'Manual'}
-                  </Badge>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>

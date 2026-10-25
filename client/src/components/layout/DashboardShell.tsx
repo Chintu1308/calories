@@ -21,6 +21,8 @@ export interface DashboardShellProps {
   meals: MealItem[];
   weeklyTrend: DayTrendPoint[];
   onAddMeal: (category: MealType) => void;
+  onEditMeal?: (meal: MealItem) => void;
+  onDeleteMeal?: (mealId: string) => void;
   onOpenAIScan: () => void;
   userName?: string;
   onOpenAuthModal?: () => void;
@@ -51,6 +53,8 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
   meals,
   weeklyTrend,
   onAddMeal,
+  onEditMeal,
+  onDeleteMeal,
   onOpenAIScan,
   userName = 'User',
   onOpenAuthModal,
@@ -176,6 +180,8 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
               isLoading={isLoading}
               dateLabel={currentDateLabel}
               onAddMeal={onAddMeal}
+              onEditMeal={onEditMeal}
+              onDeleteMeal={onDeleteMeal}
               onOpenAIScan={onOpenAIScan}
               waterLogs={waterLogs}
               targetWaterMl={summary.targetWaterMl}
