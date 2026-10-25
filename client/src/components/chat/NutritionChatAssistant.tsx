@@ -13,6 +13,7 @@ export interface NutritionChatAssistantProps {
   waterIntakeMl?: number;
   selectedDate?: string;
   allergies?: string[];
+  onLogWater?: (amountMl: number, note?: string) => void;
 }
 
 interface DisplayMessage {
@@ -43,6 +44,7 @@ export const NutritionChatAssistant: React.FC<NutritionChatAssistantProps> = ({
   waterIntakeMl = 0,
   selectedDate,
   allergies = [],
+  onLogWater,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -101,6 +103,83 @@ export const NutritionChatAssistant: React.FC<NutritionChatAssistantProps> = ({
 
     setMessages((prev) => [...prev, userMsg]);
     setInputMessage('');
+
+    // Check if the query is an action intent to log water (e.g. "Log 500ml water", "I drank 350ml water")
+    const waterLogMatch = query.match(/(?:log|add|drank|drink|track|have)\s+(\d+)\s*(?:ml)?(?:\s+(?:of\s+)?water)?/i)
+      || query.match(/(\d+)\s*ml\s+(?:of\s+)?water/i)
+      || query.match(/log\s+water\s*[:-]?\s*(\d+)/i);
+
+    if (waterLogMatch) {
+      const amount = parseInt(waterLogMatch[1], 10);
+      if (amount > 0 && onLogWater) {
+        onLogWater(amount, 'Logged via Calories AI Assistant');
+        const newTotal = (waterIntakeMl || 0) + amount;
+        const remaining = Math.max(0, 3000 - newTotal);
+        const assistantMsg: DisplayMessage = {
+          id: createMessageId('assistant'),
+          role: 'assistant',
+          content: `💧 **Logged ${amount} ml of water!**\n\n` +
+            `Your total water intake for today is now **${newTotal} ml** towards your **3,000 ml** target ` +
+            `(${remaining > 0 ? `**${remaining} ml** remaining` : '🎉 daily target achieved!'}).\n\n` +
+            `Drinking water regularly optimizes nutrient delivery, supports joint health, and keeps metabolic rate high.`,
+          timestamp: getCurrentTimeString(),
+          suggestedPrompts: [
+            'How is my hydration today?',
+            'Log another 250ml water',
+            'What should I eat next?',
+          ],
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
+        return;
+      }
+    }
+
+    // Check if the query is specifically asking about today's live hydration status
+    const isHydrationStatusQuery = /(?:hydration|hydrate|water)/i.test(query) &&
+      /(?:how|status|today|did i|have i|intake|check|much)/i.test(query) &&
+      !/(?:log|add|drank|track)/i.test(query);
+
+    if (isHydrationStatusQuery) {
+      if (!waterIntakeMl || waterIntakeMl === 0) {
+        const assistantMsg: DisplayMessage = {
+          id: createMessageId('assistant'),
+          role: 'assistant',
+          content: `You haven't logged any water yet today (**0 ml / 3,000 ml** target).\n\n` +
+            `• **Daily Benchmark:** 2,500 – 3,000 ml per day.\n` +
+            `• **Action Tip:** Drink a full 350ml glass of water now to kickstart your metabolism and prevent confusing dehydration with hunger cues.`,
+          timestamp: getCurrentTimeString(),
+          suggestedPrompts: [
+            'Log 250ml water',
+            'Log 500ml water',
+            'What should I eat next?',
+          ],
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
+        return;
+      }
+
+      const pct = Math.round((waterIntakeMl / 3000) * 100);
+      const remaining = Math.max(0, 3000 - waterIntakeMl);
+      const assistantMsg: DisplayMessage = {
+        id: createMessageId('assistant'),
+        role: 'assistant',
+        content: `Here is your live hydration status for today:\n\n` +
+          `• **Logged Water:** **${waterIntakeMl} ml** / 3,000 ml (${pct}% of target)\n` +
+          `• **Remaining:** **${remaining} ml** needed to reach optimal hydration\n\n` +
+          (remaining > 0
+            ? `💡 Keep a water bottle nearby and aim for 250–500ml every couple of hours.`
+            : `🎉 Excellent job! You have reached your daily hydration goal.`),
+        timestamp: getCurrentTimeString(),
+        suggestedPrompts: [
+          'Log 250ml water',
+          'Log 500ml water',
+          'What should I eat for dinner?',
+        ],
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+      return;
+    }
+
     setIsLoading(true);
 
     // Build history payload for server

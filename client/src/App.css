@@ -1216,9 +1216,17 @@
 
 .nutrition-chat-msg-user .nutrition-chat-msg-bubble {
   background-color: var(--color-ink-navy, #152238);
-  color: #ffffff;
+  color: #ffffff !important;
   border-bottom-right-radius: 4px;
   box-shadow: 0 2px 6px rgba(21, 34, 56, 0.15);
+}
+
+.nutrition-chat-msg-user .nutrition-chat-paragraph {
+  color: #ffffff !important;
+}
+
+.nutrition-chat-msg-user .nutrition-chat-msg-bubble * {
+  color: #ffffff !important;
 }
 
 .nutrition-chat-msg-assistant .nutrition-chat-msg-bubble {

@@ -142,6 +142,19 @@ function generateContextualFallbackReply(
 
   // 4. Inquiries regarding water or hydration
   if (q.includes('water') || q.includes('hydrate') || q.includes('hydration')) {
+    if (q.includes('log') || q.includes('add') || q.includes('drank') || q.includes('drink')) {
+      const match = q.match(/(\d+)\s*ml/);
+      const amount = match ? match[1] : '500';
+      return {
+        reply: `💧 Logged **${amount}ml** of water! Consuming water steadily across the day optimizes cellular hydration, gastric enzyme secretion, and metabolic efficiency.`,
+        suggestedPrompts: [
+          'How is my hydration today?',
+          'What should I eat next?',
+          'Check my daily protein deficit',
+        ],
+      };
+    }
+
     return {
       reply: `Hydration directly optimizes metabolic rate, nutrient delivery, and helps regulate appetite signals.\n\n` +
         `• **Daily Benchmark:** 2,500 – 3,000 ml per day.\n` +

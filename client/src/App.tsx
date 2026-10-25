@@ -702,7 +702,7 @@ export const App: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <CaloriesLogo size="sm" variant="image" />
               <span className="calories-footer-text">
-                Calories Platform — Complete Editorial Health-Tech Suite Verified.
+                Calories Platform - Complete Editorial Health-Tech Suite Verified.
               </span>
             </div>
             <span className="calories-footer-domain">calories.bhhc.me</span>
@@ -842,7 +842,7 @@ export const App: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <CaloriesLogo size="sm" variant="image" />
                 <span className="calories-footer-text">
-                  Calories Platform — Complete Editorial Health-Tech Suite Verified.
+                  Calories Platform - Complete Editorial Health-Tech Suite Verified.
                 </span>
               </div>
               <span className="calories-footer-domain">calories.bhhc.me</span>
@@ -886,6 +886,7 @@ export const App: React.FC = () => {
           waterIntakeMl={daySummary.waterIntakeMl}
           selectedDate={selectedDateString}
           allergies={userProfile.allergies}
+          onLogWater={handleLogWater}
         />
       )}
     </>
