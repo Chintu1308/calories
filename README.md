@@ -7,34 +7,40 @@
 
 ---
 
-## 🌐 Live Demo & Submission Links
+## Live Demonstration & Submission Links
 
-- **🚀 Live Application:** [https://calories.bhhc.me](https://calories.bhhc.me) 
-- **📦 GitHub Repository:** [https://github.com/Chintu1308/calories](https://github.com/Chintu1308/calories)
-- **📹 Demo Video and Project Walkthrough:**
-  
-  <video controls src="calories-demo.mp4" title="Calories Demo"></video>
+- **Live Application:** [https://calories.bhhc.me](https://calories.bhhc.me) 
+- **GitHub Repository:** [https://github.com/Chintu1308/calories](https://github.com/Chintu1308/calories)
+- **Project Walkthrough & Video Demonstration:**
 
----
-
-## 📑 Table of Contents
-1. [Overview & Problem Statement](#-overview--problem-statement)
-2. [Key Innovations & Features](#-key-innovations--features)
-3. [Brand Identity & Design System](#-brand-identity--design-system)
-4. [Tech Stack & Architecture](#-tech-stack--architecture)
-5. [Project Structure](#-project-structure)
-6. [Local Setup & Installation Guide](#-local-setup--installation-guide)
-7. [Environment Configuration](#-environment-configuration)
-8. [API Documentation](#-api-documentation)
-9. [Automated Testing & Quality Suite](#-automated-testing--quality-suite)
-10. [Production Deployment](#-production-deployment)
-11. [Privacy & Security Invariants](#-privacy--security-invariants)
+  <div align="center">
+    <a href="https://youtu.be/dt71zDIMK8o" target="_blank" rel="noopener noreferrer">
+      <img src="client/public/branding/calories-thumbnail.png" alt="Calories Product Walkthrough Demo Video" width="100%" style="max-width: 780px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);" />
+    </a>
+    <p><em><a href="https://youtu.be/dt71zDIMK8o" target="_blank" rel="noopener noreferrer">Watch the full project walkthrough video on YouTube</a></em></p>
+  </div>
 
 ---
 
-## 💡 Overview & Problem Statement
+## Table of Contents
+1. [Overview & Problem Statement](#overview--problem-statement)
+2. [Key Innovations & Features](#key-innovations--features)
+3. [Brand Identity & Design System](#brand-identity--design-system)
+4. [Tech Stack & Architecture](#tech-stack--architecture)
+5. [Project Structure](#project-structure)
+6. [Local Setup & Installation Guide](#local-setup--installation-guide)
+7. [Environment Configuration](#environment-configuration)
+8. [API Documentation](#api-documentation)
+9. [Automated Testing & Quality Suite](#automated-testing--quality-suite)
+10. [Production Deployment](#production-deployment)
+11. [Privacy & Security Invariants](#privacy--security-invariants)
+12. [Contributors & Acknowledgements](#contributors--acknowledgements)
 
-Most calorie counters and nutrition apps suffer from four critical friction points:
+---
+
+## Overview & Problem Statement
+
+Most calorie counters and nutrition applications suffer from four critical friction points:
 1. **Tedious, Fragile Logging:** Users are forced to manually enter ingredients item-by-item, or face rigid single-meal entry forms.
 2. **Privacy Violations in AI Vision:** Uploaded food photos are often stored permanently on third-party servers.
 3. **Disconnection from Medical Guidance:** Clinical diet charts and doctor prescriptions in PDF format sit unread in folders rather than actively guiding daily targets.
@@ -44,47 +50,48 @@ Most calorie counters and nutrition apps suffer from four critical friction poin
 
 ---
 
-## ✨ Key Innovations & Features
+## Key Innovations & Features
 
-### 1. 📸 AI Vision & Image Meal Logging
+### 1. AI Vision & Image Meal Logging
 - **Header AI Scan:** Direct access from the top navigation bar to snap or upload a meal photo.
 - **Ephemeral Processing:** Uploaded images are held strictly in temporary RAM buffers and analyzed via Google Gemini AI; **no raw photos are ever saved to disk or database**.
+- **Calibrated Uncertainty:** Evaluates visual clarity and portion geometry; outputs calibrated confidence ratings (High >=80%, Moderate 60-79%, Low/Estimate <60%) with clear disclaimers for offline estimations.
 - **User-in-the-Loop Review:** AI provides nutritional estimates (calories, protein, carbs, fat) and contextual fit analysis against remaining daily targets and user allergies, allowing full edits before saving.
 
-### 2. 📊 AI Tabular & Multi-Meal Batch Ingestion
+### 2. AI Tabular & Multi-Meal Batch Ingestion
 - **Multi-Date Logging:** Log an entire week or multiple meals at once across different dates.
 - **Format Flexibility:** Paste Markdown tables, comma-separated values (CSV), tab-separated values (TSV), or plain text dated meal logs.
 - **Dual Ingestion Paths:**
   - **Conversational Chat:** Paste any table directly into the AI Nutritionist Chat for automatic parsing and database sync.
-  - **Batch Import Modal:** Open the dedicated *"📊 AI Table / Batch Log"* modal on the Meal Journal page to preview, inspect, select/deselect entries, and bulk-commit to MongoDB.
+  - **Batch Import Modal:** Open the dedicated *"AI Table / Batch Log"* modal on the Meal Journal page to preview, inspect, select/deselect entries, and bulk-commit to MongoDB.
 
-### 3. 📄 Clinical Diet Plans & Doctor Prescriptions (PDF)
+### 3. Clinical Diet Plans & Doctor Prescriptions (PDF)
 - **PDF Extraction:** Upload medical diet plans or doctor prescriptions in PDF format.
 - **Gemini Medical Parsing:** Automatically extracts prescribed daily calorie targets, target macros (protein, carbs, fat), forbidden foods, recommended foods, and clinical notes.
 - **Profile & Settings Management:** View, replace, or delete uploaded clinical instructions at any time via the Profile modal or Settings page.
 
-### 4. 📅 Interactive Timeline Meal Journal
+### 4. Interactive Timeline Meal Journal
 - **Chronological Flow:** View daily meals in a modern, responsive timeline with clear meal-category badges (Breakfast, Lunch, Dinner, Snacks).
 - **Macro Breakdown & Edits:** View precise portion amounts, calculated calories, and macronutrient badges. Edit or delete any entry with a single click.
 
-### 5. 📈 Dynamic Reports & Filtered Clinical PDF Export
+### 5. Dynamic Reports & Filtered Clinical PDF Export
 - **Custom Time Horizons:** Filter analytics across **7 Days**, **14 Days**, or **30 Days**, grouped by **Day** or **Week**.
-- **Leaf Trend Marker (`🍃 Today`):** Clear visual marker highlighting the current day's progress.
+- **Current Day Indicator:** Clear visual marker highlighting the current day's progress.
 - **Honest Absence:** Days without logs display zero without distorting historical trends or crashing the SVG chart.
 - **Export Filtered PDF:** Generates a clinical-grade PDF nutrition report reflecting the active filter range and macro breakdown.
 
-### 6. 🤖 Interactive AI Nutritionist Assistant
+### 6. Interactive AI Nutritionist Assistant
 - **Leaf-Branded Interface:** Distinctive Forest Green theme with custom leaf emblem.
 - **Dynamic Context:** Aware of the user's live daily calorie balance, protein gap, allergies, and clinical diet prescriptions.
 - **One-Click Hydration Logging:** Fast commands (e.g., *"Log 250ml water"*) to track daily hydration progress.
 
-### 7. 🎯 Goal Milestones & Post-Goal Re-Evaluation
+### 7. Goal Milestones & Post-Goal Re-Evaluation
 - **Flexible Targets:** Set target weight, timeframe, and custom calorie/macro boundaries.
 - **Completion Check:** Prompts users to record updated measurements upon reaching target dates or milestones to verify progress and establish new goals.
 
 ---
 
-## 🎨 Brand Identity & Design System
+## Brand Identity & Design System
 
 The platform strictly adheres to the **Editorial Health-Tech** color palette:
 
@@ -102,83 +109,84 @@ The platform strictly adheres to the **Editorial Health-Tech** color palette:
 
 ---
 
-## 🛠️ Tech Stack & Architecture
+## Tech Stack & Architecture
 
 - **Frontend (Client):**
   - React 19 (SPA) with TypeScript
   - Vite for instant Hot Module Replacement and production bundling
   - Tailwind CSS + Bespoke Editorial Health-Tech tokens
   - Lucide Icons & Custom SVG graphics
+  - Supabase OAuth integration (Google Sign-In & Sign-Up)
 - **Backend (Server):**
   - Node.js 22 LTS with Express 4
   - Modular TypeScript monolith (`routes`, `controllers`, `services`, `models`)
   - Mongoose ODM connecting to MongoDB Atlas
   - Supabase Auth / Bearer JWT for stateless multi-tenant authentication
   - Multer for in-memory multipart file handling (PDFs and food photos)
-  - Google Gemini Generative AI SDK (`gemini-3.5-flash`, `gemini-3.6-flash`, etc.)
+  - Google Gemini Generative AI SDK (`gemini-3.8-flash`, `gemini-3.5-flash-lite`, etc.)
 - **Testing & Quality:**
   - Node 22 native test runner (`node:test`, `node:assert/strict`)
-  - `oxlint` strict linter (0 errors, 0 warnings across 56 files)
+  - `oxlint` strict linter (0 errors, 0 warnings across all files)
   - `mongodb-memory-server` for automated isolated database integration testing
 
 ```
-┌────────────────────────────────────────────────────────┐
-│                   React 19 Client                      │
-│   (Vite SPA • Dashboard • Timeline • Reports • AI Chat)│
-└───────────────────────────┬────────────────────────────┘
-                            │ HTTPS / REST API
-┌───────────────────────────▼────────────────────────────┐
-│                  Express 4 Server                      │
-│   (Auth • Goals • Meals • Reports • AI Vision & Batch) │
-└──────┬────────────────────┬────────────────────┬───────┘
-       │                    │                    │
-┌──────▼──────┐      ┌──────▼──────┐      ┌──────▼──────┐
-│   MongoDB   │      │Google Gemini│      │  Supabase   │
-│    Atlas    │      │ Vision & AI │      │    Auth     │
-└─────────────┘      └─────────────┘      └─────────────┘
++--------------------------------------------------------+
+|                   React 19 Client                      |
+|   (Vite SPA - Dashboard - Timeline - Reports - AI Chat)|
++---------------------------+----------------------------+
+                            | HTTPS / REST API
++---------------------------v----------------------------+
+|                  Express 4 Server                      |
+|   (Auth - Goals - Meals - Reports - AI Vision & Batch) |
++------+--------------------+--------------------+-------+
+       |                    |                    |
++------v------+      +------v------+      +------v------+
+|   MongoDB   |      |Google Gemini|      |  Supabase   |
+|    Atlas    |      | Vision & AI |      | Auth /OAuth |
++-------------+      +-------------+      +-------------+
 ```
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 calories/
-├── client/                      # React 19 + TypeScript frontend
-│   ├── src/
-│   │   ├── api/                 # Strongly-typed API client (apiClient.ts)
-│   │   ├── components/          # Reusable UI components
-│   │   │   ├── ai/              # NutritionChatAssistant & leaf branding
-│   │   │   ├── auth/            # AuthOnboardingModal & AuthModal
-│   │   │   ├── common/          # Header, Navigation, ErrorBoundary
-│   │   │   ├── meals/           # BatchMealImportModal, MealFormModal, etc.
-│   │   │   └── ui/              # Badges, Buttons, Cards, Inputs, Modals
-│   │   ├── pages/               # Dashboard, Meals, Reports, Goals, Settings
-│   │   ├── types/               # TypeScript domain interfaces
-│   │   └── utils/               # trendCalculator.ts, exportPdf.ts, etc.
-│   ├── public/                  # Static assets & leaf.svg
-│   └── package.json
-│
-├── server/                      # Node.js 22 + Express backend
-│   ├── src/
-│   │   ├── config/              # Environment schema & database connection
-│   │   ├── controllers/         # Request handling & HTTP envelope format
-│   │   ├── models/              # User, Meal, Goal, DietPlan Mongoose schemas
-│   │   ├── routes/              # Modular routing (auth, goals, meals, ai)
-│   │   ├── services/            # aiBatchTableService, aiChatService, etc.
-│   │   └── middlewares/         # authMiddleware, uploadMiddleware, errors
-│   ├── src/app.test.ts          # Automated integration test suite
-│   └── package.json
-│
-├── docs/                        # Architecture, API & Progress documentation
-├── .env.example                 # Root environment variables template
-├── render.yaml                  # Render Infrastructure-as-Code blueprint
-└── package.json                 # Top-level workspace scripts
+|-- client/                      # React 19 + TypeScript frontend
+|   |-- src/
+|   |   |-- api/                 # Strongly-typed API client (apiClient.ts)
+|   |   |-- components/          # Reusable UI components
+|   |   |   |-- ai/              # NutritionChatAssistant & leaf branding
+|   |   |   |-- auth/            # AuthOnboardingModal & AuthPage (Google OAuth)
+|   |   |   |-- common/          # Header, Navigation, ErrorBoundary
+|   |   |   |-- meals/           # BatchMealImportModal, MealFormModal, etc.
+|   |   |   `-- ui/              # Badges, Buttons, Cards, Inputs, Modals
+|   |   |-- pages/               # Dashboard, Meals, Reports, Goals, Settings
+|   |   |-- types/               # TypeScript domain interfaces
+|   |   `-- utils/               # trendCalculator.ts, exportPdf.ts, etc.
+|   |-- public/                  # Static assets & brand media
+|   `-- package.json
+|
+|-- server/                      # Node.js 22 + Express backend
+|   |-- src/
+|   |   |-- config/              # Environment schema & database connection
+|   |   |-- controllers/         # Request handling & HTTP envelope format
+|   |   |-- models/              # User, Meal, Goal, DietPlan Mongoose schemas
+|   |   |-- routes/              # Modular routing (auth, goals, meals, ai)
+|   |   |-- services/            # aiBatchTableService, aiVisionService, etc.
+|   |   `-- middlewares/         # authMiddleware, uploadMiddleware, errors
+|   |-- src/app.test.ts          # Automated integration test suite
+|   `-- package.json
+|
+|-- docs/                        # Architecture, API & Progress documentation
+|-- .env.example                 # Root environment variables template
+|-- render.yaml                  # Render Infrastructure-as-Code blueprint
+`-- package.json                 # Top-level workspace scripts
 ```
 
 ---
 
-## 🚀 Local Setup & Installation Guide
+## Local Setup & Installation Guide
 
 ### Prerequisites
 - **Node.js:** v22.14.0 or higher
@@ -234,7 +242,7 @@ JWT_SECRET=calories_super_secure_jwt_secret_token_key_2026_xyz
 # Google Gemini API Key for food vision, tabular ingestion, and chat
 GEMINI_API_KEY=your_gemini_api_key_here
 
-# Optional: Supabase configuration (if utilizing cloud auth)
+# Optional: Supabase configuration (if utilizing cloud auth & Google OAuth)
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
@@ -268,7 +276,7 @@ Visit **`http://localhost:5173`** in your browser.
 
 ---
 
-## ⚙️ Environment Configuration
+## Environment Configuration
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
@@ -284,13 +292,14 @@ Visit **`http://localhost:5173`** in your browser.
 
 ---
 
-## 📡 API Documentation
+## API Documentation
 
 Base URL: `/api/v1`
 
 ### Authentication & User Profile
 - `POST /api/v1/auth/register` - Create a new account with onboarding metrics (height, weight, allergies, supplements).
 - `POST /api/v1/auth/login` - Authenticate and receive a Bearer JWT.
+- `GET /api/v1/auth/google/url` - Generate Supabase Google OAuth authorization URL.
 - `GET /api/v1/auth/me` - Retrieve the current authenticated user's profile and active settings.
 - `PUT /api/v1/auth/profile` - Update user profile details, measurements, and supplements.
 
@@ -323,7 +332,7 @@ Base URL: `/api/v1`
 
 ---
 
-## 🧪 Automated Testing & Quality Suite
+## Automated Testing & Quality Suite
 
 The platform includes a zero-warning quality suite:
 
@@ -334,7 +343,7 @@ npm run lint
 # 2. Run TypeScript strict typecheck across client and server
 npm run typecheck
 
-# 3. Execute backend integration test suite
+# 3. Execute backend integration test suite (64 automated tests)
 npm run test:server
 
 # 4. Compile and verify production build artifacts
@@ -343,7 +352,7 @@ npm run build
 
 ---
 
-## 🌐 Production Deployment
+## Production Deployment
 
 ### 1. Render (`render.yaml`)
 This repository contains a unified `render.yaml` blueprint defining:
@@ -358,7 +367,7 @@ A multi-stage `Dockerfile` is provided in the repository root for self-hosted co
 
 ---
 
-## 🛡️ Privacy & Security Invariants
+## Privacy & Security Invariants
 
 - **Stateless Tenant Isolation:** Every request is authenticated via Bearer JWT. All database operations strictly filter by `req.user.userId`.
 - **Ephemeral Vision Buffers:** Food photos uploaded for AI analysis are processed exclusively in RAM memory buffers and immediately dropped. **No photos are stored on disk or in the database.**
@@ -367,7 +376,7 @@ A multi-stage `Dockerfile` is provided in the repository root for self-hosted co
 
 ---
 
-## 👥 Contributors & Acknowledgements
+## Contributors & Acknowledgements
 - **Author:** [Bongu Hari Hara Charan](https://github.com/Chintu1308)
 - **Design Philosophy:** Premium Editorial Health-Tech
 - **Built for:** Typeface Calorie Tracking Platform Submission

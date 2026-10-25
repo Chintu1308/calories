@@ -132,7 +132,8 @@ const AddMealForm: React.FC<AddMealModalProps> = ({
         }
         setAiConfidence(res.proposal.confidence);
         const confPct = Math.round(res.proposal.confidence * 100);
-        setAiSuccessMsg(`✨ Identified as "${res.proposal.foodName}" (${confPct}% confidence). Values auto-filled below!`);
+        const confLabel = confPct >= 80 ? 'high confidence' : confPct >= 60 ? 'moderate confidence' : 'estimated';
+        setAiSuccessMsg(`✨ Identified as "${res.proposal.foodName}" (${confPct}% - ${confLabel}). Review values below.`);
       })
       .catch((err: unknown) => {
         console.warn('[AddMealModal] Vision AI notice:', err);
@@ -565,8 +566,8 @@ const AddMealForm: React.FC<AddMealModalProps> = ({
                 : isEditing
                 ? 'Save Changes'
                 : entryMode === 'ai'
-                ? '✓ Log AI Meal to Diary'
-                : '+ Add Meal'}
+                ? 'Log AI Meal to Diary'
+                : 'Add Meal'}
             </Button>
           </div>
         </form>

@@ -381,8 +381,8 @@ export const AIScanPage: React.FC<AIScanPageProps> = ({
               </div>
 
               {hasProposal && (
-                <Badge variant="forest">
-                  Confidence: {Math.round(confidence * 100)}%
+                <Badge variant={confidence >= 0.8 ? 'forest' : confidence >= 0.6 ? 'amber' : 'neutral'}>
+                  {confidence >= 0.8 ? 'High Confidence' : confidence >= 0.6 ? 'Moderate Confidence' : 'Low Confidence / Estimate'}: {Math.round(confidence * 100)}%
                 </Badge>
               )}
             </div>

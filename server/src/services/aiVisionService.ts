@@ -503,11 +503,12 @@ export async function extractNutritionFromImage(
   let proteinG = fallbackEntry.protein;
   let carbsG = fallbackEntry.carbs;
   let fatG = fallbackEntry.fat;
-  let confidence = 0.92;
+  let confidence = 0.50;
   let ingredients = fallbackEntry.ingredients;
   let detectedAllergens = fallbackEntry.allergens;
   let micronutrients = fallbackEntry.micros;
   let usedGemini = false;
+  let notes = 'Analyzed dish and portion estimate';
 
   // Real Google Gemini Multimodal Vision API call when API key is provided
   const geminiKey = env.GEMINI_API_KEY;
@@ -526,7 +527,13 @@ export async function extractNutritionFromImage(
 Accurately identify all distinct food components and their preparation method.
 Estimate realistic portion weight in grams or milliliters based on visual plate geometry.
 Calculate accurate macro and calorie counts based on standard USDA nutritional values.
-Assign confidence between 0.88 and 0.98 when food items are clearly visible.
+
+CONFIDENCE SCORING RULES:
+- Carefully evaluate visual clarity, item visibility, and dish ambiguity.
+- If the dish and its ingredients are clearly identifiable with high certainty, provide a confidence between 0.82 and 0.94.
+- If the dish is partially obscured, complex, mixed (e.g. casseroles/curries with hidden ingredients), or portion size is uncertain, provide a realistic confidence between 0.50 and 0.75.
+- If the image is blurry, does not look like food, or the dish cannot be identified reliably, provide a low confidence between 0.20 and 0.45, and set foodName to "Unrecognized Dish".
+
 Return strictly valid JSON conforming to:
 {
   "foodName": "Accurate, descriptive title of the dish (e.g. Grilled Chicken Breast with Brown Basmati Rice)",
@@ -543,14 +550,20 @@ Return strictly valid JSON conforming to:
     { "name": "Iron", "amount": number, "unit": "mg" },
     { "name": "Vitamin C", "amount": number, "unit": "mg" }
   ],
-  "confidence": number between 0.88 and 0.98,
+  "confidence": number between 0.20 and 0.95,
   "ingredients": ["identified ingredient 1", "identified ingredient 2"],
   "detectedAllergens": ["Fish", "Dairy", "Gluten", "Nuts", "Eggs", "Soy", "Peanuts", "Shellfish", "Sesame"],
-  "notes": "Short observation detailing visual portion estimate"
+  "notes": "Short observation detailing visual portion estimate and reason for confidence score"
 }`;
 
-    // Fast, high-accuracy vision models (gemini-3.5-flash responds in < 3s with high fidelity)
-    const visionModels = ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-3.8-flash'];
+    // Fast, high-accuracy vision models (prioritizing current Google Gemini v1beta multimodal vision endpoints)
+    const visionModels = [
+      'gemini-3.8-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-flash-latest',
+      'gemini-3.7-flash',
+      'gemini-3.5-flash',
+    ];
 
     for (const model of visionModels) {
       const controller = new AbortController();
@@ -605,10 +618,11 @@ Return strictly valid JSON conforming to:
               proteinG = Math.round(Number(parsed.nutrition.proteinG) || 0);
               carbsG = Math.round(Number(parsed.nutrition.carbsG) || 0);
               fatG = Math.round(Number(parsed.nutrition.fatG) || 0);
-              confidence = Math.min(0.99, Math.max(0.65, Number(parsed.confidence) || 0.94));
+              confidence = Math.min(0.95, Math.max(0.20, Number(parsed.confidence) || 0.65));
               if (Array.isArray(parsed.ingredients) && parsed.ingredients.length > 0) ingredients = parsed.ingredients;
               if (Array.isArray(parsed.detectedAllergens)) detectedAllergens = parsed.detectedAllergens;
               if (Array.isArray(parsed.micronutrients)) micronutrients = parsed.micronutrients;
+              if (parsed.notes) notes = parsed.notes;
               usedGemini = true;
               console.log(`[Calories AI] Successfully analyzed food with ${model}: "${foodName}" (${caloriesKcal} kcal)`);
               break;
@@ -623,6 +637,11 @@ Return strictly valid JSON conforming to:
         console.warn(`[Calories AI] Error or timeout calling model ${model}:`, geminiError);
       }
     }
+  }
+
+  if (!usedGemini) {
+    notes = '⚠️ Analyzed via offline food taxonomy fallback. Please review portion and macronutrient estimates before saving.';
+    confidence = 0.50;
   }
 
   // Cross-reference user profile allergies and PDF forbidden foods against detected ingredients
@@ -686,9 +705,9 @@ Return strictly valid JSON conforming to:
     ingredients,
     detectedAllergens,
     isEstimate: true,
-    notes: usedGemini
+    notes: notes || (usedGemini
       ? `Extracted via Google Gemini 2.5 Flash Vision from ${filename}.`
-      : `Extracted via Calories Custom Nutrition Knowledge Engine from ${filename} (${buffer.length} bytes analyzed).`,
+      : `Extracted via Calories Custom Nutrition Knowledge Engine from ${filename} (${buffer.length} bytes analyzed).`),
   };
 
   const contextualFit: ContextualFitEvaluation = {

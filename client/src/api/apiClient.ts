@@ -325,6 +325,15 @@ export const apiClient = {
   },
 
   /**
+   * Retrieves the Supabase Google OAuth authorization URL.
+   * @param redirectTo Optional callback URL (defaults to window.location.origin)
+   */
+  async getGoogleOAuthUrl(redirectTo?: string): Promise<{ url: string }> {
+    const qs = redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : '';
+    return request<{ url: string }>(`/auth/google/url${qs}`);
+  },
+
+  /**
    * Fetches the current authenticated user's profile and settings.
    */
   async getMe(): Promise<{ user: AuthResponse['user'] }> {

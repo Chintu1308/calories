@@ -305,6 +305,38 @@ authRouter.post(
 );
 
 /**
+ * GET /api/v1/auth/google/url
+ * Generates and returns the Supabase Google OAuth authorization URL.
+ * Allows users to register and sign in with Google Authenticator / Google Account in 1 click.
+ */
+authRouter.get(
+  '/google/url',
+  asyncHandler(async (req: Request, res: Response) => {
+    if (!isSupabaseConfigured() || !supabase) {
+      throw AppError.badRequest('Supabase authentication is not configured');
+    }
+
+    const redirectTo = (req.query.redirectTo as string) || env.CLIENT_ORIGIN || 'https://calories.bhhc.me';
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo,
+        skipBrowserRedirect: true,
+      },
+    });
+
+    if (error || !data?.url) {
+      throw AppError.internal(error?.message || 'Failed to initialize Google Authentication');
+    }
+
+    res.status(200).json({
+      url: data.url,
+    });
+  })
+);
+
+/**
  * POST /api/v1/auth/accept-terms
  * Records acceptance of Terms & Conditions and Privacy Policy.
  * Stores acceptance status and exact date/time in Supabase Auth user_metadata,

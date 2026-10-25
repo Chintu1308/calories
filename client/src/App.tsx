@@ -113,9 +113,27 @@ function computeDateBounds(offset: number): { selectedDateString: string; todayS
   return { selectedDateString, todayString };
 }
 
+function getInitialToken(): string | null {
+  try {
+    const hashStr = typeof window !== 'undefined' && window.location.hash ? window.location.hash.substring(1) : '';
+    const params = new URLSearchParams(hashStr || (typeof window !== 'undefined' ? window.location.search : ''));
+    const oauthAccessToken = params.get('access_token');
+    if (oauthAccessToken) {
+      setStoredToken(oauthAccessToken);
+      if (typeof window !== 'undefined' && window.history?.replaceState) {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+      return oauthAccessToken;
+    }
+  } catch {
+    // Ignore URL parse error in non-browser environments
+  }
+  return getStoredToken();
+}
+
 export const App: React.FC = () => {
   // Authentication State
-  const [token, setToken] = useState<string | null>(() => getStoredToken());
+  const [token, setToken] = useState<string | null>(getInitialToken);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
     try {
       const saved = localStorage.getItem('calories_user_profile');
@@ -158,6 +176,24 @@ export const App: React.FC = () => {
     window.addEventListener('calories:notification', handleInAppNotif);
     return () => window.removeEventListener('calories:notification', handleInAppNotif);
   }, []);
+
+  // Fetch user profile if authenticated token exists but profile has not been loaded (e.g. fresh OAuth redirect)
+  useEffect(() => {
+    if (!token || userProfile) return;
+    let isMounted = true;
+    apiClient.getMe().then((res) => {
+      if (isMounted && res?.user) {
+        const mapped = mapApiUserToProfile(res.user);
+        setUserProfile(mapped);
+        localStorage.setItem('calories_user_profile', JSON.stringify(mapped));
+      }
+    }).catch((err) => {
+      console.warn('[Google OAuth Callback] Profile sync notice:', err);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [token, userProfile]);
 
   // Real meal entries state (hydrated from localStorage or MongoDB backend)
   const [meals, setMeals] = useState<MealItem[]>(() => {
