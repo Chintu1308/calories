@@ -85,7 +85,7 @@ export const MealTimeline: React.FC<MealTimelineProps> = ({
             leftIcon={<Icon name="plus" size={14} />}
             onClick={() => onAddMeal('Breakfast')}
           >
-            + Add Meal
+            Add Meal
           </Button>
         </div>
       </div>

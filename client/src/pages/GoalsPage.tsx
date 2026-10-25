@@ -428,7 +428,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
             onClick={() => setIsMilestoneModalOpen(true)}
             style={{ borderColor: 'var(--color-forest-green)', color: 'var(--color-forest-green)' }}
           >
-            🎯 Check Goal Milestone &amp; Weight
+            Check Goal Milestone &amp; Weight
           </Button>
 
           <Button

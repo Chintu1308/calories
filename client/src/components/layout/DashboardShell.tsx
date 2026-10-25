@@ -240,7 +240,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <CaloriesLogo size="sm" variant="image" />
             <span className="calories-footer-text">
-              Calories Platform — Premium Editorial Health-Tech Suite Verified.
+              Calories Platform - Premium Editorial Health-Tech Suite Verified.
             </span>
           </div>
           <span className="calories-footer-domain">calories.bhhc.me</span>
