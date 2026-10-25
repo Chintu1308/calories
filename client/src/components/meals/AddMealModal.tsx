@@ -160,7 +160,7 @@ const AddMealForm: React.FC<AddMealModalProps> = ({
     const p = Math.max(0, Number(protein) || 0);
     const c = Math.max(0, Number(carbs) || 0);
     const f = Math.max(0, Number(fat) || 0);
-    const qAmount = Math.max(0.1, Number(quantity) || 1);
+    const qAmount = Math.max(0.01, Number(quantity) || 1);
     const qUnit = unit.trim() || 'serving';
 
     if (isEditing && initialMeal && onUpdateMeal) {
@@ -209,7 +209,7 @@ const AddMealForm: React.FC<AddMealModalProps> = ({
 
   return (
     <div className="calories-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-log-title">
-      <div className="calories-modal-card" style={{ maxWidth: '560px' }}>
+      <div className="calories-modal-card">
         {/* Header */}
         <div className="calories-modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -241,119 +241,123 @@ const AddMealForm: React.FC<AddMealModalProps> = ({
           </button>
         </div>
 
-        <div className="calories-modal-body">
-          {/* Mode Switcher Tabs (Only shown when adding new meal) */}
-          {!isEditing && (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '8px',
-                padding: '4px',
-                backgroundColor: 'var(--color-sand-soft)',
-                borderRadius: 'var(--radius-md)',
-                marginBottom: '14px',
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setEntryMode('manual')}
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}
+        >
+          <div className="calories-modal-body">
+            {/* Mode Switcher Tabs (Only shown when adding new meal) */}
+            {!isEditing && (
+              <div
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  padding: '8px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: 'none',
-                  fontSize: 'var(--text-sm)',
-                  fontWeight: entryMode === 'manual' ? 700 : 500,
-                  backgroundColor: entryMode === 'manual' ? 'var(--surface-card)' : 'transparent',
-                  color: entryMode === 'manual' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  boxShadow: entryMode === 'manual' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  cursor: 'pointer',
-                  transition: 'all var(--transition-fast)',
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '8px',
+                  padding: '4px',
+                  backgroundColor: 'var(--color-sand-soft)',
+                  borderRadius: 'var(--radius-md)',
+                  marginBottom: '6px',
+                  flexShrink: 0,
                 }}
               >
-                <Icon name="plus" size={14} />
-                <span>Enter Values Directly</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setEntryMode('manual')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '8px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    fontSize: 'var(--text-sm)',
+                    fontWeight: entryMode === 'manual' ? 700 : 500,
+                    backgroundColor: entryMode === 'manual' ? 'var(--surface-card)' : 'transparent',
+                    color: entryMode === 'manual' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    boxShadow: entryMode === 'manual' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)',
+                  }}
+                >
+                  <Icon name="plus" size={14} />
+                  <span>Enter Values Directly</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setEntryMode('ai')}
+                <button
+                  type="button"
+                  onClick={() => setEntryMode('ai')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '8px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    fontSize: 'var(--text-sm)',
+                    fontWeight: entryMode === 'ai' ? 700 : 500,
+                    backgroundColor: entryMode === 'ai' ? 'var(--surface-card)' : 'transparent',
+                    color: entryMode === 'ai' ? 'var(--color-forest-green)' : 'var(--text-secondary)',
+                    boxShadow: entryMode === 'ai' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)',
+                  }}
+                >
+                  <Icon name="camera" size={14} />
+                  <span>AI Image Scan</span>
+                  <Badge variant="forest" style={{ fontSize: '10px', padding: '1px 5px' }}>AI</Badge>
+                </button>
+              </div>
+            )}
+
+            {formError && (
+              <div className="calories-form-error-box" role="alert">
+                {formError}
+              </div>
+            )}
+
+            {aiSuccessMsg && (
+              <div
                 style={{
+                  backgroundColor: 'var(--color-sage-soft)',
+                  border: '1px solid rgba(40, 91, 70, 0.25)',
+                  color: 'var(--color-forest-green)',
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 'var(--text-xs)',
+                  fontWeight: 600,
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  padding: '8px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: 'none',
-                  fontSize: 'var(--text-sm)',
-                  fontWeight: entryMode === 'ai' ? 700 : 500,
-                  backgroundColor: entryMode === 'ai' ? 'var(--surface-card)' : 'transparent',
-                  color: entryMode === 'ai' ? 'var(--color-forest-green)' : 'var(--text-secondary)',
-                  boxShadow: entryMode === 'ai' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  cursor: 'pointer',
-                  transition: 'all var(--transition-fast)',
+                  gap: '8px',
                 }}
               >
-                <Icon name="camera" size={14} />
-                <span>AI Image Scan</span>
-                <Badge variant="forest" style={{ fontSize: '10px', padding: '1px 5px' }}>AI</Badge>
-              </button>
-            </div>
-          )}
+                <span>{aiSuccessMsg}</span>
+              </div>
+            )}
 
-          {formError && (
-            <div className="calories-form-error-box" role="alert" style={{ marginBottom: '12px' }}>
-              {formError}
-            </div>
-          )}
-
-          {aiSuccessMsg && (
-            <div
-              style={{
-                backgroundColor: 'var(--color-sage-soft)',
-                border: '1px solid rgba(40, 91, 70, 0.25)',
-                color: 'var(--color-forest-green)',
-                padding: '10px 14px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: 'var(--text-xs)',
-                fontWeight: 600,
-                marginBottom: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <span>{aiSuccessMsg}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {/* AI Photo Dropzone (When in AI mode) */}
             {entryMode === 'ai' && (
               <div
                 style={{
                   border: '2px dashed var(--border-medium)',
                   borderRadius: 'var(--radius-md)',
-                  padding: photoPreview ? '12px' : '18px',
+                  padding: photoPreview ? '10px' : '16px',
                   textAlign: 'center',
                   backgroundColor: 'var(--color-sand-soft)',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  flexShrink: 0,
                 }}
               >
                 {photoPreview ? (
-                  <div style={{ position: 'relative', width: '100%', maxHeight: '180px', overflow: 'hidden', borderRadius: 'var(--radius-sm)' }}>
+                  <div style={{ position: 'relative', width: '100%', maxHeight: '160px', overflow: 'hidden', borderRadius: 'var(--radius-sm)' }}>
                     <img
                       src={photoPreview}
                       alt="Meal Preview"
-                      style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }}
+                      style={{ width: '100%', maxHeight: '160px', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }}
                     />
                     {aiConfidence && (
                       <Badge variant="forest" style={{ position: 'absolute', bottom: '8px', right: '8px' }}>
@@ -363,8 +367,8 @@ const AddMealForm: React.FC<AddMealModalProps> = ({
                   </div>
                 ) : (
                   <>
-                    <Icon name="camera" size={32} />
-                    <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginTop: '6px' }}>
+                    <Icon name="camera" size={30} />
+                    <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginTop: '4px' }}>
                       Snap a photo or upload dish picture
                     </div>
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
@@ -386,7 +390,7 @@ const AddMealForm: React.FC<AddMealModalProps> = ({
                   type="button"
                   variant="secondary"
                   size="sm"
-                  style={{ marginTop: '10px' }}
+                  style={{ marginTop: '8px' }}
                   onClick={() => document.getElementById('ai-modal-photo-input')?.click()}
                   disabled={isAnalyzing}
                 >
@@ -394,7 +398,7 @@ const AddMealForm: React.FC<AddMealModalProps> = ({
                 </Button>
 
                 {isAnalyzing && (
-                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-forest-green)', fontWeight: 600, marginTop: '8px' }}>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-forest-green)', fontWeight: 600, marginTop: '6px' }}>
                     ✨ Google Gemini AI analyzing dish calories &amp; macros...
                   </div>
                 )}
@@ -442,11 +446,11 @@ const AddMealForm: React.FC<AddMealModalProps> = ({
                 <Input
                   id="log-quantity"
                   type="number"
-                  step="0.5"
-                  min="0.1"
+                  step="any"
+                  min="0.01"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
-                  placeholder="e.g. 1, 2"
+                  placeholder="e.g. 1, 2, 5"
                   disabled={isAnalyzing}
                 />
               </FormField>
@@ -465,12 +469,12 @@ const AddMealForm: React.FC<AddMealModalProps> = ({
             <div
               style={{
                 background: 'var(--color-sand-soft)',
-                padding: '14px',
+                padding: '12px',
                 borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--border-medium)',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-forest-green)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Nutritional Breakdown
                 </span>
@@ -484,6 +488,8 @@ const AddMealForm: React.FC<AddMealModalProps> = ({
                   <Input
                     id="log-cal"
                     type="number"
+                    step="any"
+                    min="0"
                     placeholder="e.g. 450"
                     value={calories}
                     onChange={(e) => setCalories(e.target.value)}
@@ -495,6 +501,8 @@ const AddMealForm: React.FC<AddMealModalProps> = ({
                   <Input
                     id="log-prot"
                     type="number"
+                    step="any"
+                    min="0"
                     placeholder="e.g. 25"
                     value={protein}
                     onChange={(e) => setProtein(e.target.value)}
@@ -505,6 +513,8 @@ const AddMealForm: React.FC<AddMealModalProps> = ({
                   <Input
                     id="log-carb"
                     type="number"
+                    step="any"
+                    min="0"
                     placeholder="e.g. 40"
                     value={carbs}
                     onChange={(e) => setCarbs(e.target.value)}
@@ -515,6 +525,8 @@ const AddMealForm: React.FC<AddMealModalProps> = ({
                   <Input
                     id="log-fat"
                     type="number"
+                    step="any"
+                    min="0"
                     placeholder="e.g. 12"
                     value={fat}
                     onChange={(e) => setFat(e.target.value)}
@@ -534,30 +546,30 @@ const AddMealForm: React.FC<AddMealModalProps> = ({
                 disabled={isAnalyzing}
               />
             </FormField>
+          </div>
 
-            {/* Modal Actions */}
-            <div className="calories-modal-footer" style={{ marginTop: '8px' }}>
-              <Button variant="ghost" size="md" type="button" onClick={onClose} disabled={isAnalyzing}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                size="md"
-                type="submit"
-                disabled={isAnalyzing}
-                leftIcon={<Icon name={isEditing ? 'check' : entryMode === 'ai' ? 'leaf' : 'plus'} size={16} />}
-              >
-                {isAnalyzing
-                  ? 'Analyzing...'
-                  : isEditing
-                  ? 'Save Changes'
-                  : entryMode === 'ai'
-                  ? '✓ Log AI Meal to Diary'
-                  : '+ Add Meal'}
-              </Button>
-            </div>
-          </form>
-        </div>
+          {/* Modal Actions Footer (Always Pinned) */}
+          <div className="calories-modal-footer">
+            <Button variant="ghost" size="md" type="button" onClick={onClose} disabled={isAnalyzing}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              type="submit"
+              disabled={isAnalyzing}
+              leftIcon={<Icon name={isEditing ? 'check' : entryMode === 'ai' ? 'leaf' : 'plus'} size={16} />}
+            >
+              {isAnalyzing
+                ? 'Analyzing...'
+                : isEditing
+                ? 'Save Changes'
+                : entryMode === 'ai'
+                ? '✓ Log AI Meal to Diary'
+                : '+ Add Meal'}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );

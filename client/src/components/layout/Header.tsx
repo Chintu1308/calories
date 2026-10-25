@@ -91,10 +91,14 @@ export const Header: React.FC<HeaderProps> = ({
                 fontSize: 'var(--text-xs)',
                 fontWeight: 600,
                 cursor: 'pointer',
+                maxWidth: '140px',
+                flexShrink: 0,
               }}
             >
               <Icon name="profile" size={16} />
-              <span>{userName}</span>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {userName.split(' ')[0]}
+              </span>
             </button>
           )}
 
