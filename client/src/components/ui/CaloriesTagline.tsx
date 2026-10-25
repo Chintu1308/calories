@@ -1,4 +1,5 @@
 import React from 'react';
+import { Icon } from './Icon.js';
 
 export interface CaloriesTaglineProps {
   className?: string;
@@ -9,16 +10,28 @@ export const CaloriesTagline: React.FC<CaloriesTaglineProps> = ({
   className = '',
   height = 28,
 }) => (
-  <img
-    src="/branding/calories-tagline.png"
-    alt="Your nutrition, made clearer."
-    className={className}
+  <div
+    className={`calories-tagline-badge ${className}`}
     style={{
-      height: `${height}px`,
-      borderRadius: '8px',
-      width: 'auto',
-      objectFit: 'contain',
-      display: 'block',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
+      userSelect: 'none',
     }}
-  />
+  >
+    <Icon name="leaf" size={height ? Math.max(16, Math.round(height * 0.7)) : 18} />
+    <span
+      style={{
+        fontFamily: 'var(--font-sans)',
+        fontSize: '12px',
+        fontWeight: 700,
+        color: 'var(--color-forest-green, #285B46)',
+        letterSpacing: '0.06em',
+        textTransform: 'uppercase',
+        lineHeight: 1,
+      }}
+    >
+      Your nutrition, made clearer.
+    </span>
+  </div>
 );

@@ -887,6 +887,7 @@ export const App: React.FC = () => {
           selectedDate={selectedDateString}
           allergies={userProfile.allergies}
           onLogWater={handleLogWater}
+          onLogMeal={handleSaveMeal}
         />
       )}
     </>

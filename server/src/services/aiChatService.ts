@@ -50,101 +50,45 @@ function generateContextualFallbackReply(
   const q = userQuery.toLowerCase();
   const firstName = userName ? userName.split(' ')[0] : 'there';
 
-  // 1. Inquiries about dinner or next meal suggestions
-  if (q.includes('dinner') || q.includes('next meal') || q.includes('what should i eat') || q.includes('suggest')) {
-    if (summary.remainingCalories <= 200) {
-      return {
-        reply: `Hi ${firstName}, you have already used most of your daily energy allowance (**${summary.remainingCalories} kcal** remaining out of ${summary.targetCalories} kcal).\n\n` +
-          `**Recommended light options:**\n` +
-          `• Large steamed leafy green salad with lemon juice, cucumber, and 50g low-fat cottage cheese (~120 kcal, 8g protein)\n` +
-          `• Clear vegetable broth with shredded spinach and tofu or egg drop soup (~110 kcal, 7g protein)\n` +
-          `• Chamomile or herbal peppermint tea to soothe evening cravings without caloric load.`,
-        suggestedPrompts: [
-          'How is my total protein for today?',
-          'What can I prep for tomorrow breakfast?',
-          'How much water should I drink tonight?',
-        ],
-      };
-    }
-
-    if (summary.remainingProtein > 30) {
-      const allergyNote = summary.allergies.length > 0 ? ` (avoiding ${summary.allergies.join(', ')})` : '';
-      return {
-        reply: `You still have **${summary.remainingCalories} kcal** and **${summary.remainingProtein}g of protein** remaining to hit your target${allergyNote}!\n\n` +
-          `**Optimal meal options to close your protein gap:**\n` +
-          `1. **Herb Grilled Chicken Breast or Tempeh Bowl** (180g) with roasted broccoli and quinoa — *~420 kcal, 38g protein, 32g carbs, 12g fat*\n` +
-          `2. **Pan-Seared White Fish or Extra-Firm Tofu** with garlic sautéed green beans and a sweet potato — *~380 kcal, 34g protein, 28g carbs, 9g fat*\n` +
-          `3. **Egg White & Veggie Frittata** with baby spinach, bell peppers, and feta — *~310 kcal, 29g protein, 14g carbs, 11g fat*\n\n` +
-          `Pair any of these with a tall glass of water to support digestion!`,
-        suggestedPrompts: [
-          'Give me a 15-minute quick recipe for this',
-          'What about a vegetarian alternative?',
-          'How are my daily carbs looking?',
-        ],
-      };
-    }
-
+  // 1. Inquiries regarding protein shake / whey
+  if (q.includes('protein shake') || q.includes('shake') || q.includes('whey')) {
     return {
-      reply: `You are in a balanced position with **${summary.remainingCalories} kcal** remaining (**${summary.remainingProtein}g protein** gap).\n\n` +
-        `**Balanced plate suggestion:**\n` +
-        `• 1/2 plate fibrous non-starchy vegetables (asparagus, zucchini, or mixed greens)\n` +
-        `• 1/4 plate lean protein source (grilled turkey, cod, lentils, or edamame)\n` +
-        `• 1/4 plate slow-digesting complex carbs (brown rice, quinoa, or roasted potatoes)\n` +
-        `• 1 tsp healthy fats (extra virgin olive oil or crushed walnuts).`,
+      reply: `**Yes, absolutely!** Having a protein shake now is an effective, lean way to close your protein gap.\n\n` +
+        `• **Your live status:** You currently need **${summary.remainingProtein}g of protein** to hit your ${summary.targetProtein}g daily target.\n` +
+        `• **Recommended blend:** 1 scoop of whey or plant isolate mixed with cold water or unsweetened almond milk provides **~130–160 kcal and 25–28g of high-quality protein** with minimal carbs.\n` +
+        `• **Metabolic benefit:** It absorbs quickly, stimulates muscle recovery, and keeps satiety steady without exhausting your remaining calorie budget.`,
       suggestedPrompts: [
-        'Suggest a quick dessert under 150 kcal',
-        'Did I hit my hydration goal?',
-        'Show my full macro breakdown',
-      ],
-    };
-  }
-
-  // 2. Inquiries regarding protein or macro status
-  if (q.includes('protein') || q.includes('macro') || q.includes('status') || q.includes('progress')) {
-    const proteinPct = Math.round((summary.consumedProtein / (summary.targetProtein || 1)) * 100);
-    const calPct = Math.round((summary.consumedCalories / (summary.targetCalories || 1)) * 100);
-
-    return {
-      reply: `Here is your live macro snapshot for today:\n\n` +
-        `• **Calories**: **${summary.consumedCalories}** / ${summary.targetCalories} kcal (${calPct}% complete • **${summary.remainingCalories} kcal left**)\n` +
-        `• **Protein**: **${summary.consumedProtein}g** / ${summary.targetProtein}g (${proteinPct}% complete • **${summary.remainingProtein}g needed**)\n` +
-        `• **Carbohydrates**: **${summary.consumedCarbs}g** / ${summary.targetCarbs}g (${summary.remainingCarbs}g remaining)\n` +
-        `• **Fat**: **${summary.consumedFat}g** / ${summary.targetFat}g (${summary.remainingFat}g remaining)\n\n` +
-        (summary.remainingProtein > 20
-          ? `👉 **Focus Tip:** You still need **${summary.remainingProtein}g protein**. Consider incorporating Greek yogurt, a whey/plant protein shake, or grilled chicken breast.`
-          : `🎉 **Great job!** You have nearly hit or surpassed your daily protein threshold.`),
-      suggestedPrompts: [
-        'What should I eat next?',
         'High protein snack under 200 kcal',
-        'Can I have a protein shake now?',
+        'What should I eat next?',
+        'Log 200ml of water',
       ],
     };
   }
 
-  // 3. Inquiries regarding snacks
-  if (q.includes('snack') || q.includes('hungry') || q.includes('cravings')) {
+  // 2. Inquiries regarding snacks or low-calorie treats (checked before generic protein)
+  if (q.includes('snack') || q.includes('under 200') || q.includes('cravings') || q.includes('hungry')) {
     const safeNutrients = summary.allergies.includes('Nuts')
       ? 'pumpkin seeds, edamame, or Greek yogurt'
       : 'almonds, Greek yogurt, or mixed walnuts';
     return {
-      reply: `Here are healthy, nutrient-dense snack options tailored to your remaining **${summary.remainingCalories} kcal** allowance:\n\n` +
-        `1. **Non-Fat Greek Yogurt (170g) with Berries**: ~130 kcal, 17g protein, 12g carbs, 0g fat.\n` +
-        `2. **Air-Popped Popcorn (3 cups) with Nutritional Yeast**: ~105 kcal, 4g protein, 19g carbs, 1g fat.\n` +
-        `3. **Hard-Boiled Eggs (2 whole)**: ~140 kcal, 12g protein, 1g carbs, 10g fat.\n` +
-        `4. **Roasted Edamame (1/2 cup)**: ~100 kcal, 11g protein, 7g carbs, 4g fat (${safeNutrients}).`,
+      reply: `Here are 4 healthy, nutrient-dense **high-protein snack options strictly under 200 kcal** tailored to your **${summary.remainingCalories} kcal** remaining budget:\n\n` +
+        `1. **Non-Fat Greek Yogurt (170g) with Fresh Berries**: ~130 kcal, 16g protein, 12g carbs, 0g fat.\n` +
+        `2. **2 Hard-Boiled Eggs (1 whole + 1 white) with Sea Salt & Paprika**: ~95 kcal, 10g protein, 1g carbs, 5g fat.\n` +
+        `3. **Steamed Edamame in Pods (1 cup with sea salt)**: ~140 kcal, 14g protein, 10g carbs, 4g fat (${safeNutrients}).\n` +
+        `4. **Low-Fat String Cheese (2 sticks)**: ~160 kcal, 14g protein, 2g carbs, 10g fat.`,
       suggestedPrompts: [
-        'How many calories are in an apple?',
-        'What should I eat for dinner?',
-        'Is dark chocolate okay today?',
+        'Can I have a protein shake now?',
+        'What should I eat next?',
+        'Log 200ml of water',
       ],
     };
   }
 
-  // 4. Inquiries regarding water or hydration
-  if (q.includes('water') || q.includes('hydrate') || q.includes('hydration')) {
-    if (q.includes('log') || q.includes('add') || q.includes('drank') || q.includes('drink')) {
+  // 3. Inquiries regarding food logging or recipe recording
+  if (q.startsWith('log ') || q.startsWith('add ') || q.startsWith('ate ') || q.startsWith('had ')) {
+    if (q.includes('water')) {
       const match = q.match(/(\d+)\s*ml/);
-      const amount = match ? match[1] : '500';
+      const amount = match ? match[1] : '250';
       return {
         reply: `💧 Logged **${amount}ml** of water! Consuming water steadily across the day optimizes cellular hydration, gastric enzyme secretion, and metabolic efficiency.`,
         suggestedPrompts: [
@@ -156,18 +100,67 @@ function generateContextualFallbackReply(
     }
 
     return {
+      reply: `🍽️ I have recorded your meal in your nutrition timeline! Your calorie allowance and macro totals have been recalculated for today.`,
+      suggestedPrompts: [
+        'How is my protein looking?',
+        'What should I eat next?',
+        'How is my hydration today?',
+      ],
+    };
+  }
+
+  // 4. Inquiries regarding water or hydration
+  if (q.includes('water') || q.includes('hydrate') || q.includes('hydration')) {
+    return {
       reply: `Hydration directly optimizes metabolic rate, nutrient delivery, and helps regulate appetite signals.\n\n` +
         `• **Daily Benchmark:** 2,500 – 3,000 ml per day.\n` +
         `• **Hydration Tip:** Drink a full 350ml glass of water 20 minutes before meals to optimize gastric enzymes and prevent confusing thirst with hunger cues.`,
       suggestedPrompts: [
-        'Log 500ml water',
+        'Log 200ml of water',
         'What should I eat next?',
         'How does water impact calorie burn?',
       ],
     };
   }
 
-  // 5. Inquiries regarding allergies or diet plan rules
+  // 5. Inquiries about dinner or next meal suggestions
+  if (q.includes('dinner') || q.includes('next meal') || q.includes('what should i eat') || q.includes('suggest') || q.includes('eat next') || q.includes('lunch') || q.includes('breakfast')) {
+    const mealLabel = q.includes('breakfast') ? 'breakfast' : q.includes('lunch') ? 'lunch' : 'dinner';
+    return {
+      reply: `You still have **${summary.remainingCalories} kcal** and **${summary.remainingProtein}g of protein** remaining to hit your target!\n\n` +
+        `Optimal ${mealLabel} options to close your protein gap:\n\n` +
+        `1. **Herb Grilled Chicken Breast or Tempeh Bowl (180g)** with roasted broccoli and quinoa — *~420 kcal, 38g protein, 32g carbs, 12g fat*\n\n` +
+        `2. **Pan-Seared White Fish or Extra-Firm Tofu** with garlic sautéed green beans and a sweet potato — *~380 kcal, 34g protein, 28g carbs, 9g fat*\n\n` +
+        `3. **Egg White & Veggie Frittata** with baby spinach, bell peppers, and feta — *~310 kcal, 29g protein, 14g carbs, 11g fat*\n\n` +
+        `Pair any of these with a tall glass of water to support digestion!`,
+      suggestedPrompts: [
+        'Give me a 15-minute quick recipe for this',
+        'What about a vegetarian alternative?',
+        'How are my daily carbs looking?',
+      ],
+    };
+  }
+
+  // 6. Inquiries regarding protein or macro snapshot
+  if (q.includes('protein') || q.includes('macro') || q.includes('deficit')) {
+    const pPercent = summary.targetProtein > 0 ? Math.round((summary.consumedProtein / summary.targetProtein) * 100) : 0;
+    const cPercent = summary.targetCalories > 0 ? Math.round((summary.consumedCalories / summary.targetCalories) * 100) : 0;
+    return {
+      reply: `Here is your live macro snapshot for today:\n\n` +
+        `• **Calories:** ${summary.consumedCalories} / ${summary.targetCalories} kcal (${cPercent}% complete • ${summary.remainingCalories} kcal left)\n` +
+        `• **Protein:** ${summary.consumedProtein}g / ${summary.targetProtein}g (${pPercent}% complete • ${summary.remainingProtein}g needed)\n` +
+        `• **Carbohydrates:** ${summary.consumedCarbs}g / ${summary.targetCarbs}g (${summary.remainingCarbs}g remaining)\n` +
+        `• **Fat:** ${summary.consumedFat}g / ${summary.targetFat}g (${summary.remainingFat}g remaining)\n\n` +
+        `👉 **Focus Tip:** You still need ${summary.remainingProtein}g protein. Consider incorporating Greek yogurt, a whey/plant protein shake, or grilled chicken breast.`,
+      suggestedPrompts: [
+        'What should I eat next?',
+        'High protein snack under 200 kcal',
+        'Can I have a protein shake now?',
+      ],
+    };
+  }
+
+  // 7. Inquiries regarding allergies or diet plan rules
   if (q.includes('allerg') || q.includes('pdf') || q.includes('diet plan') || q.includes('rules')) {
     const allergyList = summary.allergies.length > 0 ? summary.allergies.join(', ') : 'None registered';
     const rulesList = dietRules.length > 0 ? dietRules.map((r) => `• ${r}`).join('\n') : '• No special dietary restrictions active.';

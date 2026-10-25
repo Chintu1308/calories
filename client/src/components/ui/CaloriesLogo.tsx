@@ -113,9 +113,9 @@ export const CaloriesLogo: React.FC<CaloriesLogoProps> = ({
           <span
             style={{
               fontFamily: 'var(--font-sans)',
-              fontWeight: 500,
+              fontWeight: 600,
               fontSize: `${taglineSize}px`,
-              color: 'var(--color-muted-slate)',
+              color: 'var(--color-forest-green)',
               letterSpacing: '0.01em',
               marginTop: '2px',
             }}

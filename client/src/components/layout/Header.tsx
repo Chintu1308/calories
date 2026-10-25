@@ -23,7 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   onTabChange,
   onOpenAddMeal,
-  onOpenAIScan: _onOpenAIScan,
+  onOpenAIScan,
   userName = 'User',
   onOpenAuthModal,
   onLogout: _onLogout,
@@ -96,6 +96,17 @@ export const Header: React.FC<HeaderProps> = ({
               <Icon name="profile" size={16} />
               <span>{userName}</span>
             </button>
+          )}
+
+          {onOpenAIScan && (
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<Icon name="leaf" size={14} />}
+              onClick={onOpenAIScan}
+            >
+              AI Scan
+            </Button>
           )}
 
           <Button
