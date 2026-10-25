@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Button,
   Badge,
@@ -9,7 +9,7 @@ import {
   CaloriesLogo,
 } from '../ui/index.js';
 import type { UserProfile, SupplementItem } from '../../types/nutrition.js';
-import { apiClient } from '../../api/apiClient.js';
+import { apiClient, type DietInstructionItem } from '../../api/apiClient.js';
 
 export type AuthModalMode = 'login' | 'register' | 'edit_profile';
 
@@ -70,6 +70,83 @@ export const AuthOnboardingModal: React.FC<AuthOnboardingModalProps> = ({
 
   const [formError, setFormError] = useState('');
   const [step, setStep] = useState<1 | 2 | 3>(1);
+
+  // Stored Diet Plan / Prescription PDFs from MongoDB
+  const [dietInstructions, setDietInstructions] = useState<DietInstructionItem[]>([]);
+  const [isLoadingDietInstructions, setIsLoadingDietInstructions] = useState(false);
+  const [isUploadingDietPdf, setIsUploadingDietPdf] = useState(false);
+  const [dietUploadError, setDietUploadError] = useState<string | null>(null);
+  const [dietUploadSuccess, setDietUploadSuccess] = useState<string | null>(null);
+  const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (isOpen && mode === 'edit_profile') {
+      let isMounted = true;
+      apiClient
+        .getDietInstructions()
+        .then((res) => {
+          if (isMounted && res?.instructions) {
+            setDietInstructions(res.instructions);
+          }
+        })
+        .catch((err) => {
+          console.warn('Failed to load diet instructions for profile:', err);
+        })
+        .finally(() => {
+          if (isMounted) setIsLoadingDietInstructions(false);
+        });
+
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [isOpen, mode]);
+
+  const handlePdfFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDietUploadError(null);
+    setDietUploadSuccess(null);
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      if (file && (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))) {
+        setSelectedPdfFile(file);
+      } else {
+        setDietUploadError('Please select a valid PDF file (.pdf).');
+      }
+    }
+  };
+
+  const handleUploadDietPdf = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPdfFile) return;
+    setIsUploadingDietPdf(true);
+    setDietUploadError(null);
+    setDietUploadSuccess(null);
+
+    try {
+      const res = await apiClient.uploadDietPlanPdf(selectedPdfFile);
+      setDietUploadSuccess(res.message || 'Diet plan analyzed & guidelines saved to your profile!');
+      setSelectedPdfFile(null);
+      const updatedList = await apiClient.getDietInstructions();
+      if (updatedList?.instructions) {
+        setDietInstructions(updatedList.instructions);
+      }
+    } catch (err: unknown) {
+      setDietUploadError((err as { message?: string })?.message || 'Failed to upload diet plan PDF.');
+    } finally {
+      setIsUploadingDietPdf(false);
+    }
+  };
+
+  const handleDeleteDietInstruction = async (id: string) => {
+    try {
+      await apiClient.deleteDietInstruction(id);
+      setDietInstructions((prev) => prev.filter((item) => item._id !== id));
+      setDietUploadSuccess('Diet instruction removed from profile.');
+      setTimeout(() => setDietUploadSuccess(null), 3000);
+    } catch (err: unknown) {
+      console.warn('Failed to remove diet instruction:', err);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -611,6 +688,175 @@ export const AuthOnboardingModal: React.FC<AuthOnboardingModalProps> = ({
                       </Button>
                     </div>
                   </div>
+
+                  {/* SECTION 4: Clinical Diet Plans & Doctor Prescriptions (PDF) */}
+                  {mode === 'edit_profile' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
+                      <div style={{ fontWeight: 700, fontSize: 'var(--text-base)', color: 'var(--color-forest-green)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Icon name="ai-scan" size={18} />
+                        4. Clinical Diet Plans &amp; Doctor Prescriptions (PDF)
+                      </div>
+
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <label style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>
+                            Stored Prescriptions &amp; Diet Guidelines
+                          </label>
+                          <Badge variant="sage">{dietInstructions.length} Active</Badge>
+                        </div>
+                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', margin: '4px 0 10px 0' }}>
+                          Clinical diet charts and doctor prescriptions stored in your profile. The AI recommendation engine automatically aligns meals with these active guidelines.
+                        </p>
+                      </div>
+
+                      {dietUploadError && (
+                        <div className="calories-form-error-box" role="alert">
+                          {dietUploadError}
+                        </div>
+                      )}
+
+                      {dietUploadSuccess && (
+                        <div className="calories-success-banner" role="status">
+                          <Icon name="check" size={16} />
+                          <span>{dietUploadSuccess}</span>
+                        </div>
+                      )}
+
+                      {/* Active instructions list */}
+                      {isLoadingDietInstructions ? (
+                        <div style={{ padding: '14px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 'var(--text-xs)' }}>
+                          Loading stored diet plans from profile...
+                        </div>
+                      ) : dietInstructions.length === 0 ? (
+                        <div style={{ padding: '16px', background: 'var(--color-sand-soft)', borderRadius: 'var(--radius-md)', textAlign: 'center', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
+                          No clinical diet plans or prescriptions stored in your profile yet. Upload one below to incorporate doctor guidelines into your AI meal recommendations!
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '240px', overflowY: 'auto' }}>
+                          {dietInstructions.map((instruction) => (
+                            <div
+                              key={instruction._id}
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px',
+                                padding: '12px',
+                                background: 'var(--surface-card)',
+                                border: '1px solid var(--border-medium)',
+                                borderRadius: 'var(--radius-sm)',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ fontSize: '18px' }}>📄</span>
+                                  <div>
+                                    <strong style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
+                                      {instruction.fileName}
+                                    </strong>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                      {new Date(instruction.createdAt).toLocaleDateString()} • {(instruction.fileSizeBytes / 1024).toFixed(0)} KB
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  style={{ color: 'var(--color-error-red)', padding: '2px 8px' }}
+                                  onClick={() => handleDeleteDietInstruction(instruction._id)}
+                                  aria-label={`Remove ${instruction.fileName}`}
+                                >
+                                  ✕ Remove Plan
+                                </Button>
+                              </div>
+
+                              {instruction.summary && (
+                                <div style={{ fontSize: '11px', color: 'var(--text-primary)', backgroundColor: 'var(--color-sand-soft)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}>
+                                  <strong>Summary:</strong> {instruction.summary}
+                                </div>
+                              )}
+
+                              {/* Forbidden & Recommended badges */}
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                {instruction.forbiddenFoods && instruction.forbiddenFoods.map((f, i) => (
+                                  <span
+                                    key={`fb-${i}`}
+                                    style={{
+                                      backgroundColor: 'rgba(184, 68, 68, 0.12)',
+                                      color: 'var(--color-error-red)',
+                                      fontSize: '10px',
+                                      fontWeight: 600,
+                                      padding: '2px 6px',
+                                      borderRadius: 'var(--radius-full)',
+                                    }}
+                                  >
+                                    ✕ {f}
+                                  </span>
+                                ))}
+                                {instruction.recommendedFoods && instruction.recommendedFoods.map((r, i) => (
+                                  <span
+                                    key={`rc-${i}`}
+                                    style={{
+                                      backgroundColor: 'rgba(40, 91, 70, 0.15)',
+                                      color: 'var(--color-forest-green)',
+                                      fontSize: '10px',
+                                      fontWeight: 600,
+                                      padding: '2px 6px',
+                                      borderRadius: 'var(--radius-full)',
+                                    }}
+                                  >
+                                    ✓ {r}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* PDF Upload form */}
+                      <form onSubmit={handleUploadDietPdf} style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--color-sand-soft)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                        <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                          + Upload or Replace Diet Plan / Prescription (PDF)
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <input
+                            type="file"
+                            id="profile-diet-pdf-input"
+                            accept=".pdf,application/pdf"
+                            style={{ display: 'none' }}
+                            onChange={handlePdfFileSelect}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => document.getElementById('profile-diet-pdf-input')?.click()}
+                          >
+                            {selectedPdfFile ? `Change File (${selectedPdfFile.name})` : 'Choose PDF Document'}
+                          </Button>
+
+                          {selectedPdfFile && (
+                            <span style={{ fontSize: '11px', color: 'var(--color-forest-green)', fontWeight: 600 }}>
+                              {selectedPdfFile.name} ({(selectedPdfFile.size / 1024).toFixed(0)} KB)
+                            </span>
+                          )}
+
+                          {selectedPdfFile && (
+                            <Button
+                              type="submit"
+                              variant="primary"
+                              size="sm"
+                              disabled={isUploadingDietPdf}
+                              leftIcon={<Icon name="ai-scan" size={14} />}
+                            >
+                              {isUploadingDietPdf ? 'Extracting with AI...' : 'Upload & Save to Profile'}
+                            </Button>
+                          )}
+                        </div>
+                      </form>
+                    </div>
+                  )}
 
                   {/* Modal Footer Controls */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border-light)' }}>

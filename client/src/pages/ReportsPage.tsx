@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Card,
   CardHeader,
@@ -14,7 +14,7 @@ import {
 } from '../components/ui/index.js';
 import type { MealItem, DailyGoal, UserProfile } from '../types/nutrition.js';
 import { exportNutritionReportPdf } from '../utils/exportPdf.js';
-import { computeWeeklyTrend } from '../utils/trendCalculator.js';
+import { computeRangeTrend } from '../utils/trendCalculator.js';
 import type { DayTrendPoint } from '../components/reports/WeeklyTrendPreview.js';
 
 const DEFAULT_REPORT_PROFILE: UserProfile = {
@@ -43,23 +43,50 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
   meals,
   goal,
   userProfile = DEFAULT_REPORT_PROFILE,
-  weeklyTrend,
+  weeklyTrend: _weeklyTrendProp,
 }) => {
   const [groupBy, setGroupBy] = useState<'day' | 'week'>('day');
   const [dateRange, setDateRange] = useState<string>('7days');
 
-  // Compute real dynamic weekly trend if not directly provided
-  const activeWeeklyTrend = weeklyTrend || computeWeeklyTrend(meals, goal.dailyCaloriesKcal);
+  const daysCount = dateRange === '14days' ? 14 : dateRange === '30days' ? 30 : 7;
+  const horizonLabel = dateRange === '14days' ? '14-Day' : dateRange === '30days' ? '30-Day' : '7-Day';
+  const fullRangeTitle = dateRange === '14days' ? 'Last 14 Days' : dateRange === '30days' ? 'Last 30 Days' : 'Last 7 Days';
 
-  // Aggregated totals
-  const totalCalories = meals.reduce((acc, m) => acc + m.nutrition.caloriesKcal, 0);
-  const totalProtein = meals.reduce((acc, m) => acc + m.nutrition.proteinG, 0);
-  const totalCarbs = meals.reduce((acc, m) => acc + m.nutrition.carbsG, 0);
-  const totalFat = meals.reduce((acc, m) => acc + m.nutrition.fatG, 0);
+  // Filter meals strictly based on the selected date range
+  const filteredMeals = useMemo(() => {
+    // oxlint-disable-next-line react/purity
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - (daysCount - 1));
+    cutoffDate.setHours(0, 0, 0, 0);
 
-  // Compile unique micronutrient names from meals
+    return meals.filter((m) => {
+      if (!m.eatenAt) return false;
+      const mealDate = new Date(m.eatenAt);
+      return mealDate >= cutoffDate;
+    });
+  }, [meals, daysCount]);
+
+  // Compute dynamic trend points for this date range and grouping (handles empty meal set cleanly)
+  const activeTrend = useMemo(() => {
+    return computeRangeTrend(filteredMeals, goal.dailyCaloriesKcal, daysCount, groupBy);
+  }, [filteredMeals, goal.dailyCaloriesKcal, daysCount, groupBy]);
+
+  // Target comparison metrics for the period
+  const periodTargetBudget = groupBy === 'week' ? goal.dailyCaloriesKcal * 7 : goal.dailyCaloriesKcal;
+  const maxCalorieScale = useMemo(() => {
+    const maxVal = Math.max(periodTargetBudget, ...activeTrend.map((p) => p.consumedKcal));
+    return Math.max(periodTargetBudget * 1.25, maxVal * 1.15 || 2600);
+  }, [activeTrend, periodTargetBudget]);
+
+  // Aggregated totals strictly for the filtered time horizon
+  const totalCalories = filteredMeals.reduce((acc, m) => acc + (m.nutrition?.caloriesKcal || 0), 0);
+  const totalProtein = filteredMeals.reduce((acc, m) => acc + (m.nutrition?.proteinG || 0), 0);
+  const totalCarbs = filteredMeals.reduce((acc, m) => acc + (m.nutrition?.carbsG || 0), 0);
+  const totalFat = filteredMeals.reduce((acc, m) => acc + (m.nutrition?.fatG || 0), 0);
+
+  // Compile unique micronutrient names from filtered meals
   const micronutrientMap: Record<string, { total: number; unit: string; countRecorded: number }> = {};
-  meals.forEach((meal) => {
+  filteredMeals.forEach((meal) => {
     if (meal.micronutrients) {
       meal.micronutrients.forEach((micro) => {
         if (!micronutrientMap[micro.name]) {
@@ -86,7 +113,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
           <div className="calories-greeting-tagline">Aggregated Analytics &amp; Trends</div>
           <h1 className="calories-greeting-title">Nutritional Reports</h1>
           <p className="calories-greeting-subtext">
-            Longitudinal analysis of calorie trends, macronutrient ratios, micronutrient density, and goal-vs-actual adherence.
+            Longitudinal analysis of calorie trends, macronutrient ratios, micronutrient density, and goal-vs-actual adherence for {fullRangeTitle}.
           </p>
         </div>
 
@@ -99,9 +126,9 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
               exportNutritionReportPdf({
                 userProfile,
                 goal,
-                meals,
-                weeklyTrend: activeWeeklyTrend,
-                dateRangeLabel: dateRange === '7days' ? 'Last 7 Days Dynamic Report' : 'Last 30 Days',
+                meals: filteredMeals,
+                weeklyTrend: activeTrend,
+                dateRangeLabel: `${fullRangeTitle} (${groupBy === 'week' ? 'Weekly' : 'Daily'} Breakdown)`,
               })
             }
           >
@@ -138,9 +165,11 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
                 <Icon name="reports" size={24} />
                 <CardTitle>Goal vs. Actual Adherence</CardTitle>
               </div>
-              <Badge variant="forest">Real Aggregates</Badge>
+              <Badge variant="forest">{horizonLabel} Horizon</Badge>
             </div>
-            <CardDescription>Compares actual logged intakes against saved goal targets</CardDescription>
+            <CardDescription>
+              {fullRangeTitle} total: {totalCalories.toLocaleString()} kcal consumed ({filteredMeals.length} meal{filteredMeals.length === 1 ? '' : 's'})
+            </CardDescription>
           </CardHeader>
 
           <CardContent>
@@ -150,13 +179,13 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                   <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600 }}>Energy Budget (kcal)</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)' }}>
-                    {totalCalories.toLocaleString()} / {goal.dailyCaloriesKcal.toLocaleString()} kcal ({Math.round((totalCalories / goal.dailyCaloriesKcal) * 100)}%)
+                    {totalCalories.toLocaleString()} / {(goal.dailyCaloriesKcal * daysCount).toLocaleString()} kcal ({Math.round((totalCalories / ((goal.dailyCaloriesKcal * daysCount) || 1)) * 100)}%)
                   </span>
                 </div>
                 <ProgressBar
                   value={totalCalories}
-                  max={goal.dailyCaloriesKcal}
-                  variant={totalCalories > goal.dailyCaloriesKcal ? 'amber' : 'forest'}
+                  max={goal.dailyCaloriesKcal * daysCount}
+                  variant={totalCalories > goal.dailyCaloriesKcal * daysCount ? 'amber' : 'forest'}
                 />
               </div>
 
@@ -165,12 +194,12 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                   <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600 }}>Protein (g)</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)' }}>
-                    {totalProtein} / {goal.proteinGrams}g ({Math.round((totalProtein / goal.proteinGrams) * 100)}%)
+                    {totalProtein} / {goal.proteinGrams * daysCount}g ({Math.round((totalProtein / ((goal.proteinGrams * daysCount) || 1)) * 100)}%)
                   </span>
                 </div>
                 <ProgressBar
                   value={totalProtein}
-                  max={goal.proteinGrams}
+                  max={goal.proteinGrams * daysCount}
                   variant="forest"
                 />
               </div>
@@ -180,12 +209,12 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                   <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600 }}>Carbohydrates (g)</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)' }}>
-                    {totalCarbs} / {goal.carbohydrateGrams}g ({Math.round((totalCarbs / goal.carbohydrateGrams) * 100)}%)
+                    {totalCarbs} / {goal.carbohydrateGrams * daysCount}g ({Math.round((totalCarbs / ((goal.carbohydrateGrams * daysCount) || 1)) * 100)}%)
                   </span>
                 </div>
                 <ProgressBar
                   value={totalCarbs}
-                  max={goal.carbohydrateGrams}
+                  max={goal.carbohydrateGrams * daysCount}
                   variant="sage"
                 />
               </div>
@@ -195,12 +224,12 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                   <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600 }}>Fat (g)</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)' }}>
-                    {totalFat} / {goal.fatGrams}g ({Math.round((totalFat / goal.fatGrams) * 100)}%)
+                    {totalFat} / {goal.fatGrams * daysCount}g ({Math.round((totalFat / ((goal.fatGrams * daysCount) || 1)) * 100)}%)
                   </span>
                 </div>
                 <ProgressBar
                   value={totalFat}
-                  max={goal.fatGrams}
+                  max={goal.fatGrams * daysCount}
                   variant="amber"
                 />
               </div>
@@ -209,92 +238,100 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
 
           <CardFooter>
             <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
-              Computed dynamically from persisted meal records
+              Computed dynamically for {fullRangeTitle} ({filteredMeals.length} recorded meal{filteredMeals.length === 1 ? '' : 's'})
             </span>
           </CardFooter>
         </Card>
 
-        {/* Weekly Trend Bar Chart Card */}
+        {/* Dynamic Trend Bar Chart Card */}
         <Card>
           <CardHeader>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Icon name="calendar" size={24} />
-                <CardTitle>7-Day Historical Intake</CardTitle>
+                <CardTitle>{horizonLabel} Historical Intake</CardTitle>
               </div>
-              <Badge variant="sage">7-Day Horizon</Badge>
+              <Badge variant="sage">{horizonLabel} Horizon • {groupBy === 'week' ? 'Weekly' : 'Daily'}</Badge>
             </div>
-            <CardDescription>Daily consumed calories vs {goal.dailyCaloriesKcal.toLocaleString()} kcal budget line</CardDescription>
+            <CardDescription>
+              {groupBy === 'week' ? 'Weekly' : 'Daily'} consumed calories vs {periodTargetBudget.toLocaleString()} kcal target budget
+            </CardDescription>
           </CardHeader>
 
           <CardContent>
-            <div className="calories-trend-chart-container" style={{ height: '180px' }}>
-              <div className="calories-chart-target-line" style={{ bottom: `${Math.min((goal.dailyCaloriesKcal / 2600) * 100, 100)}%` }}>
-                <span className="calories-target-line-tag">Budget: {goal.dailyCaloriesKcal.toLocaleString()} kcal</span>
-              </div>
-              <div className="calories-trend-bars-row">
-                {activeWeeklyTrend.map((point, index) => {
-                  const isToday = point.status === 'in_progress' || index === activeWeeklyTrend.length - 1;
-                  return (
-                    <div key={point.date} className="calories-trend-col" style={{ position: 'relative' }}>
-                      {isToday && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            top: '-24px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            backgroundColor: 'var(--color-forest-green, #285B46)',
-                            color: '#ffffff',
-                            padding: '2px 6px',
-                            borderRadius: '10px',
-                            fontSize: '10px',
-                            fontWeight: 700,
-                            gap: '3px',
-                            boxShadow: '0 2px 6px rgba(40,91,70,0.3)',
-                            zIndex: 15,
-                            whiteSpace: 'nowrap',
-                          }}
-                          title="You are here today"
-                        >
-                          <Icon name="leaf" size={11} style={{ filter: 'brightness(0) invert(1)' }} />
-                          <span>Today</span>
+            <div className="calories-trend-chart-container" style={{ height: '180px', overflowX: 'auto', paddingBottom: '4px' }}>
+              <div style={{ minWidth: groupBy === 'week' ? '100%' : daysCount > 14 ? '760px' : daysCount > 7 ? '540px' : '100%', position: 'relative', height: '100%' }}>
+                <div className="calories-chart-target-line" style={{ bottom: `${Math.min((periodTargetBudget / maxCalorieScale) * 100, 95)}%` }}>
+                  <span className="calories-target-line-tag">Budget: {periodTargetBudget.toLocaleString()} kcal</span>
+                </div>
+                <div className="calories-trend-bars-row">
+                  {activeTrend.map((point, index) => {
+                    const isToday = point.status === 'in_progress' || index === activeTrend.length - 1;
+                    const heightPercent = Math.min(Math.round((point.consumedKcal / maxCalorieScale) * 100), 100);
+
+                    return (
+                      <div key={point.date} className="calories-trend-col" style={{ position: 'relative' }}>
+                        {isToday && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: '-24px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              backgroundColor: 'var(--color-forest-green, #285B46)',
+                              color: '#ffffff',
+                              padding: '2px 6px',
+                              borderRadius: '10px',
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              gap: '3px',
+                              boxShadow: '0 2px 6px rgba(40,91,70,0.3)',
+                              zIndex: 15,
+                              whiteSpace: 'nowrap',
+                            }}
+                            title="Current period / Today"
+                          >
+                            <Icon name="leaf" size={11} style={{ filter: 'brightness(0) invert(1)' }} />
+                            <span>{groupBy === 'week' ? 'This Wk' : 'Today'}</span>
+                          </div>
+                        )}
+                        <div className="calories-trend-bar-track">
+                          <div
+                            className="calories-trend-bar-fill"
+                            style={{
+                              height: `${heightPercent}%`,
+                              backgroundColor: point.consumedKcal > periodTargetBudget + 100 ? 'var(--color-amber)' : 'var(--color-forest-green)',
+                              outline: isToday ? '2px solid var(--color-forest-green, #285B46)' : 'none',
+                              position: 'relative',
+                            }}
+                          >
+                            {isToday && heightPercent >= 20 && (
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  top: '4px',
+                                  left: '50%',
+                                  transform: 'translateX(-50%)',
+                                  opacity: 0.9,
+                                }}
+                              >
+                                <Icon name="leaf" size={10} style={{ filter: 'brightness(0) invert(1)' }} />
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                      <div className="calories-trend-bar-track">
-                        <div
-                          className="calories-trend-bar-fill"
-                          style={{
-                            height: `${Math.min(Math.round((point.consumedKcal / 2600) * 100), 100)}%`,
-                            backgroundColor: point.consumedKcal > goal.dailyCaloriesKcal + 100 ? 'var(--color-amber)' : 'var(--color-forest-green)',
-                            outline: isToday ? '2px solid var(--color-forest-green, #285B46)' : 'none',
-                            position: 'relative',
-                          }}
-                        >
-                          {isToday && (
-                            <div
-                              style={{
-                                position: 'absolute',
-                                top: '4px',
-                                left: '50%',
-                                transform: 'translateX(-50%)',
-                                opacity: 0.9,
-                              }}
-                            >
-                              <Icon name="leaf" size={10} style={{ filter: 'brightness(0) invert(1)' }} />
-                            </div>
-                          )}
-                        </div>
+                        <span className={`calories-trend-day-label ${isToday ? 'today' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: daysCount > 14 ? '9px' : '11px' }}>
+                          {isToday && <Icon name="leaf" size={9} />}
+                          {point.day}
+                        </span>
+                        <span className="calories-trend-kcal-label" style={{ fontSize: daysCount > 14 ? '9px' : '11px' }}>
+                          {point.consumedKcal}
+                        </span>
                       </div>
-                      <span className={`calories-trend-day-label ${isToday ? 'today' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                        {isToday && <Icon name="leaf" size={10} />}
-                        {point.day}
-                      </span>
-                      <span className="calories-trend-kcal-label">{point.consumedKcal}</span>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -305,14 +342,18 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
               </div>
               <div className="calories-legend-item">
                 <span className="calories-legend-swatch" style={{ backgroundColor: 'var(--color-amber)' }} />
-                <span>Over Budget (&gt;+100 kcal)</span>
+                <span>Over Budget</span>
+              </div>
+              <div className="calories-legend-item">
+                <span className="calories-legend-swatch" style={{ backgroundColor: 'var(--border-medium)' }} />
+                <span>Empty / Zero</span>
               </div>
             </div>
           </CardContent>
 
           <CardFooter>
             <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
-              Server aggregates run via MongoDB pipeline in Stage 9
+              Dynamically rendered for {fullRangeTitle} ({activeTrend.length} data point{activeTrend.length === 1 ? '' : 's'})
             </span>
           </CardFooter>
         </Card>
@@ -324,19 +365,19 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Icon name="vitamins" size={24} />
-              <CardTitle>Tracked Micronutrient Summary</CardTitle>
+              <CardTitle>Tracked Micronutrient Summary ({horizonLabel})</CardTitle>
             </div>
             <Badge variant="neutral">Honest Absence Semantics</Badge>
           </div>
           <CardDescription>
-            Only explicitly recorded micronutrients are aggregated. Unmeasured nutrients are represented as unknown/unrecorded, not zero.
+            Only explicitly recorded micronutrients in {fullRangeTitle} are aggregated. Unmeasured nutrients are represented as unknown/unrecorded, not zero.
           </CardDescription>
         </CardHeader>
 
         <CardContent>
           {trackedMicros.length === 0 ? (
-            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              No micronutrients have been recorded in this date range.
+            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)', background: 'var(--color-sand-soft)', borderRadius: 'var(--radius-md)' }}>
+              No micronutrients have been recorded in {fullRangeTitle}. Log meals with vitamin/mineral disclosures to populate this table.
             </div>
           ) : (
             <div className="calories-journal-table-wrap">
@@ -351,38 +392,25 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {trackedMicros.map((m) => (
-                    <tr key={m.name}>
-                      <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{m.name}</td>
+                  {trackedMicros.map((item) => (
+                    <tr key={item.name}>
                       <td>
-                        <strong style={{ fontFamily: 'var(--font-mono)' }}>{m.amount.toFixed(1)}</strong>
+                        <strong>{item.name}</strong>
+                      </td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+                        {item.amount.toLocaleString()}
                       </td>
                       <td>
-                        <Badge variant="neutral">{m.unit}</Badge>
+                        <Badge variant="neutral">{item.unit}</Badge>
                       </td>
                       <td style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
-                        Recorded in {m.recordedIn} {m.recordedIn === 1 ? 'meal' : 'meals'}
+                        {item.recordedIn} meal{item.recordedIn === 1 ? '' : 's'}
                       </td>
                       <td>
-                        <Badge variant="forest">Sufficient Data</Badge>
+                        <Badge variant="forest">Recorded</Badge>
                       </td>
                     </tr>
                   ))}
-                  {/* Explicit Unknown Micronutrient Rows to show absence honesty */}
-                  <tr>
-                    <td style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>Vitamin D</td>
-                    <td style={{ color: 'var(--color-muted-slate)', fontStyle: 'italic' }}>Unmeasured</td>
-                    <td><Badge variant="neutral">IU</Badge></td>
-                    <td style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>0 meals</td>
-                    <td><Badge variant="amber">Unknown / Not Zero</Badge></td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>Zinc</td>
-                    <td style={{ color: 'var(--color-muted-slate)', fontStyle: 'italic' }}>Unmeasured</td>
-                    <td><Badge variant="neutral">mg</Badge></td>
-                    <td style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>0 meals</td>
-                    <td><Badge variant="amber">Unknown / Not Zero</Badge></td>
-                  </tr>
                 </tbody>
               </table>
             </div>
@@ -391,7 +419,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
 
         <CardFooter>
           <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
-            Compliance Rule: Unrecorded vitamins and minerals are omitted, avoiding false clinical assumptions.
+            Aggregated from {filteredMeals.length} meal entries in {fullRangeTitle}
           </span>
         </CardFooter>
       </Card>

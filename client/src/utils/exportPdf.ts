@@ -16,15 +16,17 @@ export interface ExportPdfOptions {
  * @param options - Configuration including user profile, active goal, meal history, and weekly trend.
  */
 export function exportNutritionReportPdf(options: ExportPdfOptions): void {
-  const { userProfile, goal, meals, weeklyTrend, dateRangeLabel = 'Last 7 Days (Oct 18 – Oct 24, 2026)' } = options;
+  const { userProfile, goal, meals, weeklyTrend, dateRangeLabel = 'Last 7 Days' } = options;
 
-  const totalCalories = meals.reduce((acc, m) => acc + m.nutrition.caloriesKcal, 0);
-  const totalProtein = meals.reduce((acc, m) => acc + m.nutrition.proteinG, 0);
-  const totalCarbs = meals.reduce((acc, m) => acc + m.nutrition.carbsG, 0);
-  const totalFat = meals.reduce((acc, m) => acc + m.nutrition.fatG, 0);
+  const totalCalories = meals.reduce((acc, m) => acc + (m.nutrition?.caloriesKcal || 0), 0);
+  const totalProtein = meals.reduce((acc, m) => acc + (m.nutrition?.proteinG || 0), 0);
+  const totalCarbs = meals.reduce((acc, m) => acc + (m.nutrition?.carbsG || 0), 0);
+  const totalFat = meals.reduce((acc, m) => acc + (m.nutrition?.fatG || 0), 0);
 
-  const avgCalories = Math.round(totalCalories / (meals.length > 0 ? 1 : 1));
-  const adherencePct = goal.dailyCaloriesKcal > 0 ? Math.min(100, Math.round((totalCalories / (goal.dailyCaloriesKcal * 7)) * 100)) : 88;
+  const daysCount = Math.max(1, weeklyTrend.length || 7);
+  const avgCalories = Math.round(totalCalories / daysCount);
+  const totalTargetKcal = goal.dailyCaloriesKcal * daysCount;
+  const adherencePct = totalTargetKcal > 0 ? Math.min(100, Math.round((totalCalories / totalTargetKcal) * 100)) : 0;
 
   // Micronutrient aggregation
   const microMap: Record<string, { total: number; unit: string; count: number }> = {};
@@ -38,19 +40,28 @@ export function exportNutritionReportPdf(options: ExportPdfOptions): void {
     }
   });
 
-  // SVG Chart Markup
-  const chartBars = weeklyTrend
+  // Dynamic SVG Chart Layout supporting any number of points (7, 14, 30 days) and empty states
+  const trendPoints = weeklyTrend.length > 0 ? weeklyTrend : [
+    { day: 'Today', date: 'Today', consumedKcal: 0, targetKcal: goal.dailyCaloriesKcal, status: 'in_progress' }
+  ];
+  const count = trendPoints.length;
+  const step = count <= 7 ? 85 : count <= 14 ? 44 : 20;
+  const barWidth = count <= 7 ? 42 : count <= 14 ? 24 : 12;
+  const xStart = 40;
+  const svgWidth = Math.max(680, xStart * 2 + count * step);
+
+  const chartBars = trendPoints
     .map((d, i) => {
       const height = Math.min(140, Math.round((d.consumedKcal / 2800) * 140));
-      const x = 50 + i * 85;
+      const x = xStart + i * step;
       const y = 160 - height;
       const isTargetMet = d.consumedKcal >= goal.dailyCaloriesKcal * 0.95 && d.consumedKcal <= goal.dailyCaloriesKcal * 1.05;
-      const fillColor = isTargetMet ? '#285B46' : d.consumedKcal > goal.dailyCaloriesKcal ? '#C88932' : '#BFD8C2';
+      const fillColor = d.consumedKcal === 0 ? '#E5E7EB' : isTargetMet ? '#285B46' : d.consumedKcal > goal.dailyCaloriesKcal ? '#C88932' : '#BFD8C2';
       return `
         <g>
-          <rect x="${x}" y="${y}" width="42" height="${height}" rx="4" fill="${fillColor}" />
-          <text x="${x + 21}" y="${y - 6}" font-size="10" font-weight="bold" fill="#152238" text-anchor="middle" font-family="monospace">${d.consumedKcal}</text>
-          <text x="${x + 21}" y="176" font-size="11" fill="#6B7280" text-anchor="middle">${d.day}</text>
+          <rect x="${x}" y="${y}" width="${barWidth}" height="${Math.max(2, height)}" rx="3" fill="${fillColor}" />
+          ${d.consumedKcal > 0 ? `<text x="${x + barWidth / 2}" y="${y - 5}" font-size="${count > 14 ? 8 : 10}" font-weight="bold" fill="#152238" text-anchor="middle" font-family="monospace">${d.consumedKcal}</text>` : ''}
+          <text x="${x + barWidth / 2}" y="176" font-size="${count > 14 ? 8 : 11}" fill="#6B7280" text-anchor="middle">${d.day}</text>
         </g>
       `;
     })
@@ -274,19 +285,20 @@ export function exportNutritionReportPdf(options: ExportPdfOptions): void {
         </div>
       </div>
 
-      <!-- 7-Day Adherence Trend Chart -->
-      <div class="section-title">7-Day Calorie Adherence vs. Budget</div>
+      <!-- Adherence Trend Chart -->
+      <div class="section-title">${dateRangeLabel} — Calorie Adherence vs. Budget</div>
       <div class="chart-box">
-        <svg viewBox="0 0 680 190" style="width: 100%; height: 160px; overflow: visible;">
+        <svg viewBox="0 0 ${svgWidth} 190" style="width: 100%; height: 160px; overflow: visible;">
           <!-- Target dashed line -->
-          <line x1="40" y1="${targetLineY}" x2="650" y2="${targetLineY}" stroke="#6B7280" stroke-dasharray="4 4" stroke-width="1.5" />
-          <text x="645" y="${targetLineY - 5}" font-size="10" fill="#6B7280" text-anchor="end" font-weight="600">Goal: ${goal.dailyCaloriesKcal} kcal</text>
+          <line x1="20" y1="${targetLineY}" x2="${svgWidth - 20}" y2="${targetLineY}" stroke="#6B7280" stroke-dasharray="4 4" stroke-width="1.5" />
+          <text x="${svgWidth - 25}" y="${targetLineY - 5}" font-size="10" fill="#6B7280" text-anchor="end" font-weight="600">Goal: ${goal.dailyCaloriesKcal} kcal</text>
           ${chartBars}
         </svg>
         <div style="font-size: 11px; color: #6B7280; margin-top: 8px;">
           <span style="color: #285B46;">■ Met Target (±5%)</span> &nbsp;•&nbsp; 
           <span style="color: #C88932;">■ Exceeded Budget</span> &nbsp;•&nbsp; 
-          <span style="color: #BFD8C2;">■ Under Target</span>
+          <span style="color: #BFD8C2;">■ Under Target</span> &nbsp;•&nbsp;
+          <span style="color: #E5E7EB;">■ No Intake</span>
         </div>
       </div>
 
@@ -372,15 +384,21 @@ export function exportNutritionReportPdf(options: ExportPdfOptions): void {
           </tr>
         </thead>
         <tbody>
-          ${meals
+          ${meals.length === 0 ? `
+            <tr>
+              <td colspan="6" style="text-align: center; color: #6B7280; padding: 20px;">
+                No meals recorded for this time range (${dateRangeLabel}).
+              </td>
+            </tr>
+          ` : meals
             .map(
               (m) => `
             <tr>
               <td><strong>${m.foodName}</strong></td>
               <td>${m.mealType}</td>
-              <td>${m.quantity.amount} ${m.quantity.unit}</td>
-              <td><strong>${m.nutrition.caloriesKcal} kcal</strong></td>
-              <td>${m.nutrition.proteinG}g / ${m.nutrition.carbsG}g / ${m.nutrition.fatG}g</td>
+              <td>${m.quantity?.amount || 1} ${m.quantity?.unit || 'serving'}</td>
+              <td><strong>${m.nutrition?.caloriesKcal || 0} kcal</strong></td>
+              <td>${m.nutrition?.proteinG || 0}g / ${m.nutrition?.carbsG || 0}g / ${m.nutrition?.fatG || 0}g</td>
               <td><span class="badge ${m.source === 'ai' ? 'badge-forest' : 'badge-neutral'}">${m.source === 'ai' ? 'AI Vision' : 'Manual'}</span></td>
             </tr>
           `

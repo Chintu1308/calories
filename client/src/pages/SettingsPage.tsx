@@ -13,6 +13,7 @@ import {
   Icon,
 } from '../components/ui/index.js';
 import type { MealItem, DailyGoal, UserProfile } from '../types/nutrition.js';
+import { apiClient, type DietInstructionItem } from '../api/apiClient.js';
 import {
   getNotificationPermission,
   requestNotificationPermission,
@@ -157,6 +158,90 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       isMounted = false;
     };
   }, []);
+
+  // Stored Diet Plan / Prescription PDFs from MongoDB
+  const [dietInstructions, setDietInstructions] = useState<DietInstructionItem[]>([]);
+  const [isLoadingDietInstructions, setIsLoadingDietInstructions] = useState(false);
+  const [selectedPdf, setSelectedPdf] = useState<File | null>(null);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+  const [pdfMessage, setPdfMessage] = useState<string | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+
+  const fetchDietInstructions = async () => {
+    setIsLoadingDietInstructions(true);
+    try {
+      const res = await apiClient.getDietInstructions();
+      if (res?.instructions) {
+        setDietInstructions(res.instructions);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch diet instructions:', err);
+    } finally {
+      setIsLoadingDietInstructions(false);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    apiClient
+      .getDietInstructions()
+      .then((res) => {
+        if (isMounted && res?.instructions) {
+          setDietInstructions(res.instructions);
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to fetch diet instructions on mount:', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handlePdfSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPdfError(null);
+    setPdfMessage(null);
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      if (file && (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))) {
+        setSelectedPdf(file);
+      } else {
+        setPdfError('Please choose a valid PDF file (.pdf).');
+      }
+    }
+  };
+
+  const handleUploadPdf = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPdf) return;
+    setIsUploadingPdf(true);
+    setPdfError(null);
+    setPdfMessage(null);
+
+    try {
+      const res = await apiClient.uploadDietPlanPdf(selectedPdf);
+      setPdfMessage(res.message || 'Diet plan analyzed & guidelines saved to your profile!');
+      setSelectedPdf(null);
+      await fetchDietInstructions();
+      setTimeout(() => setPdfMessage(null), 4000);
+    } catch (err: unknown) {
+      setPdfError((err as { message?: string })?.message || 'Failed to upload diet plan PDF.');
+    } finally {
+      setIsUploadingPdf(false);
+    }
+  };
+
+  const handleDeleteInstruction = async (id: string) => {
+    try {
+      await apiClient.deleteDietInstruction(id);
+      setDietInstructions((prev) => prev.filter((item) => item._id !== id));
+      setPdfMessage('Diet instruction removed from profile.');
+      setTimeout(() => setPdfMessage(null), 3000);
+    } catch (err: unknown) {
+      console.warn('Failed to delete diet instruction:', err);
+    }
+  };
 
   const handleExportData = () => {
     const payload = {
@@ -353,6 +438,185 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           </CardFooter>
         </Card>
       </div>
+
+      {/* Prescriptions & Clinical Diet Plans in Profile */}
+      <Card>
+        <CardHeader>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Icon name="ai-scan" size={22} />
+              <CardTitle>Prescription &amp; Clinical Diet Plans (PDF)</CardTitle>
+            </div>
+            <Badge variant="sage">{dietInstructions.length} Active in Profile</Badge>
+          </div>
+          <CardDescription>
+            Doctor prescriptions and dietitian charts saved in MongoDB. The AI recommendation engine automatically aligns meals with these active guidelines.
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {pdfError && (
+            <div className="calories-form-error-box" role="alert">
+              {pdfError}
+            </div>
+          )}
+
+          {pdfMessage && (
+            <div className="calories-success-banner" role="status">
+              <Icon name="check" size={16} />
+              <span>{pdfMessage}</span>
+            </div>
+          )}
+
+          {isLoadingDietInstructions ? (
+            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 'var(--text-xs)' }}>
+              Loading stored diet instructions...
+            </div>
+          ) : dietInstructions.length === 0 ? (
+            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)', background: 'var(--color-sand-soft)', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-xs)' }}>
+              No clinical diet plans or prescriptions saved in your profile yet. Upload one below to incorporate clinical rules into your food recommendations!
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {dietInstructions.map((instruction) => (
+                <div
+                  key={instruction._id}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    padding: '14px',
+                    background: 'var(--surface-card)',
+                    border: '1px solid var(--border-medium)',
+                    borderRadius: 'var(--radius-md)',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '22px' }}>📄</span>
+                      <div>
+                        <strong style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
+                          {instruction.fileName}
+                        </strong>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                          Uploaded {new Date(instruction.createdAt).toLocaleDateString()} • {(instruction.fileSizeBytes / 1024).toFixed(0)} KB
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      style={{ color: 'var(--color-error-red)', borderColor: 'rgba(184, 68, 68, 0.4)' }}
+                      onClick={() => handleDeleteInstruction(instruction._id)}
+                    >
+                      🗑️ Remove From Profile
+                    </Button>
+                  </div>
+
+                  {instruction.summary && (
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-primary)', backgroundColor: 'var(--color-sand-soft)', padding: '8px 12px', borderRadius: 'var(--radius-sm)' }}>
+                      <strong>Summary:</strong> {instruction.summary}
+                    </div>
+                  )}
+
+                  {instruction.clinicalObservations && (
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                      <strong>Doctor Notes:</strong> {instruction.clinicalObservations}
+                    </div>
+                  )}
+
+                  {/* Target macros if present */}
+                  {instruction.targetCaloriesKcal && (
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', fontSize: '11px' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Prescribed Targets:</span>
+                      <Badge variant="forest">{instruction.targetCaloriesKcal} kcal</Badge>
+                      {instruction.targetProteinGrams && <Badge variant="sage">{instruction.targetProteinGrams}g Protein</Badge>}
+                      {instruction.targetCarbsGrams && <Badge variant="neutral">{instruction.targetCarbsGrams}g Carbs</Badge>}
+                      {instruction.targetFatGrams && <Badge variant="amber">{instruction.targetFatGrams}g Fat</Badge>}
+                    </div>
+                  )}
+
+                  {/* Forbidden & Recommended Pills */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+                    {instruction.forbiddenFoods && instruction.forbiddenFoods.length > 0 && (
+                      <div style={{ backgroundColor: 'rgba(184, 68, 68, 0.05)', border: '1px solid rgba(184, 68, 68, 0.2)', padding: '8px 10px', borderRadius: 'var(--radius-sm)' }}>
+                        <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-error-red)', textTransform: 'uppercase', marginBottom: '4px' }}>
+                          🚫 Avoid Foods:
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                          {instruction.forbiddenFoods.map((f, i) => (
+                            <span key={i} style={{ backgroundColor: 'rgba(184, 68, 68, 0.12)', color: 'var(--color-error-red)', fontSize: '10px', fontWeight: 600, padding: '1px 6px', borderRadius: 'var(--radius-full)' }}>
+                              ✕ {f}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {instruction.recommendedFoods && instruction.recommendedFoods.length > 0 && (
+                      <div style={{ backgroundColor: 'var(--color-sage-soft)', border: '1px solid rgba(40, 91, 70, 0.2)', padding: '8px 10px', borderRadius: 'var(--radius-sm)' }}>
+                        <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-forest-green)', textTransform: 'uppercase', marginBottom: '4px' }}>
+                          🌿 Recommended Foods:
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                          {instruction.recommendedFoods.map((r, i) => (
+                            <span key={i} style={{ backgroundColor: 'rgba(40, 91, 70, 0.15)', color: 'var(--color-forest-green)', fontSize: '10px', fontWeight: 600, padding: '1px 6px', borderRadius: 'var(--radius-full)' }}>
+                              ✓ {r}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upload New Diet PDF */}
+          <form onSubmit={handleUploadPdf} style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--color-sand-soft)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
+              + Upload New Prescription or Diet Chart (PDF)
+            </div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                type="file"
+                id="settings-diet-pdf-input"
+                accept=".pdf,application/pdf"
+                style={{ display: 'none' }}
+                onChange={handlePdfSelect}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => document.getElementById('settings-diet-pdf-input')?.click()}
+              >
+                {selectedPdf ? `Change PDF (${selectedPdf.name})` : 'Browse PDF Prescription'}
+              </Button>
+
+              {selectedPdf && (
+                <span style={{ fontSize: '11px', color: 'var(--color-forest-green)', fontWeight: 600 }}>
+                  {selectedPdf.name} ({(selectedPdf.size / 1024).toFixed(0)} KB)
+                </span>
+              )}
+
+              {selectedPdf && (
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  disabled={isUploadingPdf}
+                  leftIcon={<Icon name="ai-scan" size={14} />}
+                >
+                  {isUploadingPdf ? 'Analyzing PDF with AI...' : 'Save Guideline to Profile'}
+                </Button>
+              )}
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
       {/* System Preferences & Data Management */}
       <div className="calories-grid-two">
