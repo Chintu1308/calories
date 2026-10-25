@@ -226,22 +226,32 @@ export const App: React.FC = () => {
     setToken(null);
     setUserProfile(null);
     setMeals([]);
+    setWaterLogs([]);
+    setSupplementLogs([]);
     try {
       localStorage.removeItem('calories_user_profile');
       localStorage.removeItem('calories_meals');
       localStorage.removeItem('calories_daily_goal');
+      localStorage.removeItem('calories_water_logs');
+      localStorage.removeItem('calories_supplement_logs');
     } catch {
       // Ignore storage clear error
     }
   };
 
-  // Water logging state persisted to localStorage
+  // User-scoped water logging state persisted to localStorage
   const [waterLogs, setWaterLogs] = useState<WaterLogEntry[]>(() => {
     try {
-      const saved = localStorage.getItem('calories_water_logs');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+      // Clean up legacy un-scoped key
+      localStorage.removeItem('calories_water_logs');
+      const savedProfile = localStorage.getItem('calories_user_profile');
+      const uid = savedProfile ? JSON.parse(savedProfile)?.id : null;
+      if (uid) {
+        const saved = localStorage.getItem(`calories_water_logs_${uid}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
       }
       return [];
     } catch {
@@ -250,20 +260,27 @@ export const App: React.FC = () => {
   });
 
   useEffect(() => {
+    if (!userProfile?.id) return;
     try {
-      localStorage.setItem('calories_water_logs', JSON.stringify(waterLogs));
+      localStorage.setItem(`calories_water_logs_${userProfile.id}`, JSON.stringify(waterLogs));
     } catch {
       // ignore
     }
-  }, [waterLogs]);
+  }, [waterLogs, userProfile?.id]);
 
-  // Supplement intake logging state persisted to localStorage
+  // User-scoped supplement intake logging state persisted to localStorage
   const [supplementLogs, setSupplementLogs] = useState<SupplementLogEntry[]>(() => {
     try {
-      const saved = localStorage.getItem('calories_supplement_logs');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+      // Clean up legacy un-scoped key
+      localStorage.removeItem('calories_supplement_logs');
+      const savedProfile = localStorage.getItem('calories_user_profile');
+      const uid = savedProfile ? JSON.parse(savedProfile)?.id : null;
+      if (uid) {
+        const saved = localStorage.getItem(`calories_supplement_logs_${uid}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
       }
       return [];
     } catch {
@@ -272,12 +289,34 @@ export const App: React.FC = () => {
   });
 
   useEffect(() => {
+    if (!userProfile?.id) return;
     try {
-      localStorage.setItem('calories_supplement_logs', JSON.stringify(supplementLogs));
+      localStorage.setItem(`calories_supplement_logs_${userProfile.id}`, JSON.stringify(supplementLogs));
     } catch {
       // ignore
     }
-  }, [supplementLogs]);
+  }, [supplementLogs, userProfile?.id]);
+
+  // Synchronize water & supplement logs when active user changes
+  useEffect(() => {
+    if (!userProfile?.id) {
+      setWaterLogs([]);
+      setSupplementLogs([]);
+      return;
+    }
+    try {
+      const userWaterKey = `calories_water_logs_${userProfile.id}`;
+      const savedWater = localStorage.getItem(userWaterKey);
+      setWaterLogs(savedWater ? JSON.parse(savedWater) : []);
+
+      const userSuppKey = `calories_supplement_logs_${userProfile.id}`;
+      const savedSupps = localStorage.getItem(userSuppKey);
+      setSupplementLogs(savedSupps ? JSON.parse(savedSupps) : []);
+    } catch {
+      setWaterLogs([]);
+      setSupplementLogs([]);
+    }
+  }, [userProfile?.id]);
 
   // Browser notification permission state
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>(() =>
@@ -714,10 +753,20 @@ export const App: React.FC = () => {
           setStoredToken(newToken);
           setToken(newToken);
           setUserProfile(profile);
+          setMeals([]);
           try {
+            const userWaterKey = `calories_water_logs_${profile.id}`;
+            const savedWater = localStorage.getItem(userWaterKey);
+            setWaterLogs(savedWater ? JSON.parse(savedWater) : []);
+
+            const userSuppKey = `calories_supplement_logs_${profile.id}`;
+            const savedSupps = localStorage.getItem(userSuppKey);
+            setSupplementLogs(savedSupps ? JSON.parse(savedSupps) : []);
+
             localStorage.setItem('calories_user_profile', JSON.stringify(profile));
           } catch {
-            // Ignore storage error
+            setWaterLogs([]);
+            setSupplementLogs([]);
           }
         }}
       />
