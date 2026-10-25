@@ -13,7 +13,8 @@ import {
 } from '../components/ui/index.js';
 import type { DailyGoal, MealItem, UserProfile } from '../types/nutrition.js';
 import { generateWeightProjection } from '../utils/weightProjection.js';
-import { apiClient, type SmartRecommendationItem } from '../api/apiClient.js';
+import { apiClient, type SmartRecommendationItem, type DietInstructionItem } from '../api/apiClient.js';
+import { GoalMilestoneModal } from '../components/goals/GoalMilestoneModal.js';
 
 export interface GoalsPageProps {
   currentGoal: DailyGoal;
@@ -25,6 +26,7 @@ export interface GoalsPageProps {
   consumedFat?: number;
   onQuickLogMeal?: (meal: MealItem) => void;
   userProfile?: UserProfile;
+  onUpdateProfile?: (updatedProfile: UserProfile) => Promise<void>;
 }
 
 function generateQuickLogMealId(): string {
@@ -45,10 +47,12 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
   consumedFat = 0,
   onQuickLogMeal: _onQuickLogMeal,
   userProfile,
+  onUpdateProfile,
 }) => {
-  // Modal states for Add Goal & Edit Goal
+  // Modal states for Add Goal, Edit Goal, and Milestone Check-In
   const [isAddGoalModalOpen, setIsAddGoalModalOpen] = useState(false);
   const [isEditGoalModalOpen, setIsEditGoalModalOpen] = useState(false);
+  const [isMilestoneModalOpen, setIsMilestoneModalOpen] = useState(false);
 
   // Form states
   const [goalTitle, setGoalTitle] = useState(currentGoal.title || 'Fat Loss & Lean Definition');
@@ -83,6 +87,47 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
     currentGoal.targetWeeks,
   ]);
 
+  // Clinical PDF Diet Instructions State
+  const [dietInstructions, setDietInstructions] = useState<DietInstructionItem[]>([]);
+  const [isLoadingInstructions, setIsLoadingInstructions] = useState(false);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+  const [pdfUploadError, setPdfUploadError] = useState<string | null>(null);
+  const [pdfUploadSuccess, setPdfUploadSuccess] = useState<string | null>(null);
+  const [isDeletingInstruction, setIsDeletingInstruction] = useState(false);
+
+  const fetchDietInstructions = async () => {
+    setIsLoadingInstructions(true);
+    try {
+      const res = await apiClient.getDietInstructions();
+      if (res?.instructions) {
+        setDietInstructions(res.instructions);
+      }
+    } catch (err) {
+      console.warn('Failed to load diet instructions:', err);
+    } finally {
+      setIsLoadingInstructions(false);
+    }
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    apiClient
+      .getDietInstructions()
+      .then((res) => {
+        if (mounted && res?.instructions) {
+          setDietInstructions(res.instructions);
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to load diet instructions:', err);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   // Dynamic ML Recommendation Engine State
   const [recommendations, setRecommendations] = useState<SmartRecommendationItem[]>([]);
   const [isLoadingRecs, setIsLoadingRecs] = useState(true);
@@ -92,6 +137,19 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
     activePdfInstructionsCount: number;
   } | null>(null);
   const [quickLogSuccess, setQuickLogSuccess] = useState<string | null>(null);
+
+  const refreshRecommendations = async () => {
+    setIsLoadingRecs(true);
+    try {
+      const res = await apiClient.getRecommendations();
+      setRecommendations(res.recommendations);
+      setRecModelInfo(res.modelInfo);
+    } catch {
+      // Fallback silently if offline
+    } finally {
+      setIsLoadingRecs(false);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -114,6 +172,90 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
       mounted = false;
     };
   }, [currentGoal.title, currentGoal.dailyCaloriesKcal, consumedCalories]);
+
+  const handlePdfFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPdfUploadError(null);
+    setPdfUploadSuccess(null);
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      if (file && (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))) {
+        setPdfFile(file);
+      } else {
+        setPdfUploadError('Please select a valid PDF document (.pdf).');
+      }
+    }
+  };
+
+  const handleUploadPdf = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pdfFile) {
+      setPdfUploadError('Please choose a diet plan or prescription PDF first.');
+      return;
+    }
+
+    setIsUploadingPdf(true);
+    setPdfUploadError(null);
+    setPdfUploadSuccess(null);
+
+    try {
+      const res = await apiClient.uploadDietPlanPdf(pdfFile);
+      setPdfUploadSuccess(res.message || 'Diet plan analyzed & guidelines saved successfully!');
+      setPdfFile(null);
+      await fetchDietInstructions();
+      await refreshRecommendations();
+      // If server updated active goal calories from dietitian targets, fetch fresh goal
+      const goalRes = await apiClient.getActiveGoal();
+      if (goalRes?.goal) {
+        onSaveGoal(goalRes.goal);
+      }
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message || 'Failed to extract guidelines from PDF.';
+      setPdfUploadError(msg);
+    } finally {
+      setIsUploadingPdf(false);
+    }
+  };
+
+  const handleDeleteInstruction = async (id: string) => {
+    setIsDeletingInstruction(true);
+    try {
+      await apiClient.deleteDietInstruction(id);
+      setDietInstructions((prev) => prev.filter((item) => item._id !== id));
+      await refreshRecommendations();
+    } catch (err: unknown) {
+      console.warn('Failed to delete diet instruction:', err);
+    } finally {
+      setIsDeletingInstruction(false);
+    }
+  };
+
+  const handleUpdateProfileAndGoal = async (
+    heightCm: number,
+    newWeightKg: number,
+    newTargetWeight?: number
+  ) => {
+    if (onUpdateProfile && userProfile) {
+      await onUpdateProfile({
+        ...userProfile,
+        heightCm,
+        currentWeightKg: newWeightKg,
+        targetWeightKg: newTargetWeight ?? userProfile.targetWeightKg,
+      });
+    } else {
+      await apiClient.updateProfile({
+        heightCm,
+        currentWeightKg: newWeightKg,
+        targetWeightKg: newTargetWeight,
+      });
+    }
+
+    if (newTargetWeight && newTargetWeight !== currentGoal.targetWeight) {
+      onSaveGoal({
+        ...currentGoal,
+        targetWeight: newTargetWeight,
+      });
+    }
+  };
 
   const handleQuickLog = async (rec: SmartRecommendationItem) => {
     const newMeal: MealItem = {
@@ -251,6 +393,21 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
     setTimeout(() => setSavedSuccess(false), 3500);
   };
 
+  // Milestone completion evaluation
+  const isTargetDateReached = (() => {
+    if (!currentGoal.targetDate) return false;
+    // oxlint-disable-next-line react/purity
+    const todayStr = new Date().toISOString().split('T')[0]!;
+    return todayStr >= currentGoal.targetDate;
+  })();
+
+  const isTargetWeightReached = (() => {
+    if (!currentGoal.targetWeight || !currentWeightKg) return false;
+    return Math.abs(currentWeightKg - currentGoal.targetWeight) <= 0.2;
+  })();
+
+  const isGoalMilestoneReady = isTargetDateReached || isTargetWeightReached;
+
   return (
     <div className="calories-page-container">
       {/* Page Header */}
@@ -259,11 +416,21 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
           <div className="calories-greeting-tagline">Nutritional Baseline &amp; Timeline Projection</div>
           <h1 className="calories-greeting-title">Target &amp; Goal Management</h1>
           <p className="calories-greeting-subtext">
-            Track active goals, view projected timeline curves to achieve your weight target, and discover recommended foods to satisfy remaining daily nutrients.
+            Track active goals, view projected timeline curves to achieve your weight target, upload clinical diet plans, and discover recommended foods to satisfy remaining daily nutrients.
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <Button
+            variant="outline"
+            size="md"
+            leftIcon={<Icon name="weight" size={16} />}
+            onClick={() => setIsMilestoneModalOpen(true)}
+            style={{ borderColor: 'var(--color-forest-green)', color: 'var(--color-forest-green)' }}
+          >
+            🎯 Check Goal Milestone &amp; Weight
+          </Button>
+
           <Button
             variant="outline"
             size="md"
@@ -283,6 +450,46 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
           </Button>
         </div>
       </div>
+
+      {/* Goal Milestone Reached Celebratory Banner */}
+      {isGoalMilestoneReady && (
+        <div
+          style={{
+            backgroundColor: 'var(--color-sage-soft)',
+            border: '2px solid var(--color-forest-green)',
+            borderRadius: 'var(--radius-md)',
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px',
+            flexWrap: 'wrap',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <span style={{ fontSize: '32px' }}>🏆</span>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 'var(--text-base)', fontWeight: 700, color: 'var(--color-forest-green)' }}>
+                {isTargetWeightReached ? '🎉 Target Weight Reached!' : '🎯 Goal Milestone Timeline Arrived!'}
+              </h3>
+              <p style={{ margin: '4px 0 0', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
+                {isTargetWeightReached
+                  ? `Spectacular work! You have reached your target weight of ${currentGoal.targetWeight} kg. Let's record your updated height & weight to calculate your BMI and set your next milestone!`
+                  : `Your target date (${currentGoal.targetDate || 'today'}) has arrived! Let's check whether you achieved your target weight of ${numTargetWeight} kg and record your updated measurements.`}
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="primary"
+            size="md"
+            leftIcon={<Icon name="check" size={16} />}
+            onClick={() => setIsMilestoneModalOpen(true)}
+          >
+            Check Goal Achievement &amp; Log Height/Weight
+          </Button>
+        </div>
+      )}
 
       {/* Success Notification */}
       {savedSuccess && (
@@ -320,8 +527,25 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
               <div style={{ fontSize: '24px', color: 'var(--color-slate-light)', alignSelf: 'center' }}>→</div>
               <div style={{ textAlign: 'left' }}>
                 <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-forest-green)', textTransform: 'uppercase', fontWeight: 600 }}>Target Weight</span>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-forest-green)' }}>
-                  {numTargetWeight} {weightUnit}
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-forest-green)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>{numTargetWeight} {weightUnit}</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsMilestoneModalOpen(true)}
+                    style={{
+                      background: 'var(--color-sage-soft)',
+                      border: '1px solid var(--color-forest-green)',
+                      borderRadius: 'var(--radius-full)',
+                      color: 'var(--color-forest-green)',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      padding: '2px 8px',
+                      cursor: 'pointer',
+                    }}
+                    title="Check whether target weight was reached"
+                  >
+                    Check
+                  </button>
                 </div>
               </div>
             </div>
@@ -358,6 +582,268 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
                 </div>
               </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* CLINICAL DIET PLANS & PRESCRIPTIONS (PDF) */}
+      <Card>
+        <CardHeader>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Icon name="ai-scan" size={24} />
+              <div>
+                <CardTitle>Clinical Diet Plans &amp; Doctor Prescriptions (PDF)</CardTitle>
+                <CardDescription>
+                  Upload your dietitian&apos;s meal chart, clinical diet plan, or doctor&apos;s prescription (PDF). Antigravity AI extracts medical restrictions, forbidden foods, and recommended items to dynamically tailor your nutrition recommendations.
+                </CardDescription>
+              </div>
+            </div>
+            <Badge variant="sage">
+              {dietInstructions.length} Active Guideline{dietInstructions.length === 1 ? '' : 's'}
+            </Badge>
+          </div>
+        </CardHeader>
+
+        <CardContent style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* PDF Upload Dropzone Form */}
+          <form onSubmit={handleUploadPdf} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div
+              className="calories-ai-upload-dropzone"
+              style={{
+                cursor: 'pointer',
+                padding: '24px 20px',
+                border: pdfFile ? '2px solid var(--color-forest-green)' : '2px dashed var(--border-medium)',
+                backgroundColor: pdfFile ? 'var(--color-sage-soft)' : 'var(--color-sand-soft)',
+                transition: 'all 0.2s ease',
+              }}
+              onClick={() => document.getElementById('diet-pdf-file-input')?.click()}
+            >
+              <input
+                id="diet-pdf-file-input"
+                type="file"
+                accept=".pdf,application/pdf"
+                style={{ display: 'none' }}
+                onChange={handlePdfFileSelect}
+              />
+              <div style={{ fontSize: '32px', marginBottom: '8px' }}>📄</div>
+              {pdfFile ? (
+                <div>
+                  <div style={{ fontWeight: 600, color: 'var(--color-forest-green)', fontSize: 'var(--text-sm)' }}>
+                    Selected: {pdfFile.name} ({(pdfFile.size / 1024).toFixed(1)} KB)
+                  </div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    Click to choose a different PDF file
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 'var(--text-sm)' }}>
+                    Click or drag &amp; drop your diet chart or prescription PDF here
+                  </div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    Supports doctor diet sheets, clinical charts, and nutritionist meal plans in PDF format
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {pdfUploadError && (
+              <div className="calories-form-error-box" role="alert">
+                {pdfUploadError}
+              </div>
+            )}
+
+            {pdfUploadSuccess && (
+              <div className="calories-success-banner" role="status">
+                <Icon name="check" size={18} />
+                <span>{pdfUploadSuccess}</span>
+              </div>
+            )}
+
+            {pdfFile && (
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  onClick={() => {
+                    setPdfFile(null);
+                    setPdfUploadError(null);
+                  }}
+                  disabled={isUploadingPdf}
+                >
+                  Clear
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  type="submit"
+                  disabled={isUploadingPdf}
+                  leftIcon={<Icon name="ai-scan" size={16} />}
+                >
+                  {isUploadingPdf ? 'Analyzing PDF with AI...' : 'Extract & Save Clinical Guidelines'}
+                </Button>
+              </div>
+            )}
+          </form>
+
+          {/* Extracted Clinical Instructions List */}
+          <div>
+            <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>
+              Active Clinical Guidelines &amp; Restrictions ({dietInstructions.length})
+            </h3>
+
+            {isLoadingInstructions ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 'var(--text-xs)' }}>
+                Loading active diet instructions...
+              </div>
+            ) : dietInstructions.length === 0 ? (
+              <div
+                style={{
+                  padding: '24px',
+                  textAlign: 'center',
+                  backgroundColor: 'var(--bg-secondary)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px dashed var(--border-light)',
+                  color: 'var(--text-secondary)',
+                  fontSize: 'var(--text-xs)',
+                }}
+              >
+                No clinical diet plans uploaded yet. Upload a prescription or diet chart above to extract guidelines and tailor your food suggestions!
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {dietInstructions.map((instruction) => (
+                  <div
+                    key={instruction._id}
+                    style={{
+                      backgroundColor: 'var(--surface-card)',
+                      border: '1px solid var(--border-medium)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '20px' }}>📄</span>
+                        <div>
+                          <strong style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
+                            {instruction.fileName}
+                          </strong>
+                          <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                            Uploaded on {new Date(instruction.createdAt).toLocaleDateString()} • {(instruction.fileSizeBytes / 1024).toFixed(0)} KB
+                          </div>
+                        </div>
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        style={{ color: 'var(--color-error-red)', borderColor: 'rgba(184, 68, 68, 0.4)' }}
+                        onClick={() => handleDeleteInstruction(instruction._id)}
+                        disabled={isDeletingInstruction}
+                      >
+                        🗑️ Remove Guideline
+                      </Button>
+                    </div>
+
+                    {/* Summary */}
+                    {instruction.summary && (
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-primary)', lineHeight: 1.5, backgroundColor: 'var(--color-sand-soft)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
+                        <strong>Summary:</strong> {instruction.summary}
+                      </div>
+                    )}
+
+                    {/* Clinical Observations */}
+                    {instruction.clinicalObservations && (
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                        <strong>Doctor Notes:</strong> {instruction.clinicalObservations}
+                      </div>
+                    )}
+
+                    {/* Prescribed targets if specified */}
+                    {instruction.targetCaloriesKcal && (
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', fontSize: '11px' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Prescribed Targets:</span>
+                        <Badge variant="forest">{instruction.targetCaloriesKcal} kcal</Badge>
+                        {instruction.targetProteinGrams && <Badge variant="sage">{instruction.targetProteinGrams}g Protein</Badge>}
+                        {instruction.targetCarbsGrams && <Badge variant="neutral">{instruction.targetCarbsGrams}g Carbs</Badge>}
+                        {instruction.targetFatGrams && <Badge variant="amber">{instruction.targetFatGrams}g Fat</Badge>}
+                      </div>
+                    )}
+
+                    {/* Forbidden Foods & Recommended Foods Pills */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+                      {instruction.forbiddenFoods && instruction.forbiddenFoods.length > 0 && (
+                        <div style={{ backgroundColor: 'rgba(184, 68, 68, 0.05)', border: '1px solid rgba(184, 68, 68, 0.2)', padding: '10px', borderRadius: 'var(--radius-sm)' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-error-red)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                            🚫 Forbidden / Avoid Foods:
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {instruction.forbiddenFoods.map((food, i) => (
+                              <span
+                                key={i}
+                                style={{
+                                  backgroundColor: 'rgba(184, 68, 68, 0.12)',
+                                  color: 'var(--color-error-red)',
+                                  fontSize: '11px',
+                                  fontWeight: 600,
+                                  padding: '2px 8px',
+                                  borderRadius: 'var(--radius-full)',
+                                }}
+                              >
+                                ✕ {food}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {instruction.recommendedFoods && instruction.recommendedFoods.length > 0 && (
+                        <div style={{ backgroundColor: 'var(--color-sage-soft)', border: '1px solid rgba(40, 91, 70, 0.2)', padding: '10px', borderRadius: 'var(--radius-sm)' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-forest-green)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                            🌿 Recommended / Emphasized Foods:
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {instruction.recommendedFoods.map((food, i) => (
+                              <span
+                                key={i}
+                                style={{
+                                  backgroundColor: 'rgba(40, 91, 70, 0.15)',
+                                  color: 'var(--color-forest-green)',
+                                  fontSize: '11px',
+                                  fontWeight: 600,
+                                  padding: '2px 8px',
+                                  borderRadius: 'var(--radius-full)',
+                                }}
+                              >
+                                ✓ {food}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Dietary Rules & Meal Timing */}
+                    {((instruction.dietaryRules && instruction.dietaryRules.length > 0) || (instruction.mealTimingNotes && instruction.mealTimingNotes.length > 0)) && (
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {instruction.dietaryRules && instruction.dietaryRules.map((rule, idx) => (
+                          <div key={`rule-${idx}`}>• {rule}</div>
+                        ))}
+                        {instruction.mealTimingNotes && instruction.mealTimingNotes.map((note, idx) => (
+                          <div key={`timing-${idx}`}>⏰ {note}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -863,6 +1349,15 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
           </div>
         </div>
       )}
+
+      {/* Goal Milestone Check-In Modal */}
+      <GoalMilestoneModal
+        isOpen={isMilestoneModalOpen}
+        onClose={() => setIsMilestoneModalOpen(false)}
+        goal={currentGoal}
+        userProfile={userProfile}
+        onUpdateProfileAndGoal={handleUpdateProfileAndGoal}
+      />
     </div>
   );
 };

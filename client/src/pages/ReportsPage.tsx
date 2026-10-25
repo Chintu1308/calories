@@ -233,21 +233,68 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
                 <span className="calories-target-line-tag">Budget: {goal.dailyCaloriesKcal.toLocaleString()} kcal</span>
               </div>
               <div className="calories-trend-bars-row">
-                {activeWeeklyTrend.map((point) => (
-                  <div key={point.date} className="calories-trend-col">
-                    <div className="calories-trend-bar-track">
-                      <div
-                        className="calories-trend-bar-fill"
-                        style={{
-                          height: `${Math.min(Math.round((point.consumedKcal / 2600) * 100), 100)}%`,
-                          backgroundColor: point.consumedKcal > goal.dailyCaloriesKcal + 100 ? 'var(--color-amber)' : 'var(--color-forest-green)',
-                        }}
-                      />
+                {activeWeeklyTrend.map((point, index) => {
+                  const isToday = point.status === 'in_progress' || index === activeWeeklyTrend.length - 1;
+                  return (
+                    <div key={point.date} className="calories-trend-col" style={{ position: 'relative' }}>
+                      {isToday && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '-24px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: 'var(--color-forest-green, #285B46)',
+                            color: '#ffffff',
+                            padding: '2px 6px',
+                            borderRadius: '10px',
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            gap: '3px',
+                            boxShadow: '0 2px 6px rgba(40,91,70,0.3)',
+                            zIndex: 15,
+                            whiteSpace: 'nowrap',
+                          }}
+                          title="You are here today"
+                        >
+                          <Icon name="leaf" size={11} style={{ filter: 'brightness(0) invert(1)' }} />
+                          <span>Today</span>
+                        </div>
+                      )}
+                      <div className="calories-trend-bar-track">
+                        <div
+                          className="calories-trend-bar-fill"
+                          style={{
+                            height: `${Math.min(Math.round((point.consumedKcal / 2600) * 100), 100)}%`,
+                            backgroundColor: point.consumedKcal > goal.dailyCaloriesKcal + 100 ? 'var(--color-amber)' : 'var(--color-forest-green)',
+                            outline: isToday ? '2px solid var(--color-forest-green, #285B46)' : 'none',
+                            position: 'relative',
+                          }}
+                        >
+                          {isToday && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                top: '4px',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                opacity: 0.9,
+                              }}
+                            >
+                              <Icon name="leaf" size={10} style={{ filter: 'brightness(0) invert(1)' }} />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <span className={`calories-trend-day-label ${isToday ? 'today' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                        {isToday && <Icon name="leaf" size={10} />}
+                        {point.day}
+                      </span>
+                      <span className="calories-trend-kcal-label">{point.consumedKcal}</span>
                     </div>
-                    <span className="calories-trend-day-label">{point.day}</span>
-                    <span className="calories-trend-kcal-label">{point.consumedKcal}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

@@ -55,6 +55,7 @@ export const MealsPage: React.FC<MealsPageProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [dateFilter, setDateFilter] = useState<string>('today');
+  const [viewMode, setViewMode] = useState<'timeline' | 'table'>('timeline');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -199,18 +200,64 @@ export const MealsPage: React.FC<MealsPageProps> = ({
         </CardContent>
       </Card>
 
-      {/* Meals Table / List */}
+      {/* Meals Timeline / Table Card */}
       <Card>
         <CardHeader>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <CardTitle>Recorded Entries</CardTitle>
-            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
-              Showing {paginatedMeals.length} of {filteredMeals.length} results
-            </span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Icon name="meals" size={22} />
+                <CardTitle>Journal Meal Timeline</CardTitle>
+              </div>
+              <CardDescription>
+                Chronological nutrition timeline of logged meals with macro totals and quick actions.
+              </CardDescription>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
+                Showing {paginatedMeals.length} of {filteredMeals.length} results
+              </span>
+
+              {/* View Switcher Toggle */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '2px', backgroundColor: 'var(--color-sand-soft)', padding: '3px', borderRadius: 'var(--radius-md)' }}>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('timeline')}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    fontWeight: viewMode === 'timeline' ? 700 : 500,
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    backgroundColor: viewMode === 'timeline' ? 'var(--surface-card)' : 'transparent',
+                    color: viewMode === 'timeline' ? 'var(--color-forest-green)' : 'var(--text-secondary)',
+                    boxShadow: viewMode === 'timeline' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  🕒 Timeline
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('table')}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    fontWeight: viewMode === 'table' ? 700 : 500,
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    backgroundColor: viewMode === 'table' ? 'var(--surface-card)' : 'transparent',
+                    color: viewMode === 'table' ? 'var(--color-forest-green)' : 'var(--text-secondary)',
+                    boxShadow: viewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  📋 Table
+                </button>
+              </div>
+            </div>
           </div>
-          <CardDescription>
-            All timestamps are stored in ISO 8601 UTC and rendered in your local timezone.
-          </CardDescription>
         </CardHeader>
 
         <CardContent>
@@ -219,7 +266,139 @@ export const MealsPage: React.FC<MealsPageProps> = ({
               <Icon name="meals" size={32} style={{ marginBottom: '8px', opacity: 0.5 }} />
               <div>No food items match your filter criteria.</div>
             </div>
+          ) : viewMode === 'timeline' ? (
+            /* Interactive Chronological Meal Timeline */
+            <div style={{ position: 'relative', paddingLeft: '28px', margin: '8px 0' }}>
+              {/* Vertical Timeline Spine */}
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '11px',
+                  top: '16px',
+                  bottom: '16px',
+                  width: '2px',
+                  backgroundColor: 'var(--border-medium)',
+                }}
+              />
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {paginatedMeals.map((meal) => {
+                  const mealId = meal.id || (meal as any)._id;
+                  const isAi = meal.source === 'ai';
+                  return (
+                    <div key={mealId} style={{ position: 'relative', display: 'flex', alignItems: 'flex-start' }}>
+                      {/* Timeline Dot Node */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          left: '-23px',
+                          top: '16px',
+                          width: '14px',
+                          height: '14px',
+                          borderRadius: '50%',
+                          backgroundColor: isAi ? 'var(--color-forest-green, #285B46)' : 'var(--action-primary)',
+                          border: '2px solid var(--surface-card)',
+                          boxShadow: '0 0 0 2px var(--border-medium)',
+                          zIndex: 2,
+                        }}
+                      />
+
+                      {/* Timeline Entry Card */}
+                      <div
+                        style={{
+                          flex: 1,
+                          backgroundColor: 'var(--surface-card)',
+                          border: '1px solid var(--border-light)',
+                          borderRadius: 'var(--radius-md)',
+                          padding: '14px 18px',
+                          boxShadow: 'var(--shadow-sm)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 'var(--text-base)', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                {meal.foodName}
+                              </span>
+                              <Badge variant="default">{meal.mealType}</Badge>
+                              <Badge variant={isAi ? 'forest' : 'neutral'}>
+                                {isAi ? '🌱 AI Extracted' : '✏️ Manual'}
+                              </Badge>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
+                              <span>🕒 {formatTime(meal.eatenAt)}</span>
+                              <span>•</span>
+                              <span>🍽️ {meal.quantity?.amount || 1} {meal.quantity?.unit || 'serving'}</span>
+                            </div>
+                          </div>
+
+                          {/* Quick Action Buttons */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {onEditMeal && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                style={{ color: 'var(--color-forest-green)', padding: '2px 8px' }}
+                                onClick={() => onEditMeal(meal)}
+                                aria-label={`Edit ${meal.foodName}`}
+                              >
+                                ✎ Edit
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              style={{ color: 'var(--color-error-red)', padding: '2px 8px' }}
+                              onClick={() => onDeleteMeal(mealId)}
+                              aria-label={`Delete ${meal.foodName}`}
+                            >
+                              ✕ Remove
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Nutrition Breakdown Banner */}
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '8px',
+                            padding: '6px 10px',
+                            backgroundColor: 'var(--color-sand-soft)',
+                            borderRadius: 'var(--radius-sm)',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)', marginRight: '6px' }}>
+                            🔥 {meal.nutrition?.caloriesKcal || 0} kcal
+                          </div>
+                          <span style={{ fontSize: '11px', color: 'var(--color-forest-green)', fontWeight: 600 }}>
+                            P: {meal.nutrition?.proteinG || 0}g
+                          </span>
+                          <span>•</span>
+                          <span style={{ fontSize: '11px', color: 'var(--color-ink-navy)', fontWeight: 600 }}>
+                            C: {meal.nutrition?.carbsG || 0}g
+                          </span>
+                          <span>•</span>
+                          <span style={{ fontSize: '11px', color: 'var(--color-amber)', fontWeight: 600 }}>
+                            F: {meal.nutrition?.fatG || 0}g
+                          </span>
+                        </div>
+
+                        {/* Notes */}
+                        {meal.notes && (
+                          <div style={{ marginTop: '6px', fontSize: '11px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                            💬 {meal.notes}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           ) : (
+            /* Traditional Table View */
             <div className="calories-journal-table-wrap">
               <table className="calories-journal-table">
                 <thead>
@@ -248,17 +427,17 @@ export const MealsPage: React.FC<MealsPageProps> = ({
                         {formatTime(meal.eatenAt)}
                       </td>
                       <td style={{ fontSize: 'var(--text-xs)' }}>
-                        {meal.quantity.amount} {meal.quantity.unit}
+                        {meal.quantity?.amount || 1} {meal.quantity?.unit || 'serving'}
                       </td>
                       <td>
-                        <strong style={{ fontFamily: 'var(--font-mono)' }}>{meal.nutrition.caloriesKcal} kcal</strong>
+                        <strong style={{ fontFamily: 'var(--font-mono)' }}>{meal.nutrition?.caloriesKcal || 0} kcal</strong>
                       </td>
                       <td style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
-                        {meal.nutrition.proteinG}g / {meal.nutrition.carbsG}g / {meal.nutrition.fatG}g
+                        {meal.nutrition?.proteinG || 0}g / {meal.nutrition?.carbsG || 0}g / {meal.nutrition?.fatG || 0}g
                       </td>
                       <td>
                         <Badge variant={meal.source === 'ai' ? 'forest' : 'neutral'}>
-                          {meal.source === 'ai' ? 'AI Extracted' : 'Manual'}
+                          {meal.source === 'ai' ? '🌱 AI Extracted' : '✏️ Manual'}
                         </Badge>
                       </td>
                       <td>

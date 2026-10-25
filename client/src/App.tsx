@@ -827,6 +827,7 @@ export const App: React.FC = () => {
                 consumedFat={todayFat}
                 onQuickLogMeal={handleSaveMeal}
                 userProfile={userProfile || undefined}
+                onUpdateProfile={handleSaveUserProfile}
               />
             )}
 
