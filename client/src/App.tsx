@@ -813,6 +813,9 @@ export const App: React.FC = () => {
                 onEditMeal={handleOpenEditMeal}
                 onDeleteMeal={handleDeleteMeal}
                 onOpenAIScan={() => setActiveTab('ai-scan')}
+                onBatchImportMeals={(importedMeals) => {
+                  setMeals((prev) => [...importedMeals, ...prev]);
+                }}
               />
             )}
 

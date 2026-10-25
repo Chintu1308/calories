@@ -12,6 +12,7 @@ import {
   Icon,
 } from '../components/ui/index.js';
 import type { MealItem, MealType } from '../types/nutrition.js';
+import { BatchMealImportModal } from '../components/meals/BatchMealImportModal.js';
 
 export interface MealsPageProps {
   meals: MealItem[];
@@ -19,6 +20,7 @@ export interface MealsPageProps {
   onEditMeal?: (meal: MealItem) => void;
   onDeleteMeal: (mealId: string) => void;
   onOpenAIScan: () => void;
+  onBatchImportMeals?: (importedMeals: MealItem[]) => void;
 }
 
 function checkMealDateFilter(eatenAt: string, filter: string): boolean {
@@ -51,11 +53,13 @@ export const MealsPage: React.FC<MealsPageProps> = ({
   onEditMeal,
   onDeleteMeal,
   onOpenAIScan,
+  onBatchImportMeals,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [dateFilter, setDateFilter] = useState<string>('today');
   const [viewMode, setViewMode] = useState<'timeline' | 'table'>('timeline');
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -104,7 +108,16 @@ export const MealsPage: React.FC<MealsPageProps> = ({
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <Button
+            variant="outline"
+            size="md"
+            leftIcon={<Icon name="reports" size={16} />}
+            onClick={() => setIsBatchModalOpen(true)}
+            style={{ borderColor: 'var(--color-forest-green)', color: 'var(--color-forest-green)' }}
+          >
+            📊 AI Table / Batch Log
+          </Button>
           <Button
             variant="outline"
             size="md"
@@ -497,6 +510,17 @@ export const MealsPage: React.FC<MealsPageProps> = ({
           </div>
         </CardContent>
       </Card>
+
+      {/* AI Batch & Tabular Meal Import Modal */}
+      <BatchMealImportModal
+        isOpen={isBatchModalOpen}
+        onClose={() => setIsBatchModalOpen(false)}
+        onMealsImported={(newMeals) => {
+          if (onBatchImportMeals) {
+            onBatchImportMeals(newMeals);
+          }
+        }}
+      />
     </div>
   );
 };

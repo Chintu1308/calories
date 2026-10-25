@@ -126,6 +126,31 @@ export interface ChatNutritionResponse {
   contextSummary: ChatNutritionContextSummary;
 }
 
+export interface BatchExtractedMealItem {
+  tempId: string;
+  date: string;
+  eatenAt: string;
+  mealType: MealType;
+  foodName: string;
+  quantity: { amount: number; unit: string };
+  nutrition: {
+    caloriesKcal: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+  };
+  notes?: string;
+}
+
+export interface BatchExtractTableResponse {
+  success: boolean;
+  message: string;
+  totalParsed: number;
+  distinctDates: string[];
+  meals: BatchExtractedMealItem[];
+  committedMeals?: MealItem[];
+}
+
 export interface SmartRecommendationItem {
   id: string;
   foodName: string;
@@ -516,6 +541,20 @@ export const apiClient = {
     return request<ChatNutritionResponse>('/ai/chat', {
       method: 'POST',
       body: JSON.stringify({ message, conversationHistory, clientDate }),
+    });
+  },
+
+  /**
+   * Analyzes tabular data (Markdown tables, CSV, TSV, or multi-date structured logs) with AI.
+   * Parses multiple meals across different dates, calculates macros, and optionally commits to MongoDB.
+   */
+  async batchExtractTable(params: {
+    rawText: string;
+    autoCommit?: boolean;
+  }): Promise<BatchExtractTableResponse> {
+    return request<BatchExtractTableResponse>('/ai/batch-extract-table', {
+      method: 'POST',
+      body: JSON.stringify(params),
     });
   },
 };

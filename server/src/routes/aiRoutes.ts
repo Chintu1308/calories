@@ -8,6 +8,7 @@ import { DietInstruction } from '../models/DietInstruction.js';
 import { extractNutritionFromImage } from '../services/aiVisionService.js';
 import { parseDietPlanPdf } from '../services/dietPdfService.js';
 import { processNutritionChat } from '../services/aiChatService.js';
+import { extractBatchMealsFromTable } from '../services/aiBatchTableService.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { AppError } from '../errors/AppError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -299,5 +300,34 @@ aiRouter.post(
     );
 
     res.status(200).json(chatResult);
+  })
+);
+
+/**
+ * POST /api/v1/ai/batch-extract-table
+ * Analyzes tabular data (Markdown tables, CSV, TSV, or multi-date structured logs).
+ * Extracts all meals, calculates/estimates nutritional macros across all dates,
+ * and optionally bulk-persists them to MongoDB under the user's account.
+ */
+aiRouter.post(
+  '/batch-extract-table',
+  asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw AppError.unauthorized();
+    }
+
+    const { rawText, autoCommit } = req.body;
+
+    if (!rawText || typeof rawText !== 'string' || rawText.trim().length === 0) {
+      throw AppError.badRequest('Raw table text is required. Please provide Markdown, CSV, or formatted meal rows.');
+    }
+
+    const result = await extractBatchMealsFromTable(
+      rawText.trim(),
+      req.user.userId,
+      Boolean(autoCommit)
+    );
+
+    res.status(200).json(result);
   })
 );

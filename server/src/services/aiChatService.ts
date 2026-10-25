@@ -4,6 +4,7 @@ import { User } from '../models/User.js';
 import { Goal } from '../models/Goal.js';
 import { Meal } from '../models/Meal.js';
 import { DietInstruction } from '../models/DietInstruction.js';
+import { extractBatchMealsFromTable } from './aiBatchTableService.js';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -280,6 +281,34 @@ export async function processNutritionChat(
     activeDietRulesCount: activeInstructions.length,
     todayMealCount: todayMeals.length,
   };
+
+  // 4b. AI Batch & Tabular Multi-Meal Ingestion Check
+  const isTabularInput =
+    (userMessage.includes('|') && userMessage.split('\n').length >= 2) ||
+    (userMessage.includes(',') && userMessage.split('\n').length >= 2 && /\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}/.test(userMessage)) ||
+    (/\d{4}-\d{2}-\d{2}/.test(userMessage) && (userMessage.toLowerCase().includes('breakfast') || userMessage.toLowerCase().includes('lunch') || userMessage.toLowerCase().includes('dinner')));
+
+  if (isTabularInput) {
+    const batchResult = await extractBatchMealsFromTable(userMessage, userId, true);
+    if (batchResult.success && batchResult.totalParsed > 0) {
+      const datesList = batchResult.distinctDates.join(', ');
+      const mealsList = batchResult.meals
+        .map((m) => `• **${m.date}** [${m.mealType}]: ${m.foodName} (${m.nutrition.caloriesKcal} kcal · ${m.nutrition.proteinG}g P · ${m.nutrition.carbsG}g C · ${m.nutrition.fatG}g F)`)
+        .join('\n');
+
+      return {
+        reply: `✅ **Successfully parsed and logged ${batchResult.totalParsed} meal(s) across ${batchResult.distinctDates.length} date(s) into your meal journal!**\n\n` +
+          `**Logged Entries:**\n${mealsList}\n\n` +
+          `All entries have been recorded in MongoDB with their respective dates (${datesList}). Your journal timeline and historical analytics are fully updated!`,
+        suggestedPrompts: [
+          'View my updated weekly trend',
+          'How is my daily protein deficit?',
+          'What should I eat next?',
+        ],
+        contextSummary: summary,
+      };
+    }
+  }
 
   // 5. Check if Gemini API is available
   const geminiKey = env.GEMINI_API_KEY;
