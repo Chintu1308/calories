@@ -1,19 +1,19 @@
-# Calories — Personal Nutrition & Calorie Tracking Platform
+# Calories - Personal Nutrition & Calorie Tracking Platform
+<div align="center">
+  <img src="client/public/branding/calories-banner.png" alt="Calories banner">
+</div>
 
-> **"Your nutrition, made clearer."**  
 > An Editorial Health-Tech platform pairing clinical precision, privacy-preserving AI assistance, and transparent nutritional analytics.
 
 ---
 
 ## 🌐 Live Demo & Submission Links
 
-- **🚀 Live Application:** [https://calories.bhhc.me](https://calories.bhhc.me) *(Alternative Vercel deployment: [https://calories-app.vercel.app](https://calories-app.vercel.app))*
+- **🚀 Live Application:** [https://calories.bhhc.me](https://calories.bhhc.me) 
 - **📦 GitHub Repository:** [https://github.com/Chintu1308/calories](https://github.com/Chintu1308/calories)
-- **📹 Demo Video Walkthrough:**
+- **📹 Demo Video and Project Walkthrough:**
   
-  [![Calories Product Walkthrough](https://img.shields.io/badge/▶️%20Watch%20Demo%20Video-YouTube-red?style=for-the-badge&logo=youtube)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID_HERE)
-  
-  > *[🎥 Demo Video Placeholder — Click above or replace `YOUR_VIDEO_ID_HERE` with your final YouTube/Loom demo recording link]*
+  <video controls src="calories-demo.mp4" title="Calories Demo"></video>
 
 ---
 
@@ -252,13 +252,13 @@ VITE_API_URL=
 
 Open two terminal windows:
 
-**Terminal 1 — Backend API:**
+**Terminal 1 - Backend API:**
 ```bash
 npm run dev:server
 # Server starts on http://localhost:5000
 ```
 
-**Terminal 2 — Frontend Application:**
+**Terminal 2 - Frontend Application:**
 ```bash
 npm run dev:client
 # Frontend opens at http://localhost:5173
@@ -275,12 +275,12 @@ Visit **`http://localhost:5173`** in your browser.
 | `PORT` | No | `5000` | Port on which the Express server listens |
 | `NODE_ENV` | No | `development` | `development`, `production`, or `test` |
 | `CLIENT_ORIGIN` | No | `http://localhost:5173` | Allowed CORS origin(s) |
-| `MONGODB_URI` | **Yes** | — | MongoDB Atlas connection string |
-| `JWT_SECRET` | **Yes** | — | HMAC-SHA256 secret (32+ characters) |
-| `GEMINI_API_KEY` | **Yes** | — | Google Gemini API key for vision, batch table, and chat |
-| `SUPABASE_URL` | No | — | Supabase project URL |
-| `SUPABASE_ANON_KEY` | No | — | Supabase public anonymous API key |
-| `SUPABASE_SERVICE_ROLE_KEY` | No | — | Supabase administrative service role key |
+| `MONGODB_URI` | **Yes** | - | MongoDB Atlas connection string |
+| `JWT_SECRET` | **Yes** | - | HMAC-SHA256 secret (32+ characters) |
+| `GEMINI_API_KEY` | **Yes** | - | Google Gemini API key for vision, batch table, and chat |
+| `SUPABASE_URL` | No | - | Supabase project URL |
+| `SUPABASE_ANON_KEY` | No | - | Supabase public anonymous API key |
+| `SUPABASE_SERVICE_ROLE_KEY` | No | - | Supabase administrative service role key |
 
 ---
 
@@ -289,37 +289,37 @@ Visit **`http://localhost:5173`** in your browser.
 Base URL: `/api/v1`
 
 ### Authentication & User Profile
-- `POST /api/v1/auth/register` — Create a new account with onboarding metrics (height, weight, allergies, supplements).
-- `POST /api/v1/auth/login` — Authenticate and receive a Bearer JWT.
-- `GET /api/v1/auth/me` — Retrieve the current authenticated user's profile and active settings.
-- `PUT /api/v1/auth/profile` — Update user profile details, measurements, and supplements.
+- `POST /api/v1/auth/register` - Create a new account with onboarding metrics (height, weight, allergies, supplements).
+- `POST /api/v1/auth/login` - Authenticate and receive a Bearer JWT.
+- `GET /api/v1/auth/me` - Retrieve the current authenticated user's profile and active settings.
+- `PUT /api/v1/auth/profile` - Update user profile details, measurements, and supplements.
 
 ### Nutrition Goals
-- `GET /api/v1/goals` — Retrieve active nutrition goals (calories, protein, carbs, fat, target weight).
-- `PUT /api/v1/goals` — Idempotently upsert active goals.
-- `POST /api/v1/goals` — Archive the prior goal and establish a new active milestone.
-- `GET /api/v1/goals/history` — Retrieve historical goals chronologically.
+- `GET /api/v1/goals` - Retrieve active nutrition goals (calories, protein, carbs, fat, target weight).
+- `PUT /api/v1/goals` - Idempotently upsert active goals.
+- `POST /api/v1/goals` - Archive the prior goal and establish a new active milestone.
+- `GET /api/v1/goals/history` - Retrieve historical goals chronologically.
 
 ### Meals & Timeline Journal
-- `GET /api/v1/meals` — Paginated meal log with date, mealType, and text search filters.
-- `POST /api/v1/meals` — Record a new meal entry.
-- `GET /api/v1/meals/:id` — Fetch details for a specific meal.
-- `PATCH /api/v1/meals/:id` — Update an existing meal entry.
-- `DELETE /api/v1/meals/:id` — Delete a meal entry.
+- `GET /api/v1/meals` - Paginated meal log with date, mealType, and text search filters.
+- `POST /api/v1/meals` - Record a new meal entry.
+- `GET /api/v1/meals/:id` - Fetch details for a specific meal.
+- `PATCH /api/v1/meals/:id` - Update an existing meal entry.
+- `DELETE /api/v1/meals/:id` - Delete a meal entry.
 
 ### AI Capabilities
-- `POST /api/v1/ai/extract` — Multipart image upload for vision extraction and health compliance analysis (proposal only; uncommitted).
-- `POST /api/v1/ai/batch-extract-table` — Ingest Markdown tables, CSV, TSV, or multi-date text logs with optional automatic MongoDB commit.
-- `POST /api/v1/ai/chat` — Conversational nutritionist assistant with live macro context, hydration commands, and table parsing.
-- `POST /api/v1/ai/upload-diet-pdf` — Upload medical prescription / diet plan PDF for automated extraction of targets, macros, and restrictions.
-- `GET /api/v1/ai/diet-instructions` — Retrieve active clinical diet instructions for the authenticated user.
-- `DELETE /api/v1/ai/diet-instructions` — Remove active clinical diet instructions.
+- `POST /api/v1/ai/extract` - Multipart image upload for vision extraction and health compliance analysis (proposal only; uncommitted).
+- `POST /api/v1/ai/batch-extract-table` - Ingest Markdown tables, CSV, TSV, or multi-date text logs with optional automatic MongoDB commit.
+- `POST /api/v1/ai/chat` - Conversational nutritionist assistant with live macro context, hydration commands, and table parsing.
+- `POST /api/v1/ai/upload-diet-pdf` - Upload medical prescription / diet plan PDF for automated extraction of targets, macros, and restrictions.
+- `GET /api/v1/ai/diet-instructions` - Retrieve active clinical diet instructions for the authenticated user.
+- `DELETE /api/v1/ai/diet-instructions` - Remove active clinical diet instructions.
 
 ### Reports & Analytics
-- `GET /api/v1/reports/weekly-calories` — Dense calorie trajectory compared against target lines.
-- `GET /api/v1/reports/macros` — Macronutrient totals and Atwater energy percentage distribution.
-- `GET /api/v1/reports/micronutrients` — Honest absence micronutrient aggregation.
-- `GET /api/v1/reports/goals` — Actual averages versus target goal compliance rate.
+- `GET /api/v1/reports/weekly-calories` - Dense calorie trajectory compared against target lines.
+- `GET /api/v1/reports/macros` - Macronutrient totals and Atwater energy percentage distribution.
+- `GET /api/v1/reports/micronutrients` - Honest absence micronutrient aggregation.
+- `GET /api/v1/reports/goals` - Actual averages versus target goal compliance rate.
 
 ---
 
@@ -368,10 +368,12 @@ A multi-stage `Dockerfile` is provided in the repository root for self-hosted co
 ---
 
 ## 👥 Contributors & Acknowledgements
-- **Author:** [Chintu1308](https://github.com/Chintu1308)
+- **Author:** [Bongu Hari Hara Charan](https://github.com/Chintu1308)
 - **Design Philosophy:** Premium Editorial Health-Tech
 - **Built for:** Typeface Calorie Tracking Platform Submission
 
 ---
 
-*Calories — Your nutrition, made clearer.*
+<div align="center">
+  <img src="client/public/branding/calories-tagline.png" alt="Calories Tagline">
+</div>

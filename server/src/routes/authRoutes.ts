@@ -118,46 +118,28 @@ authRouter.post(
 
     // Check existing MongoDB profile
     const existing = await User.findOne({ email: validated.email });
-    if (existing && !supabaseUserId) {
+    if (existing) {
       throw AppError.conflict('An account with this email address already exists');
     }
 
     // Only hash password if running in offline mode without Supabase
     const passwordHash = !isSupabaseConfigured() ? await hashPassword(validated.password) : undefined;
 
-    let user = existing;
-    if (user) {
-      user.supabaseId = supabaseUserId || user.supabaseId;
-      user.name = validated.name;
-      user.heightCm = validated.heightCm;
-      user.currentWeightKg = validated.currentWeightKg;
-      user.targetWeightKg = validated.targetWeightKg;
-      user.targetWeeks = validated.targetWeeks;
-      user.allergies = validated.allergies;
-      user.supplements = validated.supplements as any;
-      user.primaryGoal = validated.primaryGoal;
-      if (termsAccepted) {
-        user.termsAccepted = true;
-        user.termsAcceptedAt = new Date(nowIso);
-      }
-      await user.save();
-    } else {
-      user = await User.create({
-        supabaseId: supabaseUserId || undefined,
-        email: validated.email,
-        passwordHash,
-        name: validated.name,
-        heightCm: validated.heightCm,
-        currentWeightKg: validated.currentWeightKg,
-        targetWeightKg: validated.targetWeightKg,
-        targetWeeks: validated.targetWeeks,
-        allergies: validated.allergies,
-        supplements: validated.supplements,
-        primaryGoal: validated.primaryGoal,
-        termsAccepted,
-        termsAcceptedAt: termsAccepted ? new Date(nowIso) : undefined,
-      });
-    }
+    const user = await User.create({
+      supabaseId: supabaseUserId || undefined,
+      email: validated.email,
+      passwordHash,
+      name: validated.name,
+      heightCm: validated.heightCm,
+      currentWeightKg: validated.currentWeightKg,
+      targetWeightKg: validated.targetWeightKg,
+      targetWeeks: validated.targetWeeks,
+      allergies: validated.allergies,
+      supplements: validated.supplements,
+      primaryGoal: validated.primaryGoal,
+      termsAccepted,
+      termsAcceptedAt: termsAccepted ? new Date(nowIso) : undefined,
+    });
 
     const effectiveUserId = supabaseUserId || user._id.toString();
 
