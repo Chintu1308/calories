@@ -42,7 +42,11 @@ export const MealTimeline: React.FC<MealTimelineProps> = ({
   onToggleSupplement,
   onAddSupplement,
 }) => {
-  const categories: MealType[] = ['Breakfast', 'Lunch', 'Dinner', 'Snacks'];
+  const standardCategories: MealType[] = ['Breakfast', 'Lunch', 'Dinner', 'Snacks'];
+  const extraCategories = Array.from(
+    new Set(meals.map((m) => m.mealType).filter((cat) => !standardCategories.includes(cat)))
+  );
+  const categories: MealType[] = [...standardCategories, ...extraCategories];
 
   if (isLoading) {
     return (
