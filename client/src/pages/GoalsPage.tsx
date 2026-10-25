@@ -11,7 +11,7 @@ import {
   FormField,
   Icon,
 } from '../components/ui/index.js';
-import type { DailyGoal, MealItem } from '../types/nutrition.js';
+import type { DailyGoal, MealItem, UserProfile } from '../types/nutrition.js';
 import { generateWeightProjection } from '../utils/weightProjection.js';
 import { apiClient, type SmartRecommendationItem } from '../api/apiClient.js';
 
@@ -24,6 +24,7 @@ export interface GoalsPageProps {
   consumedCarbs?: number;
   consumedFat?: number;
   onQuickLogMeal?: (meal: MealItem) => void;
+  userProfile?: UserProfile;
 }
 
 function generateQuickLogMealId(): string {
@@ -43,6 +44,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
   consumedCarbs = 0,
   consumedFat = 0,
   onQuickLogMeal: _onQuickLogMeal,
+  userProfile,
 }) => {
   // Modal states for Add Goal & Edit Goal
   const [isAddGoalModalOpen, setIsAddGoalModalOpen] = useState(false);
@@ -60,6 +62,26 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
 
   const [validationError, setValidationError] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  // Synchronize form states whenever active goal is updated
+  useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect
+    setGoalTitle(currentGoal.title || 'Fat Loss & Lean Definition');
+    setCalories(String(currentGoal.dailyCaloriesKcal));
+    setProtein(String(currentGoal.proteinGrams));
+    setCarbs(String(currentGoal.carbohydrateGrams));
+    setFat(String(currentGoal.fatGrams));
+    setTargetWeight(String(currentGoal.targetWeight || 70.0));
+    setTargetWeeks(String(currentGoal.targetWeeks || 8));
+  }, [
+    currentGoal.title,
+    currentGoal.dailyCaloriesKcal,
+    currentGoal.proteinGrams,
+    currentGoal.carbohydrateGrams,
+    currentGoal.fatGrams,
+    currentGoal.targetWeight,
+    currentGoal.targetWeeks,
+  ]);
 
   // Dynamic ML Recommendation Engine State
   const [recommendations, setRecommendations] = useState<SmartRecommendationItem[]>([]);
@@ -164,9 +186,20 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
   const fatPct = totalMacroKcal > 0 ? Math.round((fatKcal / totalMacroKcal) * 100) : 0;
 
   // Generate weight trajectory projection data
-  const numTargetWeight = Number(targetWeight) || 70.0;
-  const numWeeks = Number(targetWeeks) || 8;
+  const numTargetWeight = currentGoal.targetWeight || Number(targetWeight) || 70.0;
+  const numWeeks = currentGoal.targetWeeks || Number(targetWeeks) || 8;
   const projectionPoints = generateWeightProjection(currentWeightKg, numTargetWeight, numWeeks);
+
+  // Dynamically compute metabolic deficit / surplus based on calorie target vs TDEE
+  const userHeight = userProfile?.heightCm || 175;
+  const userBmr = 10 * currentWeightKg + 6.25 * userHeight - 5 * 28 + 5;
+  const userTdee = Math.round(userBmr * 1.4);
+  const netDeficit = Math.round(currentGoal.dailyCaloriesKcal - userTdee);
+  const deficitBadgeText = netDeficit < 0
+    ? `Est. Deficit: ~${Math.abs(netDeficit)} kcal/day`
+    : netDeficit > 0
+      ? `Est. Surplus: +${netDeficit} kcal/day`
+      : `Maintenance: ~${userTdee} kcal/day`;
 
   const handleSaveGoalForm = (e: React.FormEvent) => {
     e.preventDefault();
@@ -497,7 +530,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
               <CardTitle>Timeline Approximation &amp; Trajectory</CardTitle>
             </div>
             <Badge variant="sage">
-              Est. Deficit: ~450 kcal/day • Goal in {numWeeks} Weeks
+              {deficitBadgeText} • Goal in {numWeeks} Weeks
             </Badge>
           </div>
           <CardDescription>

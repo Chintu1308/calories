@@ -252,3 +252,64 @@ test('Cross-tenant user isolation: User A token cannot impersonate or read User 
   assert.equal(meBData.user.email, 'user.b@example.com');
   assert.equal(meBData.user._id, dataB.user._id);
 });
+
+test('PUT /api/v1/auth/profile requires authentication (401)', async () => {
+  const res = await fetch(`${baseUrl}/api/v1/auth/profile`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targetWeightKg: 68 }),
+  });
+  assert.equal(res.status, 401);
+});
+
+test('PUT /api/v1/auth/profile updates user and synchronizes active Goal in MongoDB', async () => {
+  // Login User A
+  const loginRes = await fetch(`${baseUrl}/api/v1/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: 'user.a@example.com',
+      password: 'Password123!',
+    }),
+  });
+  const { token } = (await loginRes.json()) as { token: string };
+
+  // Update profile with new target weight (66kg), weeks (12), and primary goal ('muscle_gain')
+  const updateRes = await fetch(`${baseUrl}/api/v1/auth/profile`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      targetWeightKg: 66,
+      targetWeeks: 12,
+      primaryGoal: 'muscle_gain',
+    }),
+  });
+
+  assert.equal(updateRes.status, 200);
+  const data = (await updateRes.json()) as {
+    user: { targetWeightKg: number; targetWeeks: number; primaryGoal: string };
+    goal: { targetWeight: number; targetWeeks: number; title: string };
+  };
+
+  // 1. Verify User collection updated in MongoDB
+  assert.equal(data.user.targetWeightKg, 66);
+  assert.equal(data.user.targetWeeks, 12);
+  assert.equal(data.user.primaryGoal, 'muscle_gain');
+
+  // 2. Verify Goal collection synchronized in MongoDB
+  assert.equal(data.goal.targetWeight, 66);
+  assert.equal(data.goal.targetWeeks, 12);
+  assert.ok(data.goal.title.includes('Muscle Gain'));
+
+  // 3. Confirm persistence by fetching GET /api/v1/goals
+  const getGoalRes = await fetch(`${baseUrl}/api/v1/goals`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  assert.equal(getGoalRes.status, 200);
+  const activeGoalData = (await getGoalRes.json()) as { goal: { targetWeight: number; targetWeeks: number } };
+  assert.equal(activeGoalData.goal.targetWeight, 66);
+  assert.equal(activeGoalData.goal.targetWeeks, 12);
+});

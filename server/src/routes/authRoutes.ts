@@ -4,7 +4,7 @@ import { Goal } from '../models/Goal.js';
 import { supabase, isSupabaseConfigured } from '../config/supabase.js';
 import { env } from '../config/env.js';
 import { hashPassword, verifyPassword, generateToken } from '../utils/security.js';
-import { registerSchema, loginSchema } from '../validators/authValidator.js';
+import { registerSchema, loginSchema, updateProfileSchema } from '../validators/authValidator.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { AppError } from '../errors/AppError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -201,6 +201,116 @@ authRouter.get(
 
     res.status(200).json({
       user: user.toJSON(),
+    });
+  })
+);
+
+/**
+ * PUT /api/v1/auth/profile
+ * Updates authenticated user profile details (height, weight, targetWeightKg, targetWeeks,
+ * primaryGoal, allergies, supplements) in MongoDB and synchronizes the active Goal.
+ *
+ * @returns HTTP 200 with `{ user, goal }`
+ * @throws 401 Unauthorized if unauthenticated
+ * @throws 404 Not Found if user record does not exist
+ */
+authRouter.put(
+  '/profile',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw AppError.unauthorized();
+    }
+
+    const validated = updateProfileSchema.parse(req.body);
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      throw AppError.notFound('User profile not found');
+    }
+
+    // 1. Update user fields
+    if (validated.name !== undefined) user.name = validated.name;
+    if (validated.heightCm !== undefined) user.heightCm = validated.heightCm;
+    if (validated.currentWeightKg !== undefined) user.currentWeightKg = validated.currentWeightKg;
+    if (validated.targetWeightKg !== undefined) user.targetWeightKg = validated.targetWeightKg;
+    if (validated.targetWeeks !== undefined) user.targetWeeks = validated.targetWeeks;
+    if (validated.allergies !== undefined) user.allergies = validated.allergies;
+    if (validated.supplements !== undefined) user.supplements = validated.supplements as any;
+    if (validated.primaryGoal !== undefined) user.primaryGoal = validated.primaryGoal;
+
+    await user.save();
+
+    // 2. Synchronize active Goal in MongoDB
+    let activeGoal = await Goal.findOne({ userId: req.user.userId, isActive: true });
+
+    const weightKg = user.currentWeightKg || 70;
+    const heightCm = user.heightCm || 175;
+    const bmr = 10 * weightKg + 6.25 * heightCm - 5 * 28 + 5;
+    const tdee = Math.round(bmr * 1.4);
+
+    let calorieTarget = tdee;
+    let proteinTarget = Math.round(weightKg * 2.0);
+    let fatTarget = Math.round(weightKg * 0.8);
+
+    if (user.primaryGoal === 'fat_loss') {
+      calorieTarget = Math.max(1400, tdee - 500);
+      proteinTarget = Math.round(weightKg * 2.2);
+    } else if (user.primaryGoal === 'muscle_gain') {
+      calorieTarget = tdee + 350;
+      proteinTarget = Math.round(weightKg * 2.2);
+      fatTarget = Math.round(weightKg * 0.9);
+    } else if (user.primaryGoal === 'athletic') {
+      calorieTarget = tdee + 200;
+      proteinTarget = Math.round(weightKg * 1.8);
+    }
+
+    const remainingCals = calorieTarget - (proteinTarget * 4) - (fatTarget * 9);
+    const carbsTarget = Math.max(50, Math.round(remainingCals / 4));
+
+    const goalDate = new Date();
+    goalDate.setDate(goalDate.getDate() + (user.targetWeeks || 8) * 7);
+
+    const goalTitle = `${(user.primaryGoal || 'fat_loss').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())} Target`;
+
+    if (activeGoal) {
+      const shouldRecalculateMacros = validated.primaryGoal !== undefined ||
+        validated.currentWeightKg !== undefined ||
+        validated.heightCm !== undefined;
+
+      activeGoal.targetWeight = user.targetWeightKg;
+      activeGoal.targetWeeks = user.targetWeeks;
+      activeGoal.targetDate = goalDate.toISOString().split('T')[0];
+
+      if (shouldRecalculateMacros) {
+        activeGoal.dailyCaloriesKcal = calorieTarget;
+        activeGoal.proteinGrams = proteinTarget;
+        activeGoal.carbohydrateGrams = carbsTarget;
+        activeGoal.fatGrams = fatTarget;
+        activeGoal.title = goalTitle;
+      }
+
+      await activeGoal.save();
+    } else {
+      activeGoal = await Goal.create({
+        userId: user._id,
+        title: goalTitle,
+        dailyCaloriesKcal: calorieTarget,
+        proteinGrams: proteinTarget,
+        carbohydrateGrams: carbsTarget,
+        fatGrams: fatTarget,
+        targetWeight: user.targetWeightKg,
+        weightUnit: 'kg',
+        targetWeeks: user.targetWeeks || 8,
+        targetDate: goalDate.toISOString().split('T')[0],
+        isActive: true,
+      });
+    }
+
+    res.status(200).json({
+      message: 'Profile and goals synchronized successfully in MongoDB',
+      user: user.toJSON(),
+      goal: activeGoal ? activeGoal.toJSON() : null,
     });
   })
 );

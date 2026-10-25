@@ -26,5 +26,17 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
+export const updateProfileSchema = z.object({
+  name: z.string().min(1, 'Full name cannot be empty').trim().optional(),
+  heightCm: z.coerce.number().min(50).max(300).optional(),
+  currentWeightKg: z.coerce.number().min(20).max(500).optional(),
+  targetWeightKg: z.coerce.number().min(20).max(500).optional(),
+  targetWeeks: z.coerce.number().min(1).max(104).optional(),
+  allergies: z.array(z.string().trim()).optional(),
+  supplements: z.array(supplementInputSchema).optional(),
+  primaryGoal: z.enum(['fat_loss', 'muscle_gain', 'maintenance', 'athletic']).optional(),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

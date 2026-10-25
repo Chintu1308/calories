@@ -248,7 +248,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 <div style={{ background: 'var(--color-sand-soft)', padding: '12px', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
                   <div style={{ fontSize: '11px', color: 'var(--color-forest-green)' }}>Target Weight</div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-forest-green)' }}>
-                    {userProfile.targetWeightKg} kg
+                    {goal?.targetWeight || userProfile.targetWeightKg} kg
                   </div>
                 </div>
 

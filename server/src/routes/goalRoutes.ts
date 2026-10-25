@@ -133,8 +133,24 @@ goalRouter.put(
       }
     );
 
+    // Keep user profile in sync with updated goal targets in MongoDB
+    let updatedUser;
+    if (validated.targetWeight !== undefined || validated.targetWeeks !== undefined) {
+      updatedUser = await User.findByIdAndUpdate(
+        req.user.userId,
+        {
+          $set: {
+            ...(validated.targetWeight !== undefined ? { targetWeightKg: validated.targetWeight } : {}),
+            ...(validated.targetWeeks !== undefined ? { targetWeeks: validated.targetWeeks } : {}),
+          },
+        },
+        { returnDocument: 'after' }
+      );
+    }
+
     res.status(200).json({
       goal: goal.toJSON(),
+      user: updatedUser ? updatedUser.toJSON() : undefined,
     });
   })
 );
@@ -170,8 +186,24 @@ goalRouter.post(
       isActive: true,
     });
 
+    // Keep user profile in sync with updated goal targets in MongoDB
+    let updatedUser;
+    if (validated.targetWeight !== undefined || validated.targetWeeks !== undefined) {
+      updatedUser = await User.findByIdAndUpdate(
+        req.user.userId,
+        {
+          $set: {
+            ...(validated.targetWeight !== undefined ? { targetWeightKg: validated.targetWeight } : {}),
+            ...(validated.targetWeeks !== undefined ? { targetWeeks: validated.targetWeeks } : {}),
+          },
+        },
+        { returnDocument: 'after' }
+      );
+    }
+
     res.status(201).json({
       goal: goal.toJSON(),
+      user: updatedUser ? updatedUser.toJSON() : undefined,
     });
   })
 );

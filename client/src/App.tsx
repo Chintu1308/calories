@@ -33,6 +33,36 @@ const DEFAULT_INITIAL_GOAL: DailyGoal = {
   title: 'Daily Nutrition Target',
 };
 
+function mapApiUserToProfile(u: any, prev?: UserProfile | null): UserProfile {
+  const mappedSupplements: SupplementItem[] = (u.supplements || []).map((s: any) => ({
+    id: s.id || `supp_${Math.random().toString(36).substring(2, 7)}`,
+    name: s.name,
+    dosage: s.dosage,
+    timing: (s.timing as SupplementItem['timing']) || 'Morning',
+    notes: s.notes,
+  }));
+
+  const targetW = u.targetWeightKg !== undefined ? u.targetWeightKg : prev?.targetWeightKg || 70;
+  const targetWks = u.targetWeeks !== undefined ? u.targetWeeks : prev?.targetWeeks || 8;
+  const d = new Date();
+  d.setDate(d.getDate() + targetWks * 7);
+
+  return {
+    id: u._id || u.id || prev?.id || '',
+    name: u.name || prev?.name || 'User',
+    email: u.email || prev?.email || '',
+    heightCm: u.heightCm || prev?.heightCm || 175,
+    currentWeightKg: u.currentWeightKg || prev?.currentWeightKg || 75,
+    targetWeightKg: targetW,
+    targetWeeks: targetWks,
+    targetDate: d.toISOString().split('T')[0],
+    activityLevel: prev?.activityLevel || 'moderate',
+    allergies: u.allergies || prev?.allergies || [],
+    supplements: mappedSupplements.length > 0 ? mappedSupplements : prev?.supplements || [],
+    primaryGoal: (u.primaryGoal as UserProfile['primaryGoal']) || prev?.primaryGoal || 'fat_loss',
+  };
+}
+
 function getLocalDateString(d: Date = new Date()): string {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -309,7 +339,7 @@ export const App: React.FC = () => {
     waterIntakeMl: totalWaterConsumedMl,
     targetWaterMl: 3000,
     currentWeightKg: userProfile?.currentWeightKg || 74.2,
-    targetWeightKg: userProfile?.targetWeightKg || goal.targetWeight || 70.0,
+    targetWeightKg: goal.targetWeight || userProfile?.targetWeightKg || 70.0,
   };
 
   const handlePrevDay = () => {
@@ -432,28 +462,7 @@ export const App: React.FC = () => {
         // Verify session validity
         if (meRes.status === 'fulfilled' && meRes.value?.user) {
           const u = meRes.value.user;
-          const mappedSupplements: SupplementItem[] = (u.supplements || []).map((s) => ({
-            id: s.id,
-            name: s.name,
-            dosage: s.dosage,
-            timing: (s.timing as SupplementItem['timing']) || 'Morning',
-            notes: s.notes,
-          }));
-
-          setUserProfile((prev) => ({
-            id: u._id,
-            name: u.name,
-            email: u.email,
-            heightCm: u.heightCm || prev?.heightCm || 175,
-            currentWeightKg: u.currentWeightKg || prev?.currentWeightKg || 75,
-            targetWeightKg: u.targetWeightKg || prev?.targetWeightKg || 70,
-            targetWeeks: u.targetWeeks || prev?.targetWeeks || 8,
-            targetDate: prev?.targetDate || new Date().toISOString().split('T')[0],
-            activityLevel: prev?.activityLevel || 'moderate',
-            allergies: u.allergies || prev?.allergies || [],
-            supplements: mappedSupplements.length > 0 ? mappedSupplements : prev?.supplements || [],
-            primaryGoal: (u.primaryGoal as UserProfile['primaryGoal']) || prev?.primaryGoal || 'fat_loss',
-          }));
+          setUserProfile((prev) => mapApiUserToProfile(u, prev));
         } else if (meRes.status === 'rejected' && (meRes.reason as { status?: number })?.status === 401) {
           handleLogout();
           return;
@@ -559,8 +568,24 @@ export const App: React.FC = () => {
 
   const handleSaveGoal = async (updatedGoal: DailyGoal) => {
     setGoal(updatedGoal);
+    setUserProfile((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        targetWeightKg: updatedGoal.targetWeight !== undefined ? updatedGoal.targetWeight : prev.targetWeightKg,
+        targetWeeks: updatedGoal.targetWeeks !== undefined ? updatedGoal.targetWeeks : prev.targetWeeks,
+        targetDate: updatedGoal.targetDate || prev.targetDate,
+      };
+    });
+
     try {
-      await apiClient.putActiveGoal(updatedGoal);
+      const res = await apiClient.putActiveGoal(updatedGoal);
+      if (res?.goal) {
+        setGoal(res.goal);
+      }
+      if (res?.user) {
+        setUserProfile((prev) => mapApiUserToProfile(res.user, prev));
+      }
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'status' in err) {
         const status = Number((err as { status: number }).status);
@@ -580,14 +605,37 @@ export const App: React.FC = () => {
     setIsAuthModalOpen(true);
   };
 
-  const handleSaveUserProfile = (updatedProfile: UserProfile) => {
+  const handleSaveUserProfile = async (updatedProfile: UserProfile) => {
     setUserProfile(updatedProfile);
     if (updatedProfile.targetWeightKg) {
       setGoal((prev) => ({
         ...prev,
         targetWeight: updatedProfile.targetWeightKg,
         targetWeeks: updatedProfile.targetWeeks,
+        targetDate: updatedProfile.targetDate,
       }));
+    }
+
+    try {
+      const res = await apiClient.updateProfile({
+        name: updatedProfile.name,
+        heightCm: updatedProfile.heightCm,
+        currentWeightKg: updatedProfile.currentWeightKg,
+        targetWeightKg: updatedProfile.targetWeightKg,
+        targetWeeks: updatedProfile.targetWeeks,
+        allergies: updatedProfile.allergies,
+        supplements: updatedProfile.supplements,
+        primaryGoal: updatedProfile.primaryGoal,
+      });
+
+      if (res?.user) {
+        setUserProfile((prev) => mapApiUserToProfile(res.user, prev));
+      }
+      if (res?.goal) {
+        setGoal(res.goal);
+      }
+    } catch (err: unknown) {
+      console.warn('[Profile Save] Failed to persist profile to MongoDB:', err);
     }
   };
 
@@ -727,6 +775,7 @@ export const App: React.FC = () => {
                 consumedCarbs={todayCarbs}
                 consumedFat={todayFat}
                 onQuickLogMeal={handleSaveMeal}
+                userProfile={userProfile || undefined}
               />
             )}
 

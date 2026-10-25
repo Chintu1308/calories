@@ -311,6 +311,17 @@ export const apiClient = {
   },
 
   /**
+   * Updates the current authenticated user's profile and synchronizes active nutrition goals in MongoDB.
+   * @param data User profile fields to update.
+   */
+  async updateProfile(data: Record<string, unknown>): Promise<{ user: AuthResponse['user']; goal?: DailyGoal }> {
+    return request<{ user: AuthResponse['user']; goal?: DailyGoal }>('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
    * Retrieves the user's currently active nutrition and calorie goal.
    * Gracefully returns null if no active goal is found (404), avoiding unhandled rejections.
    */
@@ -327,10 +338,11 @@ export const apiClient = {
 
   /**
    * Upserts the user's active nutrition targets (calories, protein, carbs, fat, target weight).
+   * Also synchronizes target weight and timeframe with user profile in MongoDB.
    * @param goal The target nutritional specifications.
    */
-  async putActiveGoal(goal: DailyGoal): Promise<{ goal: DailyGoal }> {
-    return request<{ goal: DailyGoal }>('/goals', {
+  async putActiveGoal(goal: DailyGoal): Promise<{ goal: DailyGoal; user?: AuthResponse['user'] }> {
+    return request<{ goal: DailyGoal; user?: AuthResponse['user'] }>('/goals', {
       method: 'PUT',
       body: JSON.stringify(goal),
     });

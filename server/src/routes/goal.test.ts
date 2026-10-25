@@ -6,6 +6,7 @@ import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { app } from '../app.js';
 import { generateToken } from '../utils/security.js';
+import { User } from '../models/User.js';
 
 let mongod: MongoMemoryServer;
 let server: Server;
@@ -301,4 +302,55 @@ test('POST /api/v1/goals archives prior goal and GET /api/v1/goals/history retur
   assert.equal(dataHistory.goals[0]?.title, 'Peak Cut Phase 2');
   assert.equal(dataHistory.goals[0]?.isActive, true);
   assert.equal(dataHistory.goals[1]?.isActive, false);
+});
+
+test('PUT /api/v1/goals synchronizes targetWeightKg and targetWeeks to User profile in MongoDB', async () => {
+  await User.create({
+    _id: userAId,
+    email: 'user.a@example.com',
+    passwordHash: '$2a$10$abcdefghijklmnopqrstuv',
+    name: 'User A',
+    heightCm: 175,
+    currentWeightKg: 75,
+    targetWeightKg: 70,
+    targetWeeks: 8,
+    primaryGoal: 'fat_loss',
+  });
+
+  const res = await fetch(`${baseUrl}/api/v1/goals`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${tokenA}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      title: 'Target Sync Test',
+      dailyCaloriesKcal: 2100,
+      proteinGrams: 165,
+      carbohydrateGrams: 200,
+      fatGrams: 60,
+      targetWeight: 67.5,
+      targetWeeks: 10,
+    }),
+  });
+
+  assert.equal(res.status, 200);
+  const data = (await res.json()) as {
+    goal: { targetWeight: number; targetWeeks: number };
+    user?: { targetWeightKg: number; targetWeeks: number };
+  };
+
+  assert.equal(data.goal.targetWeight, 67.5);
+  assert.equal(data.goal.targetWeeks, 10);
+  assert.equal(data.user?.targetWeightKg, 67.5);
+  assert.equal(data.user?.targetWeeks, 10);
+
+  // Verify GET /auth/me reflects the updated targetWeightKg
+  const meRes = await fetch(`${baseUrl}/api/v1/auth/me`, {
+    headers: { Authorization: `Bearer ${tokenA}` },
+  });
+  assert.equal(meRes.status, 200);
+  const meData = (await meRes.json()) as { user: { targetWeightKg: number; targetWeeks: number } };
+  assert.equal(meData.user.targetWeightKg, 67.5);
+  assert.equal(meData.user.targetWeeks, 10);
 });
