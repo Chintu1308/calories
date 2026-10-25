@@ -957,8 +957,9 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  background: rgba(255, 255, 255, 0.18);
+  background-color: #ffffff;
   border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 .nutrition-chat-pulse-indicator {
@@ -1051,7 +1052,9 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background-color: var(--color-forest-green, #285B46);
+  background-color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1184,15 +1187,17 @@
 }
 
 .nutrition-chat-msg-avatar {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  background-color: var(--color-forest-green, #285B46);
+  background-color: #ffffff;
+  border: 1px solid var(--color-sage-green, #BFD8C2);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   margin-top: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 .nutrition-chat-msg-body {
@@ -1210,17 +1215,18 @@
 }
 
 .nutrition-chat-msg-user .nutrition-chat-msg-bubble {
-  background-color: var(--color-forest-green, #285B46);
+  background-color: var(--color-ink-navy, #152238);
   color: #ffffff;
   border-bottom-right-radius: 4px;
+  box-shadow: 0 2px 6px rgba(21, 34, 56, 0.15);
 }
 
 .nutrition-chat-msg-assistant .nutrition-chat-msg-bubble {
-  background-color: #ffffff;
-  color: var(--color-ink-navy, #152238);
-  border: 1px solid var(--border-light, #E8E2D9);
+  background-color: var(--color-forest-green, #285B46);
+  color: #ffffff;
+  border: 1px solid var(--color-forest-hover, #1E4736);
   border-bottom-left-radius: 4px;
-  box-shadow: 0 1px 3px rgba(21, 34, 56, 0.05);
+  box-shadow: 0 2px 8px rgba(40, 91, 70, 0.22);
 }
 
 .nutrition-chat-paragraph {
@@ -1229,6 +1235,15 @@
 
 .nutrition-chat-paragraph:last-child {
   margin-bottom: 0;
+}
+
+.nutrition-chat-msg-assistant .nutrition-chat-paragraph {
+  color: #ffffff;
+}
+
+.nutrition-chat-msg-assistant .nutrition-chat-paragraph strong {
+  color: #ffffff;
+  font-weight: 700;
 }
 
 .nutrition-chat-bullet-row {
@@ -1242,6 +1257,23 @@
   color: var(--color-forest-green, #285B46);
   font-weight: 700;
   line-height: 1.3;
+}
+
+.nutrition-chat-msg-assistant .nutrition-chat-bullet-row {
+  color: #ffffff;
+}
+
+.nutrition-chat-msg-assistant .nutrition-chat-bullet-dot {
+  color: #BFD8C2;
+}
+
+.nutrition-chat-msg-assistant .nutrition-chat-bullet-text {
+  color: #ffffff;
+}
+
+.nutrition-chat-msg-assistant .nutrition-chat-bullet-text strong {
+  color: #ffffff;
+  font-weight: 700;
 }
 
 .nutrition-chat-bullet-text {
@@ -1305,10 +1337,15 @@
   padding: 10px 16px;
 }
 
+.nutrition-chat-msg-assistant .nutrition-chat-thinking {
+  background-color: var(--color-forest-green, #285B46);
+  border: 1px solid var(--color-forest-hover, #1E4736);
+}
+
 .nutrition-chat-dot {
   width: 7px;
   height: 7px;
-  background-color: var(--color-forest-green, #285B46);
+  background-color: #ffffff;
   border-radius: 50%;
   animation: calories-bounce 1.4s infinite ease-in-out both;
 }

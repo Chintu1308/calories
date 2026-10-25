@@ -196,7 +196,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
             <Card className="calories-ai-teaser-card">
               <CardContent style={{ padding: '24px', display: 'flex', gap: '16px', alignItems: 'center' }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '12px', backgroundColor: 'var(--color-sage-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Icon name="ai-scan" size={28} />
+                  <Icon name="leaf" size={28} />
                 </div>
                 <div>
                   <h4 style={{ margin: 0, fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -211,7 +211,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
                 <Button
                   variant="primary"
                   size="sm"
-                  leftIcon={<Icon name="ai-scan" size={14} />}
+                  leftIcon={<Icon name="leaf" size={14} />}
                   onClick={onOpenAIScan}
                 >
                   Launch Scanner

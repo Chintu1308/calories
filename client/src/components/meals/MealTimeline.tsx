@@ -66,7 +66,7 @@ export const MealTimeline: React.FC<MealTimelineProps> = ({
           <Button
             variant="outline"
             size="sm"
-            leftIcon={<Icon name="ai-scan" size={14} />}
+            leftIcon={<Icon name="leaf" size={14} />}
             onClick={onOpenAIScan}
           >
             AI Scan
@@ -109,7 +109,7 @@ export const MealTimeline: React.FC<MealTimelineProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                leftIcon={<Icon name="ai-scan" size={14} />}
+                leftIcon={<Icon name="leaf" size={14} />}
                 onClick={onOpenAIScan}
               >
                 Scan with AI

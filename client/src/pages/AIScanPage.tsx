@@ -354,7 +354,7 @@ export const AIScanPage: React.FC<AIScanPageProps> = ({
               <Button
                 variant="primary"
                 size="md"
-                leftIcon={<Icon name="ai-scan" size={16} />}
+                leftIcon={<Icon name="leaf" size={16} />}
                 onClick={handleRunAnalysis}
                 isLoading={isAnalyzing}
                 disabled={!selectedFile && !previewUrl}
@@ -376,7 +376,7 @@ export const AIScanPage: React.FC<AIScanPageProps> = ({
           <CardHeader>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Icon name="ai-scan" size={24} />
+                <Icon name="leaf" size={24} />
                 <CardTitle>2. AI Analysis &amp; Fit for Today</CardTitle>
               </div>
 
@@ -396,7 +396,7 @@ export const AIScanPage: React.FC<AIScanPageProps> = ({
           <CardContent>
             {!hasProposal ? (
               <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                <Icon name="ai-scan" size={40} style={{ opacity: 0.4, marginBottom: '12px' }} />
+                <Icon name="leaf" size={40} style={{ opacity: 0.4, marginBottom: '12px' }} />
                 <div>Awaiting food image to extract stats, ingredients, and daily fit.</div>
               </div>
             ) : (
@@ -663,7 +663,7 @@ export const AIScanPage: React.FC<AIScanPageProps> = ({
                     size="sm"
                     disabled={!selectedPdfFile || isPdfLoading}
                     onClick={handleUploadDietPdf}
-                    leftIcon={isPdfLoading ? undefined : <Icon name="ai-scan" size={16} />}
+                    leftIcon={isPdfLoading ? undefined : <Icon name="leaf" size={16} />}
                   >
                     {isPdfLoading ? 'Extracting Guidelines...' : 'Feed to AI & Save Guidelines'}
                   </Button>

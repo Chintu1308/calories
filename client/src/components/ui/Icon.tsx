@@ -11,6 +11,7 @@ export type IconName =
   | 'fat'
   | 'goals'
   | 'heart'
+  | 'leaf'
   | 'meals'
   | 'navigation-leaf'
   | 'plus'

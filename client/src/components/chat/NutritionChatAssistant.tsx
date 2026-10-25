@@ -213,7 +213,7 @@ export const NutritionChatAssistant: React.FC<NutritionChatAssistantProps> = ({
           title="Ask AI Nutritionist"
         >
           <div className="nutrition-chat-launcher-icon-wrap">
-            <Icon name="ai-scan" size={20} />
+            <Icon name="leaf" size={20} />
             <span className="nutrition-chat-pulse-indicator" />
           </div>
           <span className="nutrition-chat-launcher-label">Ask Nutritionist AI</span>
@@ -228,7 +228,7 @@ export const NutritionChatAssistant: React.FC<NutritionChatAssistantProps> = ({
           <div className="nutrition-chat-header">
             <div className="nutrition-chat-header-left">
               <div className="nutrition-chat-avatar">
-                <Icon name="ai-scan" size={18} />
+                <Icon name="leaf" size={18} />
               </div>
               <div className="nutrition-chat-header-text">
                 <div className="nutrition-chat-header-title">
@@ -335,7 +335,7 @@ export const NutritionChatAssistant: React.FC<NutritionChatAssistantProps> = ({
                   >
                     {msg.role === 'assistant' && (
                       <div className="nutrition-chat-msg-avatar">
-                        <Icon name="ai-scan" size={14} />
+                        <Icon name="leaf" size={14} />
                       </div>
                     )}
                     <div className="nutrition-chat-msg-body">
@@ -370,7 +370,7 @@ export const NutritionChatAssistant: React.FC<NutritionChatAssistantProps> = ({
                 {isLoading && (
                   <div className="nutrition-chat-msg-row nutrition-chat-msg-assistant">
                     <div className="nutrition-chat-msg-avatar">
-                      <Icon name="ai-scan" size={14} />
+                      <Icon name="leaf" size={14} />
                     </div>
                     <div className="nutrition-chat-msg-body">
                       <div className="nutrition-chat-msg-bubble nutrition-chat-thinking">

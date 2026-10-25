@@ -105,7 +105,7 @@ export const MealsPage: React.FC<MealsPageProps> = ({
           <Button
             variant="outline"
             size="md"
-            leftIcon={<Icon name="ai-scan" size={16} />}
+            leftIcon={<Icon name="leaf" size={16} />}
             onClick={onOpenAIScan}
           >
             AI Extract

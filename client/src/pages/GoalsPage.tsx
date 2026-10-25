@@ -367,7 +367,7 @@ export const GoalsPage: React.FC<GoalsPageProps> = ({
         <CardHeader>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Icon name="ai-scan" size={24} />
+              <Icon name="leaf" size={24} />
               <div>
                 <CardTitle>AI-Recommended Foods For Today</CardTitle>
                 <CardDescription>

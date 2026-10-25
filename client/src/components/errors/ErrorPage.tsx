@@ -16,7 +16,7 @@ interface ErrorDetails {
   description: string;
   technicalDetails: string;
   badgeVariant: 'amber' | 'destructive' | 'neutral';
-  icon: 'settings' | 'ai-scan' | 'heart' | 'meals';
+  icon: 'settings' | 'ai-scan' | 'heart' | 'meals' | 'leaf';
 }
 
 const ERROR_CONFIG: Record<HttpErrorCode, ErrorDetails> = {
