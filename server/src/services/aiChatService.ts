@@ -1,5 +1,5 @@
 import { env } from '../config/env.js';
-import { findUserByAuthId } from '../models/User.js';
+import { findUserByAuthId, getAuthUserAliases } from '../models/User.js';
 import { Goal } from '../models/Goal.js';
 import { Meal } from '../models/Meal.js';
 import { DietInstruction } from '../models/DietInstruction.js';
@@ -208,13 +208,15 @@ export async function processNutritionChat(
   conversationHistory: ChatMessage[] = [],
   _clientDate?: string
 ): Promise<NutritionChatResponse> {
+  const userAliases = await getAuthUserAliases(userId);
+
   // 1. Fetch user profile
   const user = await findUserByAuthId(userId);
   const userName = user?.name || 'Friend';
   const userAllergies = user?.allergies || [];
 
   // 2. Fetch active goal
-  const goal = await Goal.findOne({ userId, isActive: true });
+  const goal = await Goal.findOne({ userId: { $in: userAliases }, isActive: true });
   const targetCalories = goal?.dailyCaloriesKcal || 2000;
   const targetProtein = goal?.proteinGrams || 150;
   const targetCarbs = goal?.carbohydrateGrams || 200;
@@ -225,7 +227,7 @@ export async function processNutritionChat(
   startOfToday.setUTCHours(0, 0, 0, 0);
 
   const todayMeals = await Meal.find({
-    userId,
+    userId: { $in: userAliases },
     eatenAt: { $gte: startOfToday },
   }).sort({ eatenAt: 1 });
 
@@ -255,7 +257,7 @@ export async function processNutritionChat(
 
   // 4. Fetch stored dietary instructions from MongoDB
   const activeInstructions = await DietInstruction.find({
-    userId,
+    userId: { $in: userAliases },
     isActive: true,
   });
   const dietRules = activeInstructions.flatMap((i) => i.dietaryRules || []);

@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import mongoose from 'mongoose';
 import { Meal } from '../models/Meal.js';
+import { getAuthUserAliases } from '../models/User.js';
 import {
   createMealSchema,
   updateMealSchema,
@@ -67,8 +68,10 @@ mealRouter.get(
 
     const { page, limit, mealType, startDate, endDate } = mealQuerySchema.parse(req.query);
 
+    const userAliases = await getAuthUserAliases(req.user.userId, req.user.email);
+
     const filter: Record<string, unknown> = {
-      userId: req.user.userId,
+      userId: { $in: userAliases },
     };
 
     if (mealType) {
@@ -126,9 +129,11 @@ mealRouter.get(
       throw AppError.badRequest('Invalid meal entry ID format');
     }
 
+    const userAliases = await getAuthUserAliases(req.user.userId, req.user.email);
+
     const meal = await Meal.findOne({
       _id: id,
-      userId: req.user.userId,
+      userId: { $in: userAliases },
     });
 
     if (!meal) {
@@ -163,9 +168,10 @@ mealRouter.patch(
     }
 
     const validated = updateMealSchema.parse(req.body);
+    const userAliases = await getAuthUserAliases(req.user.userId, req.user.email);
 
     const meal = await Meal.findOneAndUpdate(
-      { _id: id, userId: req.user.userId },
+      { _id: id, userId: { $in: userAliases } },
       { $set: validated },
       { returnDocument: 'after', runValidators: true }
     );
@@ -201,9 +207,11 @@ mealRouter.delete(
       throw AppError.badRequest('Invalid meal entry ID format');
     }
 
+    const userAliases = await getAuthUserAliases(req.user.userId, req.user.email);
+
     const result = await Meal.findOneAndDelete({
       _id: id,
-      userId: req.user.userId,
+      userId: { $in: userAliases },
     });
 
     if (!result) {

@@ -1,8 +1,8 @@
 import { Router, type Request, type Response } from 'express';
-import mongoose from 'mongoose';
 import { z } from 'zod';
 import { Meal } from '../models/Meal.js';
 import { Goal } from '../models/Goal.js';
+import { getAuthUserAliases } from '../models/User.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { AppError } from '../errors/AppError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -12,11 +12,9 @@ export const reportRouter = Router();
 // Protect all report endpoints with verified JWT authentication
 reportRouter.use(authenticate);
 
-function getUserIdMatch(userId: string) {
-  if (mongoose.Types.ObjectId.isValid(userId)) {
-    return { $in: [userId, new mongoose.Types.ObjectId(userId)] };
-  }
-  return userId;
+async function getUserIdMatch(userId: string, email?: string) {
+  const aliases = await getAuthUserAliases(userId, email);
+  return { $in: aliases };
 }
 
 const dateRangeQuerySchema = z.object({
@@ -54,15 +52,17 @@ reportRouter.get(
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + 7);
 
+    const userMatch = await getUserIdMatch(req.user.userId, req.user.email);
+
     // Fetch user's active goal
-    const activeGoal = await Goal.findOne({ userId: req.user.userId, isActive: true });
+    const activeGoal = await Goal.findOne({ userId: userMatch, isActive: true });
     const targetCalories = activeGoal ? activeGoal.dailyCaloriesKcal : 2000;
 
     // Aggregation pipeline over meals
     const dailyAggregates = await Meal.aggregate([
       {
         $match: {
-          userId: getUserIdMatch(req.user.userId),
+          userId: userMatch,
           eatenAt: { $gte: startDate, $lt: endDate },
         },
       },
@@ -122,9 +122,10 @@ reportRouter.get(
     }
 
     const { start, end, groupBy } = macroQuerySchema.parse(req.query);
+    const userMatch = await getUserIdMatch(req.user.userId, req.user.email);
 
     const filter: Record<string, unknown> = {
-      userId: getUserIdMatch(req.user.userId),
+      userId: userMatch,
     };
 
     if (start || end) {
@@ -198,9 +199,10 @@ reportRouter.get(
     }
 
     const { start, end } = dateRangeQuerySchema.parse(req.query);
+    const userMatch = await getUserIdMatch(req.user.userId, req.user.email);
 
     const filter: Record<string, unknown> = {
-      userId: new mongoose.Types.ObjectId(req.user.userId),
+      userId: userMatch,
       micronutrients: { $exists: true, $ne: [] },
     };
 
@@ -258,11 +260,12 @@ reportRouter.get(
     }
 
     const { start, end } = dateRangeQuerySchema.parse(req.query);
+    const userMatch = await getUserIdMatch(req.user.userId, req.user.email);
 
-    const activeGoal = await Goal.findOne({ userId: req.user.userId, isActive: true });
+    const activeGoal = await Goal.findOne({ userId: userMatch, isActive: true });
 
     const filter: Record<string, unknown> = {
-      userId: getUserIdMatch(req.user.userId),
+      userId: userMatch,
     };
 
     if (start || end) {

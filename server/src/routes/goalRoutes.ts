@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import mongoose from 'mongoose';
 import { Goal } from '../models/Goal.js';
-import { User, findUserByAuthId } from '../models/User.js';
+import { User, findUserByAuthId, getAuthUserAliases } from '../models/User.js';
 import { Meal } from '../models/Meal.js';
 import { DietInstruction } from '../models/DietInstruction.js';
 import { generateSmartRecommendations } from '../services/recommendationEngine.js';
@@ -33,8 +33,10 @@ goalRouter.get(
       throw AppError.unauthorized();
     }
 
+    const userAliases = await getAuthUserAliases(req.user.userId, req.user.email);
+
     let goal = await Goal.findOne({
-      userId: req.user.userId,
+      userId: { $in: userAliases },
       isActive: true,
     }).sort({ updatedAt: -1 });
 
@@ -117,9 +119,10 @@ goalRouter.put(
     }
 
     const validated = goalInputSchema.parse(req.body);
+    const userAliases = await getAuthUserAliases(req.user.userId, req.user.email);
 
     const goal = await Goal.findOneAndUpdate(
-      { userId: req.user.userId, isActive: true },
+      { userId: { $in: userAliases }, isActive: true },
       {
         ...validated,
         userId: req.user.userId,
@@ -172,10 +175,11 @@ goalRouter.post(
     }
 
     const validated = goalInputSchema.parse(req.body);
+    const userAliases = await getAuthUserAliases(req.user.userId, req.user.email);
 
     // Deactivate prior active goals for this user
     await Goal.updateMany(
-      { userId: req.user.userId, isActive: true },
+      { userId: { $in: userAliases }, isActive: true },
       { $set: { isActive: false } }
     );
 
@@ -219,7 +223,8 @@ goalRouter.get(
       throw AppError.unauthorized();
     }
 
-    const goals = await Goal.find({ userId: req.user.userId }).sort({ createdAt: -1 });
+    const userAliases = await getAuthUserAliases(req.user.userId, req.user.email);
+    const goals = await Goal.find({ userId: { $in: userAliases } }).sort({ createdAt: -1 });
 
     res.status(200).json({
       goals: goals.map((g) => g.toJSON()),
@@ -243,8 +248,10 @@ goalRouter.get(
     const user = await findUserByAuthId(req.user.userId, req.user.email);
 
     // 1. Fetch active nutrition goal (or auto-seed if none)
+    const userAliases = await getAuthUserAliases(req.user.userId, req.user.email);
+
     let goal = await Goal.findOne({
-      userId: req.user.userId,
+      userId: { $in: userAliases },
       isActive: true,
     }).sort({ updatedAt: -1 });
 
@@ -285,7 +292,7 @@ goalRouter.get(
     const todayMeals = await Meal.aggregate([
       {
         $match: {
-          userId: req.user.userId,
+          userId: { $in: userAliases },
           eatenAt: { $gte: startOfToday },
         },
       },

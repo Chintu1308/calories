@@ -1,7 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import multer from 'multer';
 import mongoose from 'mongoose';
-import { findUserByAuthId } from '../models/User.js';
+import { findUserByAuthId, getAuthUserAliases } from '../models/User.js';
 import { Goal } from '../models/Goal.js';
 import { Meal } from '../models/Meal.js';
 import { DietInstruction } from '../models/DietInstruction.js';
@@ -82,11 +82,12 @@ aiRouter.post(
     }
 
     // 1. Fetch user allergies and biometric preferences
+    const userAliases = await getAuthUserAliases(req.user.userId, req.user.email);
     const user = await findUserByAuthId(req.user.userId, req.user.email);
     const userAllergies = user?.allergies || [];
 
     // 2. Fetch active nutritional goal
-    const goal = await Goal.findOne({ userId: req.user.userId, isActive: true });
+    const goal = await Goal.findOne({ userId: { $in: userAliases }, isActive: true });
     const targetCalories = goal ? goal.dailyCaloriesKcal : 2000;
     const targetProtein = goal ? goal.proteinGrams : 150;
     const targetCarbs = goal ? goal.carbohydrateGrams : 200;
@@ -99,7 +100,7 @@ aiRouter.post(
     const todayMeals = await Meal.aggregate([
       {
         $match: {
-          userId: req.user.userId,
+          userId: { $in: userAliases },
           eatenAt: { $gte: startOfToday },
         },
       },
@@ -224,8 +225,9 @@ aiRouter.get(
       throw AppError.unauthorized();
     }
 
+    const userAliases = await getAuthUserAliases(req.user.userId, req.user.email);
     const instructions = await DietInstruction.find({
-      userId: req.user.userId,
+      userId: { $in: userAliases },
       isActive: true,
     }).sort({ createdAt: -1 });
 
@@ -249,9 +251,10 @@ aiRouter.delete(
       throw AppError.badRequest('Invalid diet instruction ID');
     }
 
+    const userAliases = await getAuthUserAliases(req.user.userId, req.user.email);
     const deleted = await DietInstruction.findOneAndDelete({
       _id: id,
-      userId: req.user.userId,
+      userId: { $in: userAliases },
     });
 
     if (!deleted) {

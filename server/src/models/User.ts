@@ -147,3 +147,37 @@ export async function findUserByAuthId(userId: string, email?: string): Promise<
 
   return null;
 }
+
+/**
+ * Returns all valid identifier representations for an authenticated user
+ * (including their Supabase UUID, MongoDB ObjectId, string ObjectId, etc.)
+ * so historical queries seamlessly match legacy and new documents.
+ */
+export async function getAuthUserAliases(
+  userId: string,
+  email?: string
+): Promise<Array<string | mongoose.Types.ObjectId>> {
+  const user = await findUserByAuthId(userId, email);
+  const aliasSet = new Set<string>();
+
+  if (userId) aliasSet.add(userId);
+
+  if (user) {
+    if (user._id) {
+      aliasSet.add(user._id.toString());
+    }
+    if (user.supabaseId) {
+      aliasSet.add(user.supabaseId);
+    }
+  }
+
+  const result: Array<string | mongoose.Types.ObjectId> = [];
+  for (const idStr of aliasSet) {
+    result.push(idStr);
+    if (mongoose.Types.ObjectId.isValid(idStr)) {
+      result.push(new mongoose.Types.ObjectId(idStr));
+    }
+  }
+
+  return result;
+}

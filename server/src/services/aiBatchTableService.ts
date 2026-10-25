@@ -1,4 +1,3 @@
-import mongoose from 'mongoose';
 import { env } from '../config/env.js';
 import { Meal, type MealType } from '../models/Meal.js';
 import { NUTRITION_DATASET } from '../data/nutritionDataset.js';
@@ -524,7 +523,7 @@ ${rawText}`;
   let committedDocs: any[] | undefined;
   if (autoCommit && userId && parsedMeals.length > 0) {
     const mealDocs = parsedMeals.map((item) => ({
-      userId: new mongoose.Types.ObjectId(userId),
+      userId,
       foodName: item.foodName,
       mealType: item.mealType,
       eatenAt: new Date(item.eatenAt),
