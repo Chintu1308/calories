@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Header, type NavTabId } from './components/layout/Header.js';
 import { DashboardShell, type DashboardViewState } from './components/layout/DashboardShell.js';
 import { MealsPage } from './pages/MealsPage.js';
@@ -59,7 +59,7 @@ function mapApiUserToProfile(u: any, prev?: UserProfile | null): UserProfile {
     targetDate: d.toISOString().split('T')[0],
     activityLevel: prev?.activityLevel || 'moderate',
     allergies: u.allergies || prev?.allergies || [],
-    supplements: mappedSupplements.length > 0 ? mappedSupplements : prev?.supplements || [],
+    supplements: Array.isArray(u.supplements) ? mappedSupplements : prev?.supplements || [],
     primaryGoal: (u.primaryGoal as UserProfile['primaryGoal']) || prev?.primaryGoal || 'fat_loss',
     termsAccepted: !!(u.termsAccepted ?? prev?.termsAccepted),
     termsAcceptedAt: u.termsAcceptedAt || prev?.termsAcceptedAt || undefined,
@@ -112,12 +112,6 @@ function computeDateBounds(offset: number): { selectedDateString: string; todayS
   const todayString = getLocalDateString(new Date());
   return { selectedDateString, todayString };
 }
-
-const DEFAULT_SUPPLEMENTS: SupplementItem[] = [
-  { id: 'supp_creatine', name: 'Creatine Monohydrate', dosage: '5g', timing: 'Morning', notes: 'Daily cellular hydration & power' },
-  { id: 'supp_vitd', name: 'Vitamin D3 & K2', dosage: '2000 IU', timing: 'Morning', notes: 'Bone density and immune regulation' },
-  { id: 'supp_omega3', name: 'Omega-3 Fish Oil', dosage: '1000mg', timing: 'Evening', notes: 'Cardiovascular and anti-inflammatory' },
-];
 
 export const App: React.FC = () => {
   // Authentication State
@@ -332,11 +326,11 @@ export const App: React.FC = () => {
     (s) => getMealLocalDateString(s.loggedAt) === selectedDateString
   );
 
-  // User supplements (with fallback defaults if user has none configured)
-  const activeUserSupplements =
-    userProfile?.supplements && userProfile.supplements.length > 0
-      ? userProfile.supplements
-      : DEFAULT_SUPPLEMENTS;
+  // User supplements (strictly adheres to user's profile configuration)
+  const activeUserSupplements = useMemo(
+    () => userProfile?.supplements || [],
+    [userProfile?.supplements]
+  );
 
   const selectedDayCalories = selectedDayMeals.reduce((acc, m) => acc + (m.nutrition?.caloriesKcal || 0), 0);
   const selectedDayProtein = selectedDayMeals.reduce((acc, m) => acc + (m.nutrition?.proteinG || 0), 0);

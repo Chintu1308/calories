@@ -116,7 +116,7 @@ export const MealsPage: React.FC<MealsPageProps> = ({
             onClick={() => setIsBatchModalOpen(true)}
             style={{ borderColor: 'var(--color-forest-green)', color: 'var(--color-forest-green)' }}
           >
-            📊 AI Table / Batch Log
+            AI Table / Batch Log
           </Button>
           <Button
             variant="outline"
@@ -132,7 +132,7 @@ export const MealsPage: React.FC<MealsPageProps> = ({
             leftIcon={<Icon name="plus" size={16} />}
             onClick={() => onOpenAddMeal('Breakfast')}
           >
-            + Log Food
+            Log Food
           </Button>
         </div>
       </div>
